@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+:root {
+  --background: #FFFFFF;
+  --background-off: #FAF7F2;
+  --surface-card: #FFFFFF;
+  --surface-border: #EFE9E0;
+
+  --foreground: #2B2B2B;
+  --foreground-muted: #6B6B6B;
+
+  /* Playful & Trustworthy Brand Accents */
+  --coral-primary: #FF6B6B;
+  --coral-hover: #FA5252;
+  --sunny-yellow: #FFC93C;
+  --yellow-hover: #F6BA22;
+  --sky-blue: #5BC0EB;
+  --soft-green: #7BD389;
+
+  --radius-card: 20px;
+  --radius-button: 9999px;
+  --shadow-soft: 0 8px 30px -4px rgba(43, 43, 43, 0.06);
+  --shadow-card-hover: 0 14px 34px -4px rgba(43, 43, 43, 0.12);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-off: var(--background-off);
+  --color-surface-card: var(--surface-card);
+  --color-surface-border: var(--surface-border);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+
+  --color-coral: var(--coral-primary);
+  --color-coral-hover: var(--coral-hover);
+  --color-yellow: var(--sunny-yellow);
+  --color-yellow-hover: var(--yellow-hover);
+  --color-sky: var(--sky-blue);
+  --color-green: var(--soft-green);
+
+  --font-heading: 'Fredoka', 'Baloo 2', 'Hind Siliguri', cursive, sans-serif;
+  --font-body: 'Nunito', 'Hind Siliguri', sans-serif;
+  --font-bangla: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+}
+
+/* Playful hand-drawn crayon feel */
+.crayon-border {
+  border: 2px solid var(--surface-border);
+  border-radius: var(--radius-card);
+}
+
+.card-playful {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-playful:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.btn-primary {
+  background-color: var(--coral-primary);
+  color: #FFFFFF;
+  font-weight: 700;
+  border-radius: var(--radius-button);
+  padding: 12px 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(255, 107, 107, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--coral-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.45);
+}
+
+.btn-secondary {
+  background-color: var(--sunny-yellow);
+  color: #2B2B2B;
+  font-weight: 700;
+  border-radius: var(--radius-button);
+  padding: 12px 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(255, 201, 60, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--yellow-hover);
+  transform: translateY(-1px);
+}
+
+.badge-safety {
+  background-color: #EBF8EE;
+  color: #2D7A3E;
+  border: 1px solid #C4EDCD;
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge-age {
+  background-color: #E8F7FD;
+  color: #197AA5;
+  border: 1px solid #BFE4F7;
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

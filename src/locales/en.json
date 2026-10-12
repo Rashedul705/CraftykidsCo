@@ -1,0 +1,75 @@
+{
+  "brand": {
+    "name": "Rongdhonu Kids",
+    "tagline": "Safe Colors & Joyful Childhood",
+    "deliveryTag": "Fast Home Delivery Across Bangladesh"
+  },
+  "nav": {
+    "home": "Home",
+    "shop": "All Products",
+    "categories": "Categories",
+    "crayons": "Wax Crayons",
+    "toys": "Toys",
+    "bundles": "Combo Offers",
+    "offers": "Discounts & Offers",
+    "tracking": "Track Order",
+    "account": "Account",
+    "cart": "Cart"
+  },
+  "badges": {
+    "nonToxic": "100% Non-Toxic & Safe",
+    "foodGrade": "Food-Grade Safe Natural Wax",
+    "easyClean": "Easy Washable",
+    "age2Plus": "Ages 2+ Years",
+    "age3Plus": "Ages 3+ Years",
+    "childSafe": "Child-Safe Certified"
+  },
+  "home": {
+    "heroTitle": "Spark Your Child's Imagination with 100% Safe Colors!",
+    "heroSubtitle": "Crafted with food-grade natural beeswax and skin-safe pigments. Designed for little hands and big creativity.",
+    "heroCta": "Explore Products",
+    "secondaryCta": "Combo Offers",
+    "shopByAge": "Shop by Age",
+    "bestSellers": "Most Popular Products",
+    "combosTitle": "Gift Sets & Combo Offers",
+    "whyUsTitle": "Why Parents Trust Rongdhonu Kids",
+    "freeDeliveryNotice": "Free delivery on orders over ৳1,000!"
+  },
+  "product": {
+    "addToCart": "Add to Cart",
+    "orderNow": "Order Now",
+    "outOfStock": "Out of Stock",
+    "inStock": "In Stock",
+    "selectVariation": "Select Variation",
+    "colorSet": "Colors Count",
+    "ageGroup": "Age Group",
+    "price": "Price",
+    "save": "Save"
+  },
+  "cart": {
+    "title": "Your Shopping Cart",
+    "empty": "Your cart is currently empty",
+    "startShopping": "Start Shopping",
+    "subtotal": "Subtotal",
+    "deliveryCharge": "Delivery Charge",
+    "discount": "Discount",
+    "total": "Total Amount",
+    "freeDeliveryProgress": "Add {remaining} more for Free Delivery!",
+    "freeDeliveryAchieved": "Congratulations! You unlocked Free Delivery!",
+    "proceedToCheckout": "Proceed to Checkout"
+  },
+  "checkout": {
+    "title": "Quick Single-Page Checkout",
+    "guestCheckout": "Order Directly Without Logging In",
+    "fullName": "Full Name",
+    "phone": "Mobile Number (11 digits)",
+    "district": "Select District",
+    "address": "Full Delivery Address (House / Road / Area)",
+    "note": "Special Note (Optional)",
+    "paymentMethod": "Payment Method",
+    "cod": "Cash on Delivery",
+    "bkash": "bKash Online Payment",
+    "nagad": "Nagad Online Payment",
+    "placeOrder": "Confirm Order ৳{total}"
+  }
+}
