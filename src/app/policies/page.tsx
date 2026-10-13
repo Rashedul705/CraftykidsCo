@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Truck, RotateCcw, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 
 export default function PoliciesPage() {
@@ -50,6 +51,9 @@ export default function PoliciesPage() {
           </ul>
         </section>
       </main>
+
+      {/* Centralized Footer */}
+      <Footer />
 
       <MobileBottomNav activeTab="home" />
     </div>

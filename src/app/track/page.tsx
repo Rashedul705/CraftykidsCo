@@ -13,6 +13,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Button } from '@/components/ui/Button';
 import { getOrderByIdOrNumber, getOrdersByPhone, OrderRecord } from '@/lib/store';
@@ -259,6 +260,8 @@ export default function OrderTrackingPage() {
       <Suspense fallback={<div className="p-12 text-center text-xs">লোড হচ্ছে...</div>}>
         <TrackContent />
       </Suspense>
+      {/* Centralized Footer */}
+      <Footer />
       <MobileBottomNav activeTab="home" />
     </div>
   );

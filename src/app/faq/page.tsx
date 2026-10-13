@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { HelpCircle, ChevronDown } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 
 export default function FaqPage() {
@@ -61,6 +62,9 @@ export default function FaqPage() {
           ))}
         </div>
       </main>
+
+      {/* Centralized Footer */}
+      <Footer />
 
       <MobileBottomNav activeTab="home" />
     </div>

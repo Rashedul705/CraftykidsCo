@@ -15,6 +15,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { FreeDeliveryBar } from '@/components/storefront/FreeDeliveryBar';
 import { Button } from '@/components/ui/Button';
@@ -235,7 +236,7 @@ export default function CartPage() {
                 <Link href="/checkout" className="block pt-2">
                   <Button variant="primary" size="lg" fullWidth>
                     <ShoppingBag className="w-5 h-5" />
-                    চেকআউটে এগিয়ে যান
+                    Continue Checkout
                   </Button>
                 </Link>
 
@@ -265,6 +266,9 @@ export default function CartPage() {
           </div>
         )}
       </main>
+
+      {/* Centralized Footer */}
+      <Footer />
 
       <MobileBottomNav activeTab="cart" locale={locale} />
     </div>

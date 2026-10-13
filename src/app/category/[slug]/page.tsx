@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import { sampleCategories } from '@/lib/sample-data';
@@ -117,6 +118,8 @@ export default function CategoryDetailPage() {
       <Suspense fallback={<div className="p-12 text-center text-xs">লোড হচ্ছে...</div>}>
         <CategoryContent />
       </Suspense>
+      {/* Centralized Footer */}
+      <Footer />
       <MobileBottomNav activeTab="shop" />
     </div>
   );

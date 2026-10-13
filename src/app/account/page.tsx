@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Button } from '@/components/ui/Button';
 import { getAllOrders } from '@/lib/store';
@@ -257,6 +258,9 @@ export default function CustomerAccountPage() {
           </div>
         )}
       </main>
+
+      {/* Centralized Footer */}
+      <Footer />
 
       <MobileBottomNav activeTab="account" />
     </div>

@@ -32,6 +32,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import { Button } from '@/components/ui/Button';
@@ -957,6 +958,9 @@ function ProductContent() {
           </div>
         )}
       </main>
+
+      {/* Centralized Footer */}
+      <Footer />
 
       {/* =========================================================================
           LIGHTBOX ZOOM MODAL

@@ -10,6 +10,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/Button';
 import { getOrderByIdOrNumber, getAllOrders } from '@/lib/store';
 
@@ -147,11 +148,14 @@ function ConfirmationContent() {
 
 export default function OrderConfirmationPage() {
   return (
-    <div className="min-h-screen bg-[#FAF7F2] pb-16 text-[#2B2B2B]">
-      <Header />
-      <Suspense fallback={<div className="p-12 text-center text-xs">লোড হচ্ছে...</div>}>
-        <ConfirmationContent />
-      </Suspense>
+    <div className="min-h-screen bg-[#FAF7F2] text-[#2B2B2B] flex flex-col justify-between">
+      <div>
+        <Header />
+        <Suspense fallback={<div className="p-12 text-center text-xs">লোড হচ্ছে...</div>}>
+          <ConfirmationContent />
+        </Suspense>
+      </div>
+      <Footer />
     </div>
   );
 }

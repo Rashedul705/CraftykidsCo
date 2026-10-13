@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/Button';
 import { formatBDT, normalizeBDPhone } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
@@ -460,7 +461,7 @@ export default function CheckoutPage() {
                 ) : (
                   <>
                     <ShoppingBag className="w-5 h-5" />
-                    অর্ডার সম্পন্ন করুন ৳{grandTotal}
+                    Confirm order
                   </>
                 )}
               </Button>
@@ -476,6 +477,9 @@ export default function CheckoutPage() {
           </div>
         </form>
       </main>
+
+      {/* Centralized Footer */}
+      <Footer />
     </div>
   );
 }

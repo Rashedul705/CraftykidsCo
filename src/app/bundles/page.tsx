@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Gift, Sparkles, ShoppingBag, CheckCircle2 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Button } from '@/components/ui/Button';
 import { useCart } from '@/context/CartContext';
@@ -112,6 +113,9 @@ export default function BundlesPage() {
           ))}
         </div>
       </main>
+
+      {/* Centralized Footer */}
+      <Footer />
 
       <MobileBottomNav activeTab="shop" />
     </div>
