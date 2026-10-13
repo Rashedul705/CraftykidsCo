@@ -4,633 +4,827 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  ShoppingBag,
-  ShieldCheck,
-  Truck,
-  HeartHandshake,
-  Star,
   Sparkles,
   ArrowRight,
-  Globe,
+  ShieldCheck,
+  Truck,
+  RotateCcw,
+  Headphones,
+  Star,
   CheckCircle2,
-  PhoneCall,
   Gift,
+  ChevronRight,
+  Send,
+  PhoneCall,
+  Mail,
+  MapPin,
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { ProductCard } from '@/components/storefront/ProductCard';
+import { Header } from '@/components/layout/Header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
-import { StarDoodle, CloudDoodle, CrayonStrokeDivider } from '@/components/decorations/CrayonDoodles';
-import { formatBDT } from '@/lib/utils';
+import { ProductCard } from '@/components/storefront/ProductCard';
 import { sampleCategories, sampleProducts } from '@/lib/sample-data';
+import { formatBDT } from '@/lib/utils';
 
 export default function HomePage() {
   const [locale, setLocale] = useState<'bn' | 'en'>('bn');
-  const [cartCount, setCartCount] = useState(1);
+  const [emailSub, setEmailSub] = useState('');
+  const [subSuccess, setSubSuccess] = useState(false);
 
   const toggleLocale = () => {
     setLocale((prev) => (prev === 'bn' ? 'en' : 'bn'));
   };
 
-  const handleQuickAdd = () => {
-    setCartCount((prev) => prev + 1);
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (emailSub.trim()) {
+      setSubSuccess(true);
+      setTimeout(() => setSubSuccess(false), 3000);
+      setEmailSub('');
+    }
   };
 
+  // Filter products for various sections (Max 4 products in a row)
+  const newArrivalProducts = sampleProducts.filter((p) => p.isNewArrival).slice(0, 4);
+  const bestSellerProducts = sampleProducts.filter((p) => p.isBestSeller).slice(0, 4);
+
+  const crayonShowcaseProducts = sampleProducts
+    .filter((p) => p.categorySlug === 'wax-crayons')
+    .slice(0, 4);
+
+  const clayShowcaseProducts = sampleProducts
+    .filter((p) => p.categorySlug === 'play-dough-clay')
+    .slice(0, 4);
+
+  const educationalShowcaseProducts = sampleProducts
+    .filter((p) => p.categorySlug === 'educational-toys' || p.categorySlug === 'wooden-toys')
+    .slice(0, 4);
+
   return (
-    <div className="min-h-screen bg-[#FAF7F2] pb-24 md:pb-12 text-[#2B2B2B]">
-      {/* Top Banner Notice */}
-      <div className="bg-[#FF6B6B] text-white py-2 px-4 text-center text-xs sm:text-sm font-bold flex items-center justify-center gap-2">
-        <Sparkles className="w-4 h-4 text-[#FFC93C]" />
-        <span>
-          {locale === 'bn'
-            ? '🚚 সারা বাংলাদেশে দ্রুত ডেলিভারি • ৳১,০০০ টাকার অর্ডারে ফ্রি ডেলিভারি!'
-            : '🚚 Fast nationwide delivery • Free shipping on orders over ৳1,000!'}
-        </span>
-      </div>
+    <div className="min-h-screen bg-[#FAF7F2] text-[#222222] font-sans">
+      {/* 1. Header with CraftyKidsCo English branding & Navigation */}
+      <Header locale={locale} onToggleLocale={toggleLocale} />
 
-      {/* Main Navigation Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EFE9E0] transition-all">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
-          {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#FF6B6B] to-[#FFC93C] flex items-center justify-center text-white font-extrabold text-2xl shadow-[0_4px_12px_rgba(255,107,107,0.35)] group-hover:scale-105 transition-transform">
-              র
-            </div>
-            <div className="flex flex-col">
-              <span className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B] leading-none tracking-tight">
-                {locale === 'bn' ? 'রংধনু কিডস' : 'Rongdhonu Kids'}
-              </span>
-              <span className="text-[11px] font-bold text-[#6B6B6B] tracking-wide">
-                {locale === 'bn' ? 'নিরাপদ মোমের রঙ ও খেলনা' : 'Safe Wax Crayons & Toys'}
-              </span>
-            </div>
-          </Link>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-10 sm:space-y-12">
+        {/* ========================================================================= */}
+        {/* 2. Hero Campaign Banner (as shown in wireframe)                           */}
+        {/* ========================================================================= */}
+        <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-[#FFF5EB] border border-[#F3E5D8] p-6 sm:p-10 lg:p-14">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Banner Text Content */}
+            <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E0F7FA] text-[#00838F] font-bold text-xs">
+                <Sparkles className="w-3.5 h-3.5 text-[#00ACC1]" />
+                <span>New Promotion • নতুন অফার</span>
+              </div>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-6 font-bold text-sm text-[#2B2B2B]">
-            <Link href="/" className="text-[#FF6B6B] hover:text-[#FA5252]">
-              {locale === 'bn' ? 'হোম' : 'Home'}
-            </Link>
-            <Link href="/shop" className="hover:text-[#FF6B6B] transition-colors">
-              {locale === 'bn' ? 'মোমের রঙ (Crayons)' : 'Wax Crayons'}
-            </Link>
-            <Link href="/shop" className="hover:text-[#FF6B6B] transition-colors">
-              {locale === 'bn' ? 'শিক্ষণীয় খেলনা' : 'Educational Toys'}
-            </Link>
-            <Link href="/bundles" className="hover:text-[#FF6B6B] transition-colors flex items-center gap-1">
-              <Gift className="w-4 h-4 text-[#FF6B6B]" />
-              {locale === 'bn' ? 'গিফট কম্বো' : 'Gift Combos'}
-            </Link>
-            <Link href="/track" className="hover:text-[#FF6B6B] transition-colors">
-              {locale === 'bn' ? 'অর্ডার ট্র্যাক' : 'Track Order'}
-            </Link>
-          </nav>
-
-          {/* Actions: Lang toggle & Cart */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleLocale}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#EFE9E0] bg-[#FAF7F2] hover:bg-white text-xs font-bold text-[#2B2B2B] transition-colors cursor-pointer"
-            >
-              <Globe className="w-3.5 h-3.5 text-[#5BC0EB]" />
-              {locale === 'bn' ? 'English' : 'বাংলা'}
-            </button>
-
-            <Link
-              href="/cart"
-              className="relative p-2.5 rounded-full bg-[#FAF7F2] border border-[#EFE9E0] hover:border-[#FF6B6B] text-[#2B2B2B] transition-colors"
-            >
-              <ShoppingBag className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#FF6B6B] text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                  {cartCount}
+              <h1 className="font-heading font-black text-2xl sm:text-4xl lg:text-5xl text-[#222222] leading-tight tracking-tight">
+                [ক্যাম্পেইন ব্যানারের হেডলাইন]
+                <span className="block text-[#E53935] text-xl sm:text-3xl lg:text-4xl mt-1">
+                  ছোট্ট সোনামণিদের জন্য নিরাপদ মোমের রঙ ও খেলনা
                 </span>
-              )}
-            </Link>
-          </div>
-        </div>
-      </header>
+              </h1>
 
-      {/* 1. HERO BANNER: One main offer and one clear button */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#FFFDF9] to-[#FAF7F2] pt-8 pb-16 px-4 sm:px-6 lg:px-8 border-b border-[#EFE9E0]">
-        <div className="absolute top-10 left-10 pointer-events-none opacity-40">
-          <StarDoodle className="w-12 h-12 text-[#FFC93C]" />
-        </div>
-        <div className="absolute bottom-6 right-8 pointer-events-none opacity-40">
-          <CloudDoodle className="w-20 h-12 text-[#5BC0EB]" />
-        </div>
+              <p className="text-sm sm:text-base text-[#666666] max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                ১০০% প্রাকৃতিক খাদ্য-মানের মোম এবং নন-টক্সিক উপাদান দিয়ে তৈরি। CraftyKidsCo দিচ্ছে শিশুদের সৃজনশীল কল্পনায় রঙিন আনন্দের ছোঁয়া।
+              </p>
 
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-          <div className="space-y-6 text-center md:text-left z-10">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EBF8EE] border border-[#C4EDCD] text-xs font-bold text-[#2D7A3E]">
-              <ShieldCheck className="w-4 h-4 text-[#7BD389]" />
-              {locale === 'bn' ? '১০০% বিষাক্ত নয় ও শিশুর ত্বকে নিরাপদ' : '100% Non-Toxic & Child-Safe'}
-            </div>
-
-            <h1 className="font-heading font-black text-3xl sm:text-4xl lg:text-5xl text-[#2B2B2B] leading-[1.18] tracking-tight">
-              {locale === 'bn' ? (
-                <>
-                  ছোটদের প্রথম আঁকাআঁকিতে{' '}
-                  <span className="text-[#FF6B6B] underline decoration-[#FFC93C] decoration-wavy">
-                    নিরাপদ মোমের রঙ
-                  </span>
-                </>
-              ) : (
-                <>
-                  Safe & Pure{' '}
-                  <span className="text-[#FF6B6B] underline decoration-[#FFC93C] decoration-wavy">
-                    Natural Wax Crayons
-                  </span>{' '}
-                  for Little Artists
-                </>
-              )}
-            </h1>
-
-            <p className="text-base sm:text-lg text-[#6B6B6B] leading-relaxed max-w-xl mx-auto md:mx-0">
-              {locale === 'bn'
-                ? 'খাদ্য-মানের প্রাকৃতিক মোম দিয়ে হাতে তৈরি মোমের রঙ (Mom er color), যা সহজে ভাঙবে না এবং পানি দিয়ে সহজেই ধুয়ে পরিষ্কার করা যায়।'
-                : 'Handcrafted with food-grade beeswax and skin-safe mineral pigments. Break-resistant, ergonomic triangular grip, and 100% washable.'}
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start pt-2">
-              <Link href="/shop" className="w-full sm:w-auto">
-                <Button size="lg" variant="primary" className="w-full sm:w-auto">
-                  <ShoppingBag className="w-5 h-5" />
-                  {locale === 'bn' ? 'পণ্যগুলো দেখুন • ৳২৯৯ থেকে' : 'Order Now • From ৳299'}
-                </Button>
-              </Link>
-              <Link href="/bundles" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                  <Gift className="w-4 h-4 text-[#FF6B6B]" />
-                  {locale === 'bn' ? 'গিফট কম্বো অফার' : 'View Gift Combos'}
-                </Button>
-              </Link>
-            </div>
-
-            <div className="flex items-center justify-center md:justify-start gap-6 pt-4 text-xs font-bold text-[#6B6B6B]">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-[#7BD389]" />
-                <span>ক্যাশ অন ডেলিভারি</span>
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
+                <Link
+                  href="/shop"
+                  className="px-8 py-3.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] active:scale-95 text-white font-bold text-sm sm:text-base shadow-[0_4px_16px_rgba(229,57,53,0.3)] transition-all flex items-center gap-2"
+                >
+                  <span>অর্ডার করুন</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  href="/category/wax-crayons"
+                  className="px-6 py-3.5 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#DFD7CC] text-[#333] font-bold text-sm sm:text-base transition-colors"
+                >
+                  মোমের রঙ দেখুন
+                </Link>
               </div>
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-[#7BD389]" />
-                <span>স্টিডফাস্ট কুরিয়ার</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-[#7BD389]" />
-                <span>সহজ রিটার্ন</span>
+
+              {/* Slider Dots Indicator */}
+              <div className="flex items-center justify-center lg:justify-start gap-2 pt-4">
+                <span className="w-6 h-2 rounded-full bg-[#E53935] transition-all" />
+                <span className="w-2 h-2 rounded-full bg-[#DFD7CC]" />
+                <span className="w-2 h-2 rounded-full bg-[#DFD7CC]" />
               </div>
             </div>
-          </div>
 
-          {/* Hero Visual Card */}
-          <div className="relative">
-            <div className="relative rounded-[32px] overflow-hidden bg-white p-4 shadow-[0_20px_50px_rgba(43,43,43,0.08)] border border-[#EFE9E0] group">
-              <div className="relative aspect-[4/3] rounded-[24px] overflow-hidden bg-[#FAF7F2]">
+            {/* Banner Real Photo */}
+            <div className="lg:col-span-5 relative">
+              <div className="relative w-full aspect-4/3 sm:aspect-16/10 lg:aspect-square rounded-2xl overflow-hidden shadow-lg border-4 border-white">
                 <Image
-                  src="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=1000&q=80"
-                  alt="Rongdhonu Natural Wax Crayons"
+                  src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=1000&q=80"
+                  alt="CraftyKidsCo Safe Toys and Colors"
                   fill
                   priority
-                  className="object-cover group-hover:scale-105 transition-transform duration-700"
+                  className="object-cover"
                 />
-                <div className="absolute top-4 left-4">
-                  <span className="px-3 py-1 rounded-full text-xs font-black bg-[#FF6B6B] text-white shadow-md">
-                    ২৫% ছাড় অফার
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between px-2">
-                <div>
-                  <h3 className="font-heading font-bold text-lg text-[#2B2B2B]">
-                    {locale === 'bn' ? 'রংধনু ২৪ কালার স্পেশাল গিফট প্যাক' : '24 Shade Deluxe Wax Crayon Box'}
-                  </h3>
-                  <p className="text-xs text-[#6B6B6B]">
-                    {locale === 'bn' ? 'সাথে থাকছে ফ্রি ড্রয়িং বুকলেট' : 'Includes Free Coloring Booklet'}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="text-2xl font-black text-[#FF6B6B]">৳২৯৯</span>
-                  <span className="block text-xs line-through text-[#6B6B6B]">৳৩৯৯</span>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent flex items-end p-4 sm:p-6">
+                  <div className="bg-white/95 backdrop-blur-xs rounded-xl p-3 shadow-md border border-white/60">
+                    <p className="text-xs font-bold text-[#E53935]">★ ১০০% ফুড-গ্রেড ন্যাচারাল মোম</p>
+                    <p className="text-[11px] text-[#555]">শিশুর ত্বকের জন্য সম্পূর্ণ নিরাপদ ও ওয়াশেবল</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 2. CATEGORY CARDS: Round icons or colorful tiles */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
-            {locale === 'bn' ? 'পছন্দের ক্যাটাগরি বেছে নিন' : 'Shop by Category'}
-          </h2>
-          <p className="text-sm text-[#6B6B6B] mt-1">
-            {locale === 'bn'
-              ? 'মোমের রঙ, শিক্ষণীয় খেলনা এবং শিশুদের ক্রিয়েটিভ সামগ্রী'
-              : 'Safe art supplies, educational toys, and play essentials'}
-          </p>
-        </div>
+        {/* ========================================================================= */}
+        {/* 3. Shop by Category Circular Icons ("ক্যাটাগরি অনুযায়ী কিনুন")               */}
+        {/* ========================================================================= */}
+        <section className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+                ক্যাটাগরি অনুযায়ী কিনুন
+              </h2>
+              <p className="text-xs sm:text-sm text-[#777777]">আপনার পছন্দের বিভাগ বেছে নিন</p>
+            </div>
+            <Link
+              href="/shop"
+              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
+            >
+              <span>সব দেখুন</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {sampleCategories.map((cat, idx) => {
-            const bgGradients = [
-              'bg-[#FFF3E6] border-[#FFE4CC] hover:bg-[#FFE8D6]',
-              'bg-[#E8F7FD] border-[#BFE4F7] hover:bg-[#DBF2FC]',
-              'bg-[#EBF8EE] border-[#C4EDCD] hover:bg-[#D8F3DC]',
-              'bg-[#FFF9E6] border-[#FFE899] hover:bg-[#FFF3CC]',
-            ];
-            return (
+          {/* Row of 8 circular category buttons with pastel tints */}
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 sm:gap-4">
+            {sampleCategories.map((cat) => (
               <Link
                 key={cat.slug}
                 href={`/category/${cat.slug}`}
-                className={`p-5 rounded-[22px] border transition-all text-center flex flex-col items-center justify-center gap-3 group shadow-sm hover:shadow-md hover:-translate-y-1 ${
-                  bgGradients[idx % bgGradients.length]
-                }`}
+                className="group flex flex-col items-center text-center transition-transform hover:-translate-y-1"
               >
-                <div className="w-16 h-16 rounded-2xl bg-white p-2 shadow-sm flex items-center justify-center overflow-hidden group-hover:scale-110 transition-transform">
-                  <Image
-                    src={cat.imageUrl}
-                    alt={cat.nameBn}
-                    width={56}
-                    height={56}
-                    className="object-cover rounded-xl"
-                  />
-                </div>
-                <div>
-                  <h3 className="font-heading font-bold text-base text-[#2B2B2B]">
-                    {locale === 'bn' ? cat.nameBn : cat.nameEn}
-                  </h3>
-                  <span className="text-xs text-[#6B6B6B] flex items-center justify-center gap-1 mt-1 group-hover:text-[#FF6B6B]">
-                    {locale === 'bn' ? 'পণ্য দেখুন' : 'Browse'} <ArrowRight className="w-3 h-3" />
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-
-          {/* Combo Tile */}
-          <Link
-            href="/bundles"
-            className="p-5 rounded-[22px] border bg-[#FFF0F0] border-[#FFD6D6] hover:bg-[#FFE5E5] transition-all text-center flex flex-col items-center justify-center gap-3 group shadow-sm hover:shadow-md hover:-translate-y-1"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-white p-2 shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform text-[#FF6B6B]">
-              <Gift className="w-8 h-8" />
-            </div>
-            <div>
-              <h3 className="font-heading font-bold text-base text-[#2B2B2B]">
-                {locale === 'bn' ? 'স্পেশাল কম্বো অফার' : 'Special Combos'}
-              </h3>
-              <span className="text-xs text-[#FF6B6B] font-bold flex items-center justify-center gap-1 mt-1">
-                {locale === 'bn' ? '৩০% পর্যন্ত সাশ্রয়' : 'Up to 30% Off'}
-              </span>
-            </div>
-          </Link>
-        </div>
-      </section>
-
-      <CrayonStrokeDivider color="#FFC93C" />
-
-      {/* 3. BEST SELLERS: Products with variations & quick add */}
-      <section className="py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-[#FF6B6B] text-xs font-bold uppercase tracking-wider">
-              <Star className="w-4 h-4 fill-current" />
-              <span>{locale === 'bn' ? 'অভিভাবকদের সেরা পছন্দ' : 'Parents’ Top Choice'}</span>
-            </div>
-            <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B] mt-1">
-              {locale === 'bn' ? 'সবচেয়ে জনপ্রিয় পণ্যগুলো' : 'Best Selling Products'}
-            </h2>
-          </div>
-          <Link href="/shop">
-            <Button variant="outline" size="sm">
-              {locale === 'bn' ? 'সবগুলো দেখুন' : 'View All'} <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-          {sampleProducts.map((p) => (
-            <ProductCard
-              key={p.slug}
-              id={p.slug}
-              slug={p.slug}
-              title={locale === 'bn' ? p.titleBn : p.titleEn}
-              price={p.basePrice}
-              salePrice={p.baseSalePrice}
-              imageUrl={p.imageUrl}
-              ageBadgeText={`${p.targetAgeMin}+ বছর`}
-              safetyBadgeText="১০০% নিরাপদ"
-              locale={locale}
-              onQuickAdd={handleQuickAdd}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* 4. SHOP BY AGE: Crucial for parents */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-white border-y border-[#EFE9E0] my-8">
-        <div className="max-w-6xl mx-auto text-center">
-          <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
-            {locale === 'bn' ? 'সন্তানের বয়স অনুযায়ী কিনুন' : 'Shop by Child Age'}
-          </h2>
-          <p className="text-sm text-[#6B6B6B] mt-1 mb-8 max-w-lg mx-auto">
-            {locale === 'bn'
-              ? 'প্রতিটি বয়সের জন্য নিরাপদ উপাদান ও উপযোগী সাইজের গ্রিপ নির্বাচন করুন'
-              : 'Choose age-tailored grip ergonomics and non-toxic safety certifications'}
-          </p>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              { age: '১ - ৩ বছর', ageEn: '1 - 3 Years', desc: 'মোটা ট্রায়াঙ্গুলার গ্রিপ, ভাঙবে না', color: '#FFF3E6' },
-              { age: '৩ - ৫ বছর', ageEn: '3 - 5 Years', desc: 'সহজে ধোয়া মোম ও নরম প্লে-ডো', color: '#E8F7FD' },
-              { age: '৫ - ৮ বছর', ageEn: '5 - 8 Years', desc: '২৪/৩৬ শেড আর্টিস্ট সেট ও খাতা', color: '#EBF8EE' },
-              { age: '৮+ বছর', ageEn: '8+ Years', desc: 'স্কুল আর্ট কিট ও ক্রিয়েটিভ প্রজেক্ট', color: '#FFF9E6' },
-            ].map((item) => (
-              <div
-                key={item.age}
-                className="p-5 rounded-[22px] border border-[#EFE9E0] flex flex-col items-center text-center justify-between transition-all hover:shadow-md hover:-translate-y-1 cursor-pointer"
-                style={{ backgroundColor: item.color }}
-              >
-                <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center font-heading font-black text-lg text-[#2B2B2B] mb-2">
-                  👶
-                </div>
-                <h3 className="font-heading font-bold text-lg text-[#2B2B2B]">
-                  {locale === 'bn' ? item.age : item.ageEn}
-                </h3>
-                <p className="text-xs text-[#6B6B6B] mt-1">
-                  {item.desc}
-                </p>
-                <span className="mt-3 text-xs font-bold text-[#FF6B6B] flex items-center gap-1">
-                  {locale === 'bn' ? 'পণ্য দেখুন' : 'Explore'} <ArrowRight className="w-3 h-3" />
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 5. GIFT SETS AND COMBO OFFERS */}
-      <section className="py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <div className="bg-gradient-to-r from-[#FFF5F5] to-[#FFF9F0] border-2 border-[#FFD9D9] rounded-[28px] p-6 sm:p-10 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div className="space-y-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#FF6B6B] text-white">
-                <Gift className="w-3.5 h-3.5" />
-                {locale === 'bn' ? 'স্পেশাল বার্থডে ও ঈদ গিফট বক্স' : 'Special Gift Box Combo'}
-              </span>
-
-              <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
-                {locale === 'bn'
-                  ? 'ছোট আর্টিস্ট মেগা গিফট কম্বো'
-                  : 'Little Artist Mega Gift Bundle'}
-              </h2>
-
-              <p className="text-sm sm:text-base text-[#6B6B6B] leading-relaxed">
-                {locale === 'bn'
-                  ? 'একটি বক্সে পাচ্ছেন: ২৪ কালার ন্যাচারাল মোমের রঙ + ৬ রঙের প্লে-ডো + আর্ট প্যাড ও কাটার সেট। জন্মদিনের দারুণ উপহার!'
-                  : 'Includes: 24 Shade Natural Beeswax Crayons + 6-Color Play Dough Tub + Heavyweight Sketch Pad & Shape Cutters.'}
-              </p>
-
-              <div className="flex items-baseline gap-3 pt-2">
-                <span className="text-3xl font-black text-[#FF6B6B]">৳৬৯৯</span>
-                <span className="text-base line-through text-[#6B6B6B]">৳৮৯০</span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EBF8EE] text-[#2D7A3E]">
-                  সাশ্রয় ৳১৯১
-                </span>
-              </div>
-
-              <div className="pt-2">
-                <Button size="md" variant="primary" onClick={handleQuickAdd}>
-                  <ShoppingBag className="w-4 h-4" />
-                  {locale === 'bn' ? 'কম্বোটি অর্ডার করুন' : 'Claim Combo Offer'}
-                </Button>
-              </div>
-            </div>
-
-            <div className="relative aspect-video rounded-[22px] overflow-hidden border border-[#EFE9E0] shadow-md">
-              <Image
-                src="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=800&q=80"
-                alt="Little Artist Mega Gift Bundle"
-                fill
-                className="object-cover"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. WHY BUY FROM US: Trust, Safety & Delivery */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <div className="text-center mb-10">
-          <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
-            {locale === 'bn' ? 'অভিভাবকরা কেন রংধনু কিডস বেছে নেন?' : 'Why Parents Trust Rongdhonu Kids'}
-          </h2>
-          <p className="text-sm text-[#6B6B6B] mt-1">
-            {locale === 'bn'
-              ? 'শিশুর নিরাপত্তা ও আনন্দের প্রতিটি খুঁটিনাটিতে আমরা আপসহীন'
-              : 'Zero compromises on child safety, non-toxic purity, and fast service'}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            {
-              icon: ShieldCheck,
-              title: locale === 'bn' ? '১০০% বিষাক্ত নয়' : '100% Non-Toxic',
-              desc: locale === 'bn' ? 'খাদ্য-মানের মোম ও প্রাকৃতিক স্কিন-সেফ রং' : 'Food-grade beeswax and skin-safe mineral pigments',
-              color: 'text-[#7BD389]',
-              bg: 'bg-[#EBF8EE]',
-            },
-            {
-              icon: Truck,
-              title: locale === 'bn' ? 'সারা দেশে দ্রুত ডেলিভারি' : 'Steadfast Delivery',
-              desc: locale === 'bn' ? 'ঢাকার ভেতরে ২৪-৪৮ ঘণ্টা, বাইরে ৭২ ঘণ্টায় ডেলিভারি' : 'Reliable delivery across all 64 districts in Bangladesh',
-              color: 'text-[#5BC0EB]',
-              bg: 'bg-[#E8F7FD]',
-            },
-            {
-              icon: HeartHandshake,
-              title: locale === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery',
-              desc: locale === 'bn' ? 'পণ্য হাতে পেয়ে চেক করে সম্পূর্ণ নিশ্চিন্তে টাকা দিন' : 'Pay only after receiving and checking your package',
-              color: 'text-[#FFC93C]',
-              bg: 'bg-[#FFF9E6]',
-            },
-            {
-              icon: PhoneCall,
-              title: locale === 'bn' ? 'সহজ রিটার্ন ও সহায়তা' : 'Easy Returns',
-              desc: locale === 'bn' ? 'কোনো সমস্যা হলে ৭ দিনের ভেতর রিপ্লেসমেন্ট সুবিধা' : 'Friendly support via phone and WhatsApp',
-              color: 'text-[#FF6B6B]',
-              bg: 'bg-[#FFF0F0]',
-            },
-          ].map((item, idx) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={idx}
-                className="bg-white p-6 rounded-[24px] border border-[#EFE9E0] shadow-sm flex flex-col items-center text-center gap-3 transition-transform hover:-translate-y-1"
-              >
-                <div className={`w-14 h-14 rounded-2xl ${item.bg} ${item.color} flex items-center justify-center`}>
-                  <Icon className="w-7 h-7" />
-                </div>
-                <h3 className="font-heading font-bold text-lg text-[#2B2B2B]">{item.title}</h3>
-                <p className="text-xs text-[#6B6B6B] leading-relaxed">{item.desc}</p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 7. CUSTOMER REVIEWS */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-white border-t border-[#EFE9E0]">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
-              {locale === 'bn' ? 'সন্তুষ্ট অভিভাবকদের মতামত' : 'What Happy Parents Say'}
-            </h2>
-            <div className="flex items-center justify-center gap-1 mt-2 text-[#FFC93C]">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-5 h-5 fill-current" />
-              ))}
-              <span className="text-xs font-bold text-[#2B2B2B] ml-2">৪.৯/৫ (৪৫০+ রিভিউ)</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                name: 'ফারিহা জাহান (ঢাকা)',
-                review:
-                  'আমার ৩ বছরের মেয়ের জন্য নিয়েছিলাম। রঙগুলো সত্যিই অনেক স্মুথ এবং হাত বা কাপড়ে লাগলে সহজেই পানি দিয়ে ধুয়ে ফেলা যায়। প্লাস কোন গন্ধ নেই!',
-                product: '২৪ শেড ন্যাচারাল মোমের রঙ',
-              },
-              {
-                name: 'মাহমুদুল হাসান (চট্টগ্রাম)',
-                review:
-                  'স্টিডফাস্টে ২ দিনে ডেলিভারি পেয়েছি। প্রোডাক্টের প্যাকেজিং দারুণ এবং বাচ্চার গ্রিপিংয়ের জন্য ট্রায়াঙ্গুলার শেপটা পারফেক্ট। মোম সহজে ভাঙে না।',
-                product: 'টডলার ট্রায়াঙ্গুলার মোম ১২ প্যাক',
-              },
-              {
-                name: 'ডা. নাজিয়া সুলতানা (সিলেট)',
-                review:
-                  'খেলনা ও রঙের উপাদান নিয়ে আমি সবসময় সতর্ক থাকি। রংধনু কিডসের ফুড-গ্রেড ন্যাচারাল উপাদানের কনসেপ্ট সত্যিই প্রশংসনীয়। অনেক শুভকামনা রইল!',
-                product: 'ছোট আর্টিস্ট গিফট কম্বো',
-              },
-            ].map((rev, idx) => (
-              <div
-                key={idx}
-                className="bg-[#FAF7F2] p-5 rounded-[22px] border border-[#EFE9E0] flex flex-col justify-between"
-              >
-                <div className="space-y-3">
-                  <div className="flex text-[#FFC93C]">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-current" />
-                    ))}
+                <div
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 border-2 border-transparent group-hover:border-[#E53935] transition-all flex items-center justify-center relative overflow-hidden shadow-xs"
+                  style={{ backgroundColor: cat.badgeColor || '#FFE8D6' }}
+                >
+                  <div className="relative w-full h-full rounded-full overflow-hidden">
+                    <Image
+                      src={cat.imageUrl}
+                      alt={cat.nameBn}
+                      fill
+                      sizes="80px"
+                      className="object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
                   </div>
-                  <p className="text-sm text-[#2B2B2B] italic">“{rev.review}”</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-[#EFE9E0]/60">
-                  <span className="font-heading font-bold text-sm text-[#2B2B2B] block">
-                    {rev.name}
-                  </span>
-                  <span className="text-xs text-[#6B6B6B]">{rev.product}</span>
-                </div>
-              </div>
+                <span className="mt-2 text-xs font-bold text-[#333333] group-hover:text-[#E53935] transition-colors line-clamp-1">
+                  {cat.nameBn}
+                </span>
+              </Link>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 8. NEWSLETTER SIGNUP */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto text-center">
-        <div className="bg-[#FFF9E6] border border-[#FFE899] rounded-[28px] p-6 sm:p-10">
-          <StarDoodle className="w-8 h-8 text-[#FFC93C] mx-auto mb-2" />
-          <h2 className="font-heading font-black text-2xl text-[#2B2B2B]">
-            {locale === 'bn' ? '১০% ডিসকাউন্ট ভাউচার পান!' : 'Get 10% Off Your First Order!'}
-          </h2>
-          <p className="text-sm text-[#6B6B6B] mt-1 mb-6">
-            {locale === 'bn'
-              ? 'আপনার ফোন নম্বর দিন এবং প্রথম অর্ডারে RONG10 কুপন কোড ব্যবহার করুন।'
-              : 'Join our family newsletter for creative parenting tips, free coloring pages & offers.'}
-          </p>
+        {/* ========================================================================= */}
+        {/* 4. Section 1: "নতুন পণ্য" (New Arrivals - 5 products grid)                  */}
+        {/* ========================================================================= */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+                নতুন পণ্য
+              </h2>
+              <p className="text-xs sm:text-sm text-[#777777]">আমাদের সদ্য যুক্ত হওয়া কালেকশন</p>
+            </div>
+            <Link
+              href="/shop"
+              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
+            >
+              <span>সব দেখুন</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              alert(locale === 'bn' ? 'ধন্যবাদ! আপনার কুপন কোড: RONG10' : 'Thank you! Your coupon code is: RONG10');
-            }}
-            className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto"
-          >
+          {/* 4-Column Grid (Max 4 products in a row) */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+            {newArrivalProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                slug={product.slug}
+                title={product.titleBn}
+                price={product.basePrice}
+                salePrice={product.baseSalePrice}
+                badge={product.badge}
+                rating={product.rating}
+                imageUrl={product.imageUrl}
+                locale={locale}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 5. Section 2: "জনপ্রিয় পণ্য" (Best Sellers - 5 products grid)               */}
+        {/* ========================================================================= */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+                জনপ্রিয় পণ্য
+              </h2>
+              <p className="text-xs sm:text-sm text-[#777777]">অভিভাবকদের সবচেয়ে পছন্দের খেলনা ও রঙ</p>
+            </div>
+            <Link
+              href="/shop"
+              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
+            >
+              <span>সব দেখুন</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {/* 4-Column Grid (Max 4 products in a row) */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+            {bestSellerProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                slug={product.slug}
+                title={product.titleBn}
+                price={product.basePrice}
+                salePrice={product.baseSalePrice}
+                badge={product.badge}
+                rating={product.rating}
+                imageUrl={product.imageUrl}
+                locale={locale}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 6. Category Showcase 1: "মোমের রঙ" (Wax Crayons Category)                  */}
+        {/* ========================================================================= */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+                মোমের রঙ
+              </h2>
+              <p className="text-xs sm:text-sm text-[#777777]">ফুড-গ্রেড ন্যাচারাল উপাদান ও ভাইব্রেন্ট রঙ</p>
+            </div>
+            <Link
+              href="/category/wax-crayons"
+              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
+            >
+              <span>সব দেখুন</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
+            {/* Left Category Highlight Card */}
+            <div className="lg:col-span-1 rounded-2xl bg-[#FFE8D6] border border-[#FAD4BA] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
+              <div className="space-y-3 z-10">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#D84315] bg-white/70 px-2.5 py-0.5 rounded-full inline-block">
+                  Crayons Series
+                </span>
+                <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222] leading-snug">
+                  মোমের রঙ
+                </h3>
+                <p className="text-xs text-[#666666] leading-relaxed">
+                  শিশুর হাতের উপযোগী গ্রিপ ও ওয়াশেবল মোমের রঙের সম্পূর্ণ রেঞ্জ
+                </p>
+              </div>
+
+              <div className="relative w-full h-44 sm:h-52 lg:h-auto lg:aspect-square my-3 sm:my-4 rounded-xl overflow-hidden shadow-xs">
+                <Image
+                  src="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=500&q=80"
+                  alt="Wax Crayons Collection"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+
+              <Link
+                href="/category/wax-crayons"
+                className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
+              >
+                সব পণ্য দেখুন
+              </Link>
+            </div>
+
+            {/* Right 4 Products */}
+            <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {crayonShowcaseProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  slug={product.slug}
+                  title={product.titleBn}
+                  price={product.basePrice}
+                  salePrice={product.baseSalePrice}
+                  badge={product.badge}
+                  rating={product.rating}
+                  imageUrl={product.imageUrl}
+                  locale={locale}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 7. Category Showcase 2: "আর্টক্লে" (Play Dough & Modeling Clay)             */}
+        {/* ========================================================================= */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+                আর্টক্লে
+              </h2>
+              <p className="text-xs sm:text-sm text-[#777777]">সফট, গন্ধহীন ও নন-টক্সিক রঙিন মডেলিং ক্লে</p>
+            </div>
+            <Link
+              href="/category/play-dough-clay"
+              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
+            >
+              <span>সব দেখুন</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
+            {/* Left Category Highlight Card on Pastel Blue */}
+            <div className="lg:col-span-1 rounded-2xl bg-[#E1F5FE] border border-[#B3E5FC] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
+              <div className="space-y-3 z-10">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0277BD] bg-white/70 px-2.5 py-0.5 rounded-full inline-block">
+                  Clay & Dough
+                </span>
+                <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222] leading-snug">
+                  আর্টক্লে
+                </h3>
+                <p className="text-xs text-[#666666] leading-relaxed">
+                  হাতে জড়াবে না, শুকাতে সময় নেবে না এবং সহজে আকার তৈরি উপযোগী
+                </p>
+              </div>
+
+              <div className="relative w-full h-44 sm:h-52 lg:h-auto lg:aspect-square my-3 sm:my-4 rounded-xl overflow-hidden shadow-xs">
+                <Image
+                  src="https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=500&q=80"
+                  alt="Play Dough Collection"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+
+              <Link
+                href="/category/play-dough-clay"
+                className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
+              >
+                সব পণ্য দেখুন
+              </Link>
+            </div>
+
+            {/* Right 4 Products */}
+            <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {clayShowcaseProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  slug={product.slug}
+                  title={product.titleBn}
+                  price={product.basePrice}
+                  salePrice={product.baseSalePrice}
+                  badge={product.badge}
+                  rating={product.rating}
+                  imageUrl={product.imageUrl}
+                  locale={locale}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 8. Category Showcase 3: "শিক্ষণীয় খেলনা" (Educational & Wooden Toys)        */}
+        {/* ========================================================================= */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+                শিক্ষণীয় খেলনা
+              </h2>
+              <p className="text-xs sm:text-sm text-[#777777]">বাচ্চাদের একাগ্রতা ও বুদ্ধিমত্তা বাড়ানোর কাঠের খেলনা</p>
+            </div>
+            <Link
+              href="/category/educational-toys"
+              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
+            >
+              <span>সব দেখুন</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
+            {/* Left Category Highlight Card on Pastel Pink */}
+            <div className="lg:col-span-1 rounded-2xl bg-[#FCE4EC] border border-[#F8BBD0] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
+              <div className="space-y-3 z-10">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#C2185B] bg-white/70 px-2.5 py-0.5 rounded-full inline-block">
+                  Montessori Toys
+                </span>
+                <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222] leading-snug">
+                  শিক্ষণীয় খেলনা
+                </h3>
+                <p className="text-xs text-[#666666] leading-relaxed">
+                  স্ক্রিন টাইম কমিয়ে মেধা ও মনোযোগ বাড়াতে সহায়ক মন্টেসরি মেথড গেমস
+                </p>
+              </div>
+
+              <div className="relative w-full h-44 sm:h-52 lg:h-auto lg:aspect-square my-3 sm:my-4 rounded-xl overflow-hidden shadow-xs">
+                <Image
+                  src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=500&q=80"
+                  alt="Educational Toys Collection"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+
+              <Link
+                href="/category/educational-toys"
+                className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
+              >
+                সব পণ্য দেখুন
+              </Link>
+            </div>
+
+            {/* Right 4 Products */}
+            <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {educationalShowcaseProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  slug={product.slug}
+                  title={product.titleBn}
+                  price={product.basePrice}
+                  salePrice={product.baseSalePrice}
+                  badge={product.badge}
+                  rating={product.rating}
+                  imageUrl={product.imageUrl}
+                  locale={locale}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 9. Dual Promo Banners Row (as shown in wireframe)                         */}
+        {/* ========================================================================= */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {/* Left Promo Banner (Minty Greenish) */}
+          <div className="rounded-2xl bg-[#E8F5E9] border border-[#C8E6C9] p-6 sm:p-8 flex flex-col justify-between items-center text-center space-y-4">
+            <div>
+              <span className="text-xs font-black uppercase text-[#2E7D32] bg-white/80 px-3 py-1 rounded-full">
+                কম্বো সেভার অফার
+              </span>
+              <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222] mt-3">
+                [অফার ব্যানার]
+              </h3>
+              <p className="text-xs sm:text-sm text-[#555555] max-w-sm mx-auto mt-1">
+                মোমের রঙ + প্লে-ডো + ড্রয়িং খাতার মেগা কম্বো প্যাকে পান আকর্ষণীয় ২৫% পর্যন্ত ছাড়!
+              </p>
+            </div>
+            <Link
+              href="/shop"
+              className="px-6 py-2.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors"
+            >
+              শপ নাও
+            </Link>
+          </div>
+
+          {/* Right Promo Banner (Pastel Peach/Yellow) */}
+          <div className="rounded-2xl bg-[#FFF8E1] border border-[#FFE082] p-6 sm:p-8 flex flex-col justify-between items-center text-center space-y-4">
+            <div>
+              <span className="text-xs font-black uppercase text-[#F57F17] bg-white/80 px-3 py-1 rounded-full">
+                ফ্রি ডেলিভারি অফার
+              </span>
+              <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222] mt-3">
+                [ফ্রি ডেলিভারি ব্যানার]
+              </h3>
+              <p className="text-xs sm:text-sm text-[#555555] max-w-sm mx-auto mt-1">
+                যেকোনো ৳১,০০০ বা তার বেশি টাকার অর্ডারে সারা বাংলাদেশে সম্পূর্ণ ফ্রি হোম ডেলিভারি!
+              </p>
+            </div>
+            <Link
+              href="/shop"
+              className="px-6 py-2.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors"
+            >
+              অর্ডার করুন
+            </Link>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 10. Value Propositions / Trust Badges: "কেন CraftyKidsCo?"                 */}
+        {/* (Note: Brand name is ALWAYS in English CraftyKidsCo)                      */}
+        {/* ========================================================================= */}
+        <section className="space-y-6 pt-4">
+          <div className="text-center">
+            <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#222222]">
+              কেন CraftyKidsCo
+            </h2>
+            <p className="text-xs sm:text-sm text-[#777777] mt-1">
+              বাংলাদেশের সচেতন অভিভাবকদের আস্থার প্রথম পছন্দ
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl border border-[#EBE5DC] p-5 text-center flex flex-col items-center space-y-2.5 shadow-xs">
+              <div className="w-12 h-12 rounded-full bg-[#E8F5E9] text-[#2E7D32] flex items-center justify-center">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="font-heading font-bold text-sm sm:text-base text-[#222]">
+                ১০০% নিরাপদ ও নন-টক্সিক
+              </h3>
+              <p className="text-xs text-[#666]">
+                ফুড-গ্রেড ন্যাচারাল উপাদান দিয়ে তৈরি, ক্ষতিকারক কেমিক্যালমুক্ত
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#EBE5DC] p-5 text-center flex flex-col items-center space-y-2.5 shadow-xs">
+              <div className="w-12 h-12 rounded-full bg-[#E3F2FD] text-[#1976D2] flex items-center justify-center">
+                <Truck className="w-6 h-6" />
+              </div>
+              <h3 className="font-heading font-bold text-sm sm:text-base text-[#222]">
+                দ্রুত হোম ডেলিভারি
+              </h3>
+              <p className="text-xs text-[#666]">
+                স্টেডফাস্ট কুরিয়ারের মাধ্যমে ২-৩ দিনের মধ্যে দেশের যেকোনো প্রান্তে পৌঁছে দেওয়া হয়
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#EBE5DC] p-5 text-center flex flex-col items-center space-y-2.5 shadow-xs">
+              <div className="w-12 h-12 rounded-full bg-[#FFF8E1] text-[#F57F17] flex items-center justify-center">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <h3 className="font-heading font-bold text-sm sm:text-base text-[#222]">
+                ক্যাশ অন ডেলিভারি
+              </h3>
+              <p className="text-xs text-[#666]">
+                পণ্য হাতে পেয়ে চেক করে মূল্য পরিশোধের ১০০% নির্ভরতা
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#EBE5DC] p-5 text-center flex flex-col items-center space-y-2.5 shadow-xs">
+              <div className="w-12 h-12 rounded-full bg-[#FCE4EC] text-[#C2185B] flex items-center justify-center">
+                <Headphones className="w-6 h-6" />
+              </div>
+              <h3 className="font-heading font-bold text-sm sm:text-base text-[#222]">
+                সহজ রিটার্ন ও সাপোর্ট
+              </h3>
+              <p className="text-xs text-[#666]">
+                যেকোনো প্রয়োজনে আমাদের ডেডিকেটেড কাস্টমার হেল্পলাইন সবসময় পাশে আছে
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 11. Customer Reviews: "সন্তুষ্ট অভিভাবকদের মতামত"                         */}
+        {/* ========================================================================= */}
+        <section className="space-y-6">
+          <div className="text-center">
+            <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#222222]">
+              সন্তুষ্ট অভিভাবকদের মতামত
+            </h2>
+            <p className="text-xs sm:text-sm text-[#777777] mt-1">
+              আমাদের প্রোডাক্ট ব্যবহার করে অভিভাবকরা কী বলছেন
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-2xl border border-[#EBE5DC] p-5 sm:p-6 space-y-3 shadow-xs">
+              <div className="flex items-center text-[#FFB300] gap-0.5">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
+              </div>
+              <p className="text-xs sm:text-sm text-[#444] leading-relaxed italic">
+                &ldquo;আমার ৩ বছরের বাচ্চার জন্য CraftyKidsCo এর ২৪ কালারের মোমের রঙ নিয়েছি। রঙগুলো খুব উজ্জ্বল এবং কাপড় বা মেঝেতে লাগলে খুব সহজে মুছে যায়!&rdquo;
+              </p>
+              <div className="pt-2 border-t border-[#F0EBE3] flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-xs text-[#222]">নুসরাত জাহান</h4>
+                  <span className="text-[11px] text-[#888]">ধানমন্ডি, ঢাকা</span>
+                </div>
+                <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] font-bold px-2 py-0.5 rounded-full">
+                  Verified Buyer
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#EBE5DC] p-5 sm:p-6 space-y-3 shadow-xs">
+              <div className="flex items-center text-[#FFB300] gap-0.5">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
+              </div>
+              <p className="text-xs sm:text-sm text-[#444] leading-relaxed italic">
+                &ldquo;কাঠের লার্নিং পাজল এবং প্লে-ডো সেটটির কোয়ালিটি সত্যি অসাধারণ। ফিনিশিং খুব মসৃণ, কোথাও ধারালো ভাব নেই। বাচ্চার স্ক্রিন টাইম অনেক কমেছে।&rdquo;
+              </p>
+              <div className="pt-2 border-t border-[#F0EBE3] flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-xs text-[#222]">তানভীর আহমেদ</h4>
+                  <span className="text-[11px] text-[#888]">খুলশী, চট্টগ্রাম</span>
+                </div>
+                <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] font-bold px-2 py-0.5 rounded-full">
+                  Verified Buyer
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#EBE5DC] p-5 sm:p-6 space-y-3 shadow-xs">
+              <div className="flex items-center text-[#FFB300] gap-0.5">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
+              </div>
+              <p className="text-xs sm:text-sm text-[#444] leading-relaxed italic">
+                &ldquo;খেলনা ও রঙের উপাদান নিয়ে আমি সবসময় খুঁতখুঁতে থাকি। CraftyKidsCo ফুড-গ্রেড প্রাকৃতিক উপাদান ব্যবহারের নিশ্চয়তা দেওয়ায় নির্দ্বিধায় কিনেছি। ধন্যবাদ!&rdquo;
+              </p>
+              <div className="pt-2 border-t border-[#F0EBE3] flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-xs text-[#222]">ডা. ফারহানা কবির</h4>
+                  <span className="text-[11px] text-[#888]">উত্তরা, ঢাকা</span>
+                </div>
+                <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] font-bold px-2 py-0.5 rounded-full">
+                  Verified Buyer
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 12. Newsletter Callout Box ("অফার ও আপডেট পেতে যুক্ত থাকুন")                */}
+        {/* ========================================================================= */}
+        <section className="rounded-2xl bg-[#FFFDE7] border border-[#FFF59D] p-6 sm:p-8 text-center space-y-4 max-w-3xl mx-auto shadow-xs">
+          <div>
+            <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+              অফার ও আপডেট পেতে যুক্ত থাকুন
+            </h3>
+            <p className="text-xs sm:text-sm text-[#666666] mt-1">
+              CraftyKidsCo এর নতুন খেলনা ও স্পেশাল ছাড় সম্পর্কে সবার আগে জানতে আপনার মোবাইল বা ইমেইল দিন
+            </p>
+          </div>
+
+          <form onSubmit={handleSubscribe} className="flex max-w-md mx-auto items-center gap-2">
             <input
-              type="tel"
-              placeholder="01XXXXXXXXX"
-              className="flex-1 px-4 py-3 rounded-full bg-white border border-[#EFE9E0] text-sm text-[#2B2B2B] focus:outline-none focus:border-[#FF6B6B]"
+              type="text"
+              value={emailSub}
+              onChange={(e) => setEmailSub(e.target.value)}
+              placeholder="মোবাইল নম্বর অথবা ইমেইল..."
+              className="flex-1 px-4 py-2.5 rounded-full border border-[#E0D8A8] bg-white text-xs sm:text-sm text-[#222] focus:outline-none focus:border-[#E53935]"
               required
             />
-            <Button type="submit" variant="primary" size="md">
-              {locale === 'bn' ? 'ভাউচার নিন' : 'Claim Voucher'}
-            </Button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer shrink-0"
+            >
+              যুক্ত হোন
+            </button>
           </form>
-        </div>
-      </section>
 
-      {/* 9. FOOTER */}
-      <footer className="bg-white border-t border-[#EFE9E0] pt-12 pb-8 px-4 sm:px-6 lg:px-8 text-sm text-[#6B6B6B]">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+          {subSuccess && (
+            <p className="text-xs font-bold text-[#2E7D32]">
+              ধন্যবাদ! আপনাকে আমাদের ভিআইপি অফার তালিকায় যুক্ত করা হয়েছে।
+            </p>
+          )}
+        </section>
+      </main>
+
+      {/* ========================================================================= */}
+      {/* 13. Dark Footer (Matching reference)                                      */}
+      {/* ========================================================================= */}
+      <footer className="bg-[#191919] text-[#B0B0B0] text-xs sm:text-sm mt-16 pt-12 pb-24 md:pb-12 border-t border-[#2A2A2A]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Column 1: Brand Info */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-[#FF6B6B] text-white flex items-center justify-center font-bold text-lg">
-                র
+              <div className="w-8 h-8 rounded-xl bg-[#E53935] text-white flex items-center justify-center font-black text-lg">
+                C
               </div>
-              <span className="font-heading font-bold text-xl text-[#2B2B2B]">
-                {locale === 'bn' ? 'রংধনু কিডস' : 'Rongdhonu Kids'}
+              <span className="font-heading font-black text-xl text-white tracking-tight">
+                CraftyKidsCo
               </span>
             </div>
-            <p className="text-xs leading-relaxed">
-              {locale === 'bn'
-                ? 'বাংলাদেশের শিশুদের জন্য শতভাগ নিরাপদ প্রাকৃতিক মোমের রঙ (Mom er color), শিক্ষণীয় খেলনা ও ক্রিয়েটিভ সামগ্রী।'
-                : 'Bangladesh’s premier destination for safe natural wax crayons, brain toys, and joy.'}
+            <p className="text-xs text-[#888888] leading-relaxed">
+              শিশুদের সুস্থ শৈশব ও সৃজনশীল মেধা বিকাশে ১০০% নিরাপদ মোমের রঙ ও শিক্ষণীয় খেলনার নির্ভরযোগ্য ব্র্যান্ড।
             </p>
+            <div className="space-y-1.5 text-xs text-[#AAAAAA] pt-1">
+              <p className="flex items-center gap-2">
+                <PhoneCall className="w-3.5 h-3.5 text-[#E53935]" />
+                <span>+৮৮০ ১৭০০-০০০০০০</span>
+              </p>
+              <p className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-[#E53935]" />
+                <span>support@craftykidsco.com</span>
+              </p>
+              <p className="flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5 text-[#E53935]" />
+                <span>ঢাকা, বাংলাদেশ</span>
+              </p>
+            </div>
           </div>
 
-          <div>
-            <h4 className="font-heading font-bold text-[#2B2B2B] mb-3">ক্যাটাগরি</h4>
-            <ul className="space-y-2 text-xs">
-              <li><Link href="/shop" className="hover:text-[#FF6B6B]">মোমের রঙ (Crayons)</Link></li>
-              <li><Link href="/shop" className="hover:text-[#FF6B6B]">শিক্ষণীয় খেলনা</Link></li>
-              <li><Link href="/shop" className="hover:text-[#FF6B6B]">মডেলিং ক্লে ও ডো</Link></li>
-              <li><Link href="/bundles" className="hover:text-[#FF6B6B]">গিফট কম্বো অফার</Link></li>
+          {/* Column 2: Categories */}
+          <div className="space-y-2.5">
+            <h4 className="font-bold text-white text-sm">জনপ্রিয় ক্যাটাগরি</h4>
+            <ul className="space-y-1.5 text-xs text-[#888888]">
+              <li>
+                <Link href="/category/wax-crayons" className="hover:text-white transition-colors">
+                  মোমের রঙ (Natural Crayons)
+                </Link>
+              </li>
+              <li>
+                <Link href="/category/play-dough-clay" className="hover:text-white transition-colors">
+                  মডেলিং প্লে-ডো ও আর্টক্লে
+                </Link>
+              </li>
+              <li>
+                <Link href="/category/wooden-toys" className="hover:text-white transition-colors">
+                  কাঠের শিক্ষণীয় খেলনা
+                </Link>
+              </li>
+              <li>
+                <Link href="/category/puzzles" className="hover:text-white transition-colors">
+                  ব্রেইন লার্নিং পাজল
+                </Link>
+              </li>
+              <li>
+                <Link href="/category/sketchbooks" className="hover:text-white transition-colors">
+                  ড্রয়িং খাতা ও আর্ট প্যাড
+                </Link>
+              </li>
             </ul>
           </div>
 
-          <div>
-            <h4 className="font-heading font-bold text-[#2B2B2B] mb-3">সহায়তা ও নীতি</h4>
-            <ul className="space-y-2 text-xs">
-              <li><Link href="/policies" className="hover:text-[#FF6B6B]">ডেলিভারি ও রিটার্ন পলিসি</Link></li>
-              <li><Link href="/track" className="hover:text-[#FF6B6B]">অর্ডার ট্র্যাকিং</Link></li>
-              <li><Link href="/faq" className="hover:text-[#FF6B6B]">সাধারণ জিজ্ঞাসা (FAQ)</Link></li>
+          {/* Column 3: Customer Care */}
+          <div className="space-y-2.5">
+            <h4 className="font-bold text-white text-sm">কাস্টমার কেয়ার</h4>
+            <ul className="space-y-1.5 text-xs text-[#888888]">
+              <li>
+                <Link href="/track" className="hover:text-white transition-colors">
+                  অর্ডার ট্র্যাক করুন
+                </Link>
+              </li>
+              <li>
+                <Link href="/policies" className="hover:text-white transition-colors">
+                  ডেলিভারি ও রিটার্ন পলিসি
+                </Link>
+              </li>
+              <li>
+                <Link href="/faq" className="hover:text-white transition-colors">
+                  সাধারণ প্রশ্নোত্তর (FAQ)
+                </Link>
+              </li>
+              <li>
+                <Link href="/admin" className="hover:text-white transition-colors">
+                  এডমিন ড্যাশবোর্ড
+                </Link>
+              </li>
             </ul>
           </div>
 
-          <div>
-            <h4 className="font-heading font-bold text-[#2B2B2B] mb-3">যোগাযোগ</h4>
-            <p className="text-xs leading-relaxed">
-              ফোন / WhatsApp: +৮৮০ ১৭XXXXXXXXX<br />
-              ইমেইল: hello@rongdhonukids.com<br />
-              ঢাকা, বাংলাদেশ
+          {/* Column 4: Trust & Guarantee */}
+          <div className="space-y-2.5">
+            <h4 className="font-bold text-white text-sm">ডেলিভারি পার্টনার</h4>
+            <p className="text-xs text-[#888888] leading-relaxed">
+              Steadfast Courier এর মাধ্যমে সারা বাংলাদেশে বিশ্বস্ত হোম ডেলিভারি সেবা।
             </p>
+            <div className="pt-2">
+              <span className="inline-block text-[11px] font-bold text-[#E53935] bg-[#E53935]/10 border border-[#E53935]/30 px-3 py-1 rounded-full">
+                ক্যাশ অন ডেলিভারি সুবিধা
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto pt-6 border-t border-[#EFE9E0] text-center text-xs">
-          © ২০২৬ রংধনু কিডস (Rongdhonu Kids). সর্বস্বত্ব সংরক্ষিত। Designed for Bangladeshi Kids & Parents.
+        {/* Bottom Bar: Copyright & Payment Badges */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 mt-8 border-t border-[#262626] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#777]">
+          <p>© ২০২৬ CraftyKidsCo. All rights reserved.</p>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-sm bg-white text-[#222] font-black text-[10px]">bKash</span>
+            <span className="px-2 py-0.5 rounded-sm bg-[#E53935] text-white font-black text-[10px]">Nagad</span>
+            <span className="px-2 py-0.5 rounded-sm bg-[#1A1F71] text-white font-bold text-[10px]">VISA</span>
+            <span className="px-2 py-0.5 rounded-sm bg-[#EB001B] text-white font-bold text-[10px]">Mastercard</span>
+            <span className="px-2 py-0.5 rounded-sm bg-[#333333] text-white font-bold text-[10px]">COD</span>
+          </div>
         </div>
       </footer>
 
-      {/* 10. MOBILE BOTTOM NAVIGATION */}
-      <MobileBottomNav cartCount={cartCount} locale={locale} activeTab="home" />
+      {/* Mobile Sticky Navigation */}
+      <MobileBottomNav locale={locale} activeTab="home" />
     </div>
   );
 }

@@ -108,14 +108,14 @@ export default function AdminDashboardPage() {
       <header className="bg-white border-b border-[#EFE9E0] sticky top-0 z-40 px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-xl bg-[#FF6B6B] text-white flex items-center justify-center font-bold text-lg shadow-sm">
-              র
+            <div className="w-9 h-9 rounded-xl bg-[#E53935] text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              C
             </div>
             <div>
               <span className="font-heading font-black text-lg text-[#2B2B2B] leading-none block">
-                রংধনু এডমিন প্যানেল
+                CraftyKidsCo Admin
               </span>
-              <span className="text-[10px] text-[#6B6B6B] font-bold">Rongdhonu Kids Operations</span>
+              <span className="text-[10px] text-[#6B6B6B] font-bold">CraftyKidsCo Operations</span>
             </div>
           </Link>
           <span className="ml-3 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EBF8EE] text-[#2D7A3E]">

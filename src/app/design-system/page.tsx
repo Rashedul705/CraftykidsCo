@@ -75,7 +75,7 @@ export default function DesignSystemPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold font-heading text-[#2B2B2B]">
-              রংধনু কিডস Design System
+              CraftyKidsCo Design System
             </h1>
             <p className="text-xs text-[#6B6B6B]">
               Phase 0 Deliverable • Playful, Trustworthy & Mobile-First
@@ -248,7 +248,7 @@ export default function DesignSystemPage() {
               <ProductCard
                 id="mock-1"
                 slug="rongdhonu-crayons-24"
-                title="রংধনু ন্যাচারাল মোমের রঙ (Mom er Color) - ২৪ শেড"
+                title="CraftyKidsCo ন্যাচারাল মোমের রঙ (Mom er Color) - ২৪ শেড"
                 price={350}
                 salePrice={299}
                 imageUrl="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=600&q=80"

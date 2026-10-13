@@ -74,7 +74,7 @@ let globalOrders: OrderRecord[] = [
       {
         id: 'item-1',
         productId: 'prod-crayons-24',
-        title: 'রংধনু ন্যাচারাল মোমের রঙ - ২৪ শেড',
+        title: 'CraftyKidsCo ন্যাচারাল মোমের রঙ - ২৪ শেড',
         variationTitle: '২৪ রঙের ক্লাসিক সেট',
         price: 299,
         quantity: 2,

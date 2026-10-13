@@ -231,20 +231,19 @@ export default function ShopPage() {
             {filteredProducts.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
                 {filteredProducts.map((p) => (
-                  <Link key={p.slug} href={`/product/${p.slug}`} className="block">
-                    <ProductCard
-                      id={p.slug}
-                      slug={p.slug}
-                      title={locale === 'bn' ? p.titleBn : p.titleEn}
-                      price={p.basePrice}
-                      salePrice={p.baseSalePrice}
-                      imageUrl={p.imageUrl}
-                      ageBadgeText={`${p.targetAgeMin}+ বছর`}
-                      safetyBadgeText="১০০% নিরাপদ"
-                      locale={locale}
-                      onQuickAdd={() => handleQuickAdd(p.slug)}
-                    />
-                  </Link>
+                  <ProductCard
+                    key={p.slug}
+                    id={p.slug}
+                    slug={p.slug}
+                    title={locale === 'bn' ? p.titleBn : p.titleEn}
+                    price={p.basePrice}
+                    salePrice={p.baseSalePrice}
+                    imageUrl={p.imageUrl}
+                    ageBadgeText={`${p.targetAgeMin}+ বছর`}
+                    safetyBadgeText="১০০% নিরাপদ"
+                    locale={locale}
+                    onQuickAdd={() => handleQuickAdd(p.slug)}
+                  />
                 ))}
               </div>
             ) : (

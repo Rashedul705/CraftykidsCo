@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Globe, Gift, ShieldCheck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ShoppingBag, Search, PhoneCall, Heart, Gift, Sparkles, Globe } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { formatBDT } from '@/lib/utils';
 
 interface HeaderProps {
   locale?: 'bn' | 'en';
@@ -11,8 +13,10 @@ interface HeaderProps {
 }
 
 export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
-  const { cartCount } = useCart();
+  const { cartCount, subtotal } = useCart();
+  const router = useRouter();
   const [internalLocale, setInternalLocale] = useState<'bn' | 'en'>(locale);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const toggle = () => {
     if (onToggleLocale) {
@@ -24,78 +28,141 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
 
   const activeLocale = onToggleLocale ? locale : internalLocale;
 
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/shop?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   return (
     <>
-      {/* Top Banner Notice */}
-      <div className="bg-[#FF6B6B] text-white py-2 px-4 text-center text-xs sm:text-sm font-bold flex items-center justify-center gap-2">
-        <ShieldCheck className="w-4 h-4 text-[#FFC93C]" />
-        <span>
-          {activeLocale === 'bn'
-            ? '🚚 সারা বাংলাদেশে দ্রুত ডেলিভারি • ৳১,০০০ টাকার অর্ডারে ফ্রি ডেলিভারি!'
-            : '🚚 Fast nationwide delivery • Free shipping on orders over ৳1,000!'}
-        </span>
+      {/* 1. Top Announcement Bar */}
+      <div className="bg-[#1F1F1F] text-white py-1.5 px-4 text-xs font-medium border-b border-black/10">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-[#E53935] animate-pulse" />
+            <span className="text-[#E0E0E0]">
+              {activeLocale === 'bn'
+                ? 'দেশজুড়ে দ্রুত হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি সুবিধা!'
+                : 'Nationwide Fast Home Delivery & Cash on Delivery Available!'}
+            </span>
+          </div>
+          <div className="hidden sm:flex items-center gap-4 text-xs text-[#B0B0B0]">
+            <a
+              href="tel:+8801700000000"
+              className="flex items-center gap-1.5 hover:text-white transition-colors"
+            >
+              <PhoneCall className="w-3.5 h-3.5 text-[#E53935]" />
+              <span>হটলাইন: 01700-000000</span>
+            </a>
+            <button
+              onClick={toggle}
+              className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
+            >
+              <Globe className="w-3 h-3 text-[#FFC107]" />
+              <span>{activeLocale === 'bn' ? 'English' : 'বাংলা'}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Main Navigation Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EFE9E0] transition-all">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
-          {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#FF6B6B] to-[#FFC93C] flex items-center justify-center text-white font-extrabold text-2xl shadow-[0_4px_12px_rgba(255,107,107,0.35)] group-hover:scale-105 transition-transform">
-              র
+      {/* 2. Main Branding & Search Header */}
+      <header className="sticky top-0 z-40 bg-white border-b border-[#EFE9E0] shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
+          {/* Brand Logo - ALWAYS in English CraftyKidsCo */}
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="w-10 h-10 rounded-2xl bg-[#E53935] flex items-center justify-center text-white font-black text-2xl shadow-[0_4px_12px_rgba(229,57,53,0.3)] group-hover:scale-105 transition-transform">
+              C
             </div>
             <div className="flex flex-col">
-              <span className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B] leading-none tracking-tight">
-                {activeLocale === 'bn' ? 'রংধনু কিডস' : 'Rongdhonu Kids'}
+              <span className="font-heading font-black text-xl sm:text-2xl text-[#222222] tracking-tight leading-none">
+                CraftyKidsCo
               </span>
-              <span className="text-[11px] font-bold text-[#6B6B6B] tracking-wide">
-                {activeLocale === 'bn' ? 'নিরাপদ মোমের রঙ ও খেলনা' : 'Safe Wax Crayons & Toys'}
+              <span className="text-[10px] font-bold text-[#888888] tracking-wider uppercase mt-0.5">
+                Safe Colors & Creative Toys
               </span>
             </div>
           </Link>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-6 font-bold text-sm text-[#2B2B2B]">
-            <Link href="/" className="hover:text-[#FF6B6B] transition-colors">
-              {activeLocale === 'bn' ? 'হোম' : 'Home'}
-            </Link>
-            <Link href="/shop" className="hover:text-[#FF6B6B] transition-colors">
-              {activeLocale === 'bn' ? 'সব পণ্য' : 'All Products'}
-            </Link>
-            <Link href="/category/wax-crayons" className="hover:text-[#FF6B6B] transition-colors">
-              {activeLocale === 'bn' ? 'মোমের রঙ (Crayons)' : 'Wax Crayons'}
-            </Link>
-            <Link href="/category/educational-toys" className="hover:text-[#FF6B6B] transition-colors">
-              {activeLocale === 'bn' ? 'শিক্ষণীয় খেলনা' : 'Educational Toys'}
-            </Link>
-            <Link href="/track" className="hover:text-[#FF6B6B] transition-colors">
-              {activeLocale === 'bn' ? 'অর্ডার ট্র্যাক' : 'Track Order'}
-            </Link>
-            <Link href="/admin" className="text-xs px-2.5 py-1 rounded-full bg-[#FAF7F2] border border-[#EFE9E0] text-[#6B6B6B] hover:text-[#FF6B6B]">
-              Admin Panel
-            </Link>
-          </nav>
-
-          {/* Actions: Lang toggle & Cart */}
-          <div className="flex items-center gap-3">
+          {/* Search Bar */}
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex-1 max-w-xl mx-2 hidden sm:flex relative items-center"
+          >
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="খেলনা, মোমের রঙ বা আর্ট কিট খুঁজুন..."
+              className="w-full pl-4 pr-11 py-2 rounded-full border border-[#DFD7CC] bg-[#FAF8F5] text-sm text-[#222222] focus:bg-white focus:outline-none focus:border-[#E53935] focus:ring-2 focus:ring-[#E53935]/15 transition-all"
+            />
             <button
-              onClick={toggle}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#EFE9E0] bg-[#FAF7F2] hover:bg-white text-xs font-bold text-[#2B2B2B] transition-colors cursor-pointer"
+              type="submit"
+              className="absolute right-1.5 p-1.5 rounded-full bg-[#E53935] text-white hover:bg-[#D32F2F] transition-colors"
+              aria-label="Search"
             >
-              <Globe className="w-3.5 h-3.5 text-[#5BC0EB]" />
-              {activeLocale === 'bn' ? 'English' : 'বাংলা'}
+              <Search className="w-4 h-4" />
             </button>
+          </form>
+
+          {/* Right Actions: Hotline, Wishlist & Cart */}
+          <div className="flex items-center gap-3 shrink-0">
+            <Link
+              href="/shop"
+              className="p-2 rounded-full hover:bg-[#FAF7F2] text-[#555] transition-colors hidden md:flex items-center justify-center"
+              title="পছন্দের তালিকা"
+            >
+              <Heart className="w-5 h-5 text-[#666] hover:text-[#E53935]" />
+            </Link>
 
             <Link
               href="/cart"
-              className="relative p-2.5 rounded-full bg-[#FAF7F2] border border-[#EFE9E0] hover:border-[#FF6B6B] text-[#2B2B2B] transition-colors flex items-center justify-center"
+              className="flex items-center gap-2.5 py-1.5 px-3.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white shadow-[0_3px_10px_rgba(229,57,53,0.25)] transition-all"
             >
-              <ShoppingBag className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#FF6B6B] text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                  {cartCount}
-                </span>
-              )}
+              <div className="relative">
+                <ShoppingBag className="w-4 h-4" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-white text-[#E53935] text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                    {cartCount}
+                  </span>
+                )}
+              </div>
+              <div className="hidden lg:flex flex-col text-left leading-tight">
+                <span className="text-[10px] font-semibold text-white/80">কার্ট</span>
+                <span className="text-xs font-black">{formatBDT(subtotal, { locale: activeLocale })}</span>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        {/* 3. Secondary Category Bar */}
+        <div className="bg-[#FAF7F2] border-t border-[#EFE9E0]/80 overflow-x-auto scrollbar-none">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-6 sm:gap-8 h-10 text-xs sm:text-sm font-bold text-[#444] whitespace-nowrap">
+            <Link href="/" className="text-[#E53935] hover:text-[#C62828] flex items-center gap-1">
+              {activeLocale === 'bn' ? 'হোম' : 'Home'}
+            </Link>
+            <Link href="/category/wax-crayons" className="hover:text-[#E53935] transition-colors">
+              {activeLocale === 'bn' ? 'মোমের রঙ' : 'Wax Crayons'}
+            </Link>
+            <Link href="/category/play-dough-clay" className="hover:text-[#E53935] transition-colors">
+              {activeLocale === 'bn' ? 'ক্লে ও ডো' : 'Clay & Dough'}
+            </Link>
+            <Link href="/category/sketchbooks" className="hover:text-[#E53935] transition-colors">
+              {activeLocale === 'bn' ? 'ড্রয়িং খাতা' : 'Drawing Books'}
+            </Link>
+            <Link href="/category/wooden-toys" className="hover:text-[#E53935] transition-colors">
+              {activeLocale === 'bn' ? 'কাঠের খেলনা' : 'Wooden Toys'}
+            </Link>
+            <Link href="/category/puzzles" className="hover:text-[#E53935] transition-colors">
+              {activeLocale === 'bn' ? 'পাজল গেম' : 'Puzzles'}
+            </Link>
+            <Link href="/category/art-kits" className="hover:text-[#E53935] transition-colors">
+              {activeLocale === 'bn' ? 'আর্ট কিট' : 'Art Kits'}
+            </Link>
+            <Link href="/shop" className="text-[#E53935] flex items-center gap-1 font-extrabold hover:underline">
+              <Gift className="w-3.5 h-3.5" />
+              {activeLocale === 'bn' ? 'অফারসমূহ' : 'Offers'}
             </Link>
           </div>
         </div>

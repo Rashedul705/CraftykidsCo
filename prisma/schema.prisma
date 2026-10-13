@@ -409,7 +409,7 @@ model BlogPost {
   contentBn   String
   contentEn   String
   coverImage  String?
-  authorName  String   @default("Rongdhonu Editorial")
+  authorName  String   @default("CraftyKidsCo Editorial")
   isPublished Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

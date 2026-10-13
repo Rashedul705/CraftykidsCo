@@ -3,7 +3,7 @@ import { ClientLayout } from '@/components/layout/ClientLayout';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'রংধনু কিডস (Rongdhonu Kids) | শিশুদের নিরাপদ মোমের রঙ ও খেলনা',
+  title: 'CraftyKidsCo | শিশুদের নিরাপদ মোমের রঙ ও খেলনা',
   description:
     'বাংলাদেশের বাচ্চাদের জন্য নিরাপদ নন-টক্সিক মোমের রঙ (Mom er Color), শিক্ষণীয় খেলনা এবং স্পেশাল গিফট কম্বো। দ্রুত হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।',
   icons: {

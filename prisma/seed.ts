@@ -108,8 +108,8 @@ export const seedSampleData = {
 
   sampleProducts: [
     {
-      titleBn: 'রংধনু ন্যাচারাল মোমের রঙ (Mom er Color) - ২৪ শেড',
-      titleEn: 'Rongdhonu Natural Wax Crayons - 24 Shade Box',
+      titleBn: 'CraftyKidsCo ন্যাচারাল মোমের রঙ (Mom er Color) - ২৪ শেড',
+      titleEn: 'CraftyKidsCo Natural Wax Crayons - 24 Shade Box',
       slug: 'rongdhonu-natural-wax-crayons-24-shades',
       basePrice: 350,
       baseSalePrice: 299,
@@ -194,7 +194,7 @@ export const seedSampleData = {
 };
 
 async function main() {
-  console.log('Seeding Rongdhonu Kids database mock data...');
+  console.log('Seeding CraftyKidsCo database mock data...');
   // Check if DB is reachable
   try {
     // Delivery zones

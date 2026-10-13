@@ -25,9 +25,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     {
       id: 'prod-crayons-24-CRAYON-24',
       productId: 'prod-crayons-24',
-      productSlug: 'rongdhonu-natural-wax-crayons-24-shades',
-      title: 'Rongdhonu Natural Wax Crayons - 24 Shade Box',
-      titleBn: 'রংধনু ন্যাচারাল মোমের রঙ - ২৪ শেড',
+      productSlug: 'craftykidsco-natural-wax-crayons-24-shades',
+      title: 'CraftyKidsCo Natural Wax Crayons - 24 Shade Box',
+      titleBn: 'CraftyKidsCo ন্যাচারাল মোমের রঙ - ২৪ শেড',
       imageUrl: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=600&q=80',
       price: 299,
       quantity: 1,
