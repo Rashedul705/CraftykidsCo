@@ -8,6 +8,27 @@ export interface SampleCategory {
   children?: { slug: string; nameBn: string; nameEn: string }[];
 }
 
+export interface ProductReview {
+  id: string;
+  author: string;
+  location?: string;
+  rating: number;
+  date: string;
+  comment: string;
+  photos?: string[];
+  isVerified: boolean;
+}
+
+export interface ProductVariation {
+  sku: string;
+  titleBn: string;
+  titleEn: string;
+  price: number;
+  salePrice: number;
+  stock: number;
+  imageUrl?: string;
+}
+
 export interface SampleProduct {
   id: string;
   slug: string;
@@ -24,15 +45,16 @@ export interface SampleProduct {
   targetAgeMin: number;
   targetAgeMax: number;
   imageUrl: string;
+  galleryImages?: string[];
+  videoUrl?: string;
   badge?: string;
-  variations?: {
-    sku: string;
-    titleBn: string;
-    titleEn: string;
-    price: number;
-    salePrice: number;
-    stock: number;
-  }[];
+  safetyBadges?: string[];
+  description?: string;
+  specifications?: { label: string; value: string }[];
+  careInstructions?: string;
+  faqs?: { question: string; answer: string }[];
+  reviews?: ProductReview[];
+  variations?: ProductVariation[];
 }
 
 export const sampleCategories: SampleCategory[] = [
@@ -130,12 +152,103 @@ export const sampleProducts: SampleProduct[] = [
     isNewArrival: true,
     targetAgeMin: 2,
     targetAgeMax: 7,
-    imageUrl: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=600&q=80',
-    badge: 'নতুন',
+    imageUrl: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=800&q=80',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&q=80',
+    ],
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-hands-of-a-child-drawing-with-crayons-41586-large.mp4',
+    badge: 'সেরা অফার',
+    safetyBadges: ['১০০% বিষাক্ত নয়', 'ফুড-গ্রেড মোম', 'সহজে ওয়াশেবল'],
+    description: 'CraftyKidsCo ন্যাচারাল মোমের রঙ ১০০% খাঁটি মৌচাকের মোম (Pure Beeswax) ও খাদ্য-মানের অর্গানিক পিগমেন্ট দিয়ে তৈরি। বাজারে সাধারণ ক্রেয়নে ক্ষতিকর পেট্রোলিয়াম প্যারাফিন ও লেড থাকে যা শিশুদের মুখে গেলে বিপদের কারণ হতে পারে। আমাদের ক্রেয়ন সম্পূর্ণ নন-টক্সিক ও নিরাপদ। ছোট শিশুদের নরম হাতের মুঠোয় সহজে ধরে আঁকার জন্য বিশেষ ট্রায়াঙ্গুলার মোটা গ্রিপ, যা সহজে ভেঙে যায় না এবং শিশুর হাতের সূক্ষ্ম মোটর স্কিল (Motor Skills) বিকাশে সাহায্য করে।',
+    specifications: [
+      { label: 'প্রধান উপাদান', value: '১০০% প্রাকৃতিক মৌচাকের মোম (Pure Beeswax) ও ফুড-গ্রেড অর্গানিক রঙ' },
+      { label: 'উপযুক্ত বয়সসীমা', value: '২ বছর থেকে ৮ বছর পর্যন্ত' },
+      { label: 'সেট অপশন', value: '১২ রঙ / ২৪ রঙ / ৩৬ রঙ ক্লাসিক প্যাক' },
+      { label: 'গ্রিপ ডিজাইন', value: 'টডলার ট্রায়াঙ্গুলার চঙ্কি গ্রিপ (হাত থেকে পিছলাবে না, সহজে ভাঙবে না)' },
+      { label: 'সার্টিফিকেশন', value: 'EN-71 নন-টক্সিক ও ফুড সেফটি সার্টিফাইড' },
+      { label: 'ওয়াশেবল সুবিধা', value: 'কাপড়ে বা টাইলসে দাগ লাগলে সাধারণ সাবান পানিতেই উঠে যায়' },
+    ],
+    careInstructions: 'তীব্র সূর্যালোক বা অতিরিক্ত তাপ থেকে দূরে সাধারণ ঘরের তাপমাত্রায় ছায়াযুক্ত স্থানে রাখুন। রঙ কাপড়ে লাগলে সাধারণ কুসুম গরম পানি ও মৃদু সাবান দিয়ে ধুয়ে নিলেই পরিষ্কার হয়ে যাবে।',
+    faqs: [
+      {
+        question: 'বাচ্চা অসাবধানতাবশত মুখে দিলে কি কোনো বিষাক্ত ক্ষতি হবে?',
+        answer: 'না, আমাদের প্রতিটি ক্রেয়ন ১০০% প্রাকৃতিক ফুড-গ্রেড মৌচাকের মোম দিয়ে তৈরি। এটি সম্পূর্ণ নন-টক্সিক এবং কোনো ক্ষতিকর কেমিক্যাল বা লেড নেই, তাই সম্পূর্ণ নিরাপদ।'
+      },
+      {
+        question: 'কাপড় বা দেয়ালে দাগ লাগলে কি সহজে পরিষ্কার হবে?',
+        answer: 'হ্যাঁ, এটি ওয়াশেবল ফর্মুলায় তৈরি। কাপড়, টেবিল বা টাইলসে দাগ লাগলে সাধারণ পানি ও সাবান দিয়ে সহজেই মুছে পরিষ্কার করা যায়।'
+      },
+      {
+        question: 'ঢাকার ভেতরে ও বাইরে ডেলিভারি কত দিনে পাব?',
+        answer: 'ঢাকা সিটির ভেতরে ২৪ থেকে ৪৮ ঘণ্টার মধ্যে এবং ঢাকার বাইরে ২ থেকে ৩ দিনের মধ্যে স্টিডফাস্ট কুরিয়ারের মাধ্যমে হোম ডেলিভারি পৌঁছে যাবে।'
+      },
+      {
+        question: 'পণ্য হাতে পেয়ে কি দেখে টাকা দেওয়া যাবে?',
+        answer: 'হ্যাঁ, আমাদের ১০০% ক্যাশ অন ডেলিভারি (COD) সুবিধা রয়েছে। পার্সেল হাতে পেয়ে চেক করে নিশ্চিন্তে মূল্য পরিশোধ করবেন।'
+      }
+    ],
+    reviews: [
+      {
+        id: 'rev-1',
+        author: 'তানজিলা হক',
+        location: 'ধানমন্ডি, ঢাকা',
+        rating: 5,
+        date: '৫ দিন আগে',
+        comment: 'আমার ৩ বছরের মেয়ের জন্য নিয়েছিলাম। রঙগুলো খুব ভাইব্রেন্ট আর স্মুথ। সবচেয়ে বড় কথা মুখে দেওয়ার ভয় নেই কারণ এটা ফুড-গ্রেড মোম দিয়ে তৈরি। ডেলিভারিও খুব দ্রুত পেয়েছি।',
+        photos: ['https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=400&q=80'],
+        isVerified: true
+      },
+      {
+        id: 'rev-2',
+        author: 'ইঞ্জিনিয়ার শরিফুল ইসলাম',
+        location: 'জিইসি, চট্টগ্রাম',
+        rating: 5,
+        date: '১ সপ্তাহ আগে',
+        comment: 'প্যাকেজিং এবং ক্রেয়নের কোয়ালিটি অসাধারণ! সাধারণ ক্রেয়ন ভেঙে যেত, কিন্তু এটার গ্রিপ মোটা হওয়ায় বাচ্চারা সহজে ভাঙতে পারে না। ফুল স্যাটিসফাইড।',
+        isVerified: true
+      },
+      {
+        id: 'rev-3',
+        author: 'নাদিয়া সুলতানা',
+        location: 'উত্তরা, ঢাকা',
+        rating: 5,
+        date: '২ সপ্তাহ আগে',
+        comment: 'ওয়াশেবল ফিচারটা সত্যিই কাজ করে! আমার ছেলে দেয়ালে দাগ দিয়েছিল, ভেজা কাপড় দিয়ে মুছতেই দাগ উঠে গেছে। ধন্যবাদ CraftyKidsCo!',
+        isVerified: true
+      }
+    ],
     variations: [
-      { sku: 'CRAYON-12', titleBn: '১২ রঙের প্যাক', titleEn: '12 Colors Starter Pack', price: 190, salePrice: 160, stock: 45 },
-      { sku: 'CRAYON-24', titleBn: '২৪ রঙের ক্লাসিক সেট', titleEn: '24 Colors Classic Box', price: 350, salePrice: 299, stock: 60 },
-      { sku: 'CRAYON-36', titleBn: '৩৬ রঙের মেগা আর্টিস্ট বক্স', titleEn: '36 Colors Mega Artist Box', price: 490, salePrice: 420, stock: 25 },
+      {
+        sku: 'CRAYON-12',
+        titleBn: '১২ রঙের প্যাক (স্টার্টার)',
+        titleEn: '12 Colors Starter Pack',
+        price: 190,
+        salePrice: 160,
+        stock: 45,
+        imageUrl: 'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        sku: 'CRAYON-24',
+        titleBn: '২৪ রঙের ক্লাসিক বক্স',
+        titleEn: '24 Colors Classic Box',
+        price: 350,
+        salePrice: 299,
+        stock: 6, // Low stock: only 6 left!
+        imageUrl: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        sku: 'CRAYON-36',
+        titleBn: '৩৬ রঙের মেগা আর্টিস্ট বক্স',
+        titleEn: '36 Colors Mega Artist Box',
+        price: 490,
+        salePrice: 420,
+        stock: 25,
+        imageUrl: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=800&q=80'
+      },
     ],
   },
   {

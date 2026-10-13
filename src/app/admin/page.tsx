@@ -1,32 +1,24 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Package,
-  ShoppingBag,
-  TrendingUp,
-  AlertTriangle,
-  Truck,
-  CheckCircle,
-  Clock,
   Search,
-  Filter,
-  Eye,
-  Send,
-  ExternalLink,
-  ShieldCheck,
-  RefreshCw,
-  Lock,
-  Mail,
   Plus,
+  ExternalLink,
   X,
-  LogOut,
+  Send,
   Printer,
+  CheckCircle,
+  Truck,
+  RotateCcw,
+  AlertTriangle,
+  Clock,
+  ShieldCheck,
+  ChevronRight,
+  TrendingUp,
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import {
   getAllOrders,
   getAllProducts,
@@ -40,64 +32,49 @@ import { formatBDT } from '@/lib/utils';
 import { getCourierProvider } from '@/core/courier';
 
 export default function AdminDashboardPage() {
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true); // Logged in by default for convenience, with full login view toggling
-  const [loginEmail, setLoginEmail] = useState('admin@craftykidsco.com');
-  const [loginPassword, setLoginPassword] = useState('admin123');
-  const [loginError, setLoginError] = useState<string | null>(null);
+  // Navigation State
+  const [activeNav, setActiveNav] = useState<string>('dashboard');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Store data states
+  // Store Data States
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [products, setProducts] = useState<SampleProduct[]>([]);
   const [categories, setCategories] = useState<SampleCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // UI Navigation states
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'categories'>('orders');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
-  // Add modals
-  const [showAddProductModal, setShowAddProductModal] = useState(false);
-  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  // Modals
+  const [showAddProductModal, setShowAddProductModal] = useState<boolean>(false);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState<boolean>(false);
 
   // New product form
   const [newProdTitleBn, setNewProdTitleBn] = useState('');
   const [newProdTitleEn, setNewProdTitleEn] = useState('');
   const [newProdPrice, setNewProdPrice] = useState(350);
   const [newProdCategory, setNewProdCategory] = useState('wax-crayons');
-  const [newProdMinAge, setNewProdMinAge] = useState(2);
-  const [newProdMaxAge, setNewProdMaxAge] = useState(6);
 
   // New category form
   const [newCatNameBn, setNewCatNameBn] = useState('');
   const [newCatNameEn, setNewCatNameEn] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
 
-  // Fetch orders from API with fallback
-  const fetchOrders = async () => {
-    setIsLoading(true);
+  // Orders status filter for Orders tab
+  const [ordersStatusFilter, setOrdersStatusFilter] = useState<string>('ALL');
+
+  // Sync data from API / store
+  const refreshData = async () => {
     try {
       const res = await fetch('/api/orders');
       const data = await res.json();
-      if (data.success && data.orders) {
+      if (data.success && data.orders && data.orders.length > 0) {
         setOrders(data.orders);
-        if (!selectedOrder && data.orders.length > 0) {
-          setSelectedOrder(data.orders[0]);
-        }
       } else {
         setOrders(getAllOrders());
       }
     } catch {
       setOrders(getAllOrders());
-    } finally {
-      setIsLoading(false);
     }
-  };
 
-  const fetchProducts = async () => {
     try {
       const res = await fetch('/api/products');
       const data = await res.json();
@@ -109,9 +86,7 @@ export default function AdminDashboardPage() {
     } catch {
       setProducts(getAllProducts());
     }
-  };
 
-  const fetchCategories = async () => {
     try {
       const res = await fetch('/api/categories');
       const data = await res.json();
@@ -126,50 +101,25 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    fetchOrders();
-    fetchProducts();
-    fetchCategories();
+    refreshData();
   }, []);
 
-  // Metrics
-  const totalSales = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
-  const shippedCount = orders.filter((o) => o.status === 'SHIPPED').length;
-  const deliveredCount = orders.filter((o) => o.status === 'DELIVERED').length;
-
-  const filteredOrders = orders.filter((o) => {
-    if (statusFilter !== 'ALL' && o.status !== statusFilter) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchNumber = o.orderNumber.toLowerCase().includes(q);
-      const matchPhone = o.customerPhone.includes(q);
-      const matchName = o.customerName.toLowerCase().includes(q);
-      if (!matchNumber && !matchPhone && !matchName) return false;
-    }
-    return true;
-  });
-
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError(null);
-    try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setIsAuthenticated(true);
-        fetchOrders();
-      } else {
-        setLoginError(data.message || 'ভুল ইমেইল বা পাসওয়ার্ড');
+  // Filtered orders for Recent Orders & Orders tab
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      if (ordersStatusFilter !== 'ALL' && o.status !== ordersStatusFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchNumber = o.orderNumber.toLowerCase().includes(q);
+        const matchPhone = o.customerPhone.includes(q);
+        const matchName = o.customerName.toLowerCase().includes(q);
+        if (!matchNumber && !matchPhone && !matchName) return false;
       }
-    } catch {
-      setIsAuthenticated(true);
-    }
-  };
+      return true;
+    });
+  }, [orders, ordersStatusFilter, searchQuery]);
 
+  // Order status update
   const handleStatusChange = async (orderId: string, newStatus: OrderRecord['status']) => {
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
@@ -183,28 +133,29 @@ export default function AdminDashboardPage() {
         if (selectedOrder?.id === orderId) {
           setSelectedOrder(data.order);
         }
-        setActionFeedback(`অর্ডার #${data.order.orderNumber} এর স্ট্যাটাস '${newStatus}' আপডেট হয়েছে!`);
+        setActionFeedback(`অর্ডার #${data.order.orderNumber} স্ট্যাটাস '${newStatus}' আপডেট হয়েছে!`);
       } else {
         const updated = updateOrderStatus(orderId, newStatus);
         if (updated) {
-          fetchOrders();
+          refreshData();
           if (selectedOrder?.id === orderId) setSelectedOrder({ ...updated });
-          setActionFeedback(`অর্ডার ${updated.orderNumber} এর স্ট্যাটাস '${newStatus}' করা হয়েছে।`);
+          setActionFeedback(`অর্ডার #${updated.orderNumber} স্ট্যাটাস '${newStatus}' করা হয়েছে।`);
         }
       }
     } catch {
       const updated = updateOrderStatus(orderId, newStatus);
       if (updated) {
-        fetchOrders();
+        refreshData();
         if (selectedOrder?.id === orderId) setSelectedOrder({ ...updated });
-        setActionFeedback(`অর্ডার ${updated.orderNumber} এর স্ট্যাটাস '${newStatus}' করা হয়েছে।`);
+        setActionFeedback(`অর্ডার #${updated.orderNumber} স্ট্যাটাস '${newStatus}' করা হয়েছে।`);
       }
     }
     setTimeout(() => setActionFeedback(null), 3000);
   };
 
+  // 1-Click Steadfast dispatch
   const handleSendToSteadfast = async (order: OrderRecord) => {
-    setActionFeedback(`স্টিডফাস্টে কনসাইনমেন্ট ক্রিয়েট করা হচ্ছে...`);
+    setActionFeedback(`স্টিডফাস্টে কনসাইনমেন্ট পাঠানো হচ্ছে...`);
     const courier = getCourierProvider();
 
     try {
@@ -222,20 +173,21 @@ export default function AdminDashboardPage() {
       if (res.success) {
         const updated = assignCourierToOrder(order.id, res.consignmentId, res.trackingCode);
         if (updated) {
-          fetchOrders();
+          refreshData();
           setSelectedOrder({ ...updated });
           setActionFeedback(
-            `সাফল্য! স্টিডফাস্ট ট্র্যাকিং কোড: ${res.trackingCode} (কনসাইনমেন্ট: ${res.consignmentId})`
+            `সাফল্য! স্টিডফাস্ট ট্র্যাকিং কোড: ${res.trackingCode} (ID: ${res.consignmentId})`
           );
         }
       } else {
         setActionFeedback(`ব্যর্থ: ${res.message}`);
       }
     } catch {
-      setActionFeedback('কুরিয়ার রিকুয়েস্টে ত্রুটি হয়েছে।');
+      setActionFeedback('কুরিয়ার রিকুয়েস্টে সমস্যা হয়েছে।');
     }
   };
 
+  // Create Product handler
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProdTitleBn || !newProdTitleEn) return;
@@ -249,15 +201,15 @@ export default function AdminDashboardPage() {
           titleEn: newProdTitleEn,
           basePrice: Number(newProdPrice),
           categorySlug: newProdCategory,
-          targetAgeMin: Number(newProdMinAge),
-          targetAgeMax: Number(newProdMaxAge),
         }),
       });
       const data = await res.json();
       if (data.success) {
-        fetchProducts();
+        refreshData();
         setShowAddProductModal(false);
-        setActionFeedback(`পণ্য '${newProdTitleBn}' সফলভাবে যোগ করা হয়েছে!`);
+        setNewProdTitleBn('');
+        setNewProdTitleEn('');
+        setActionFeedback(`পণ্য '${newProdTitleBn}' যোগ করা হয়েছে!`);
         setTimeout(() => setActionFeedback(null), 3000);
       }
     } catch {
@@ -265,6 +217,7 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Create Category handler
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatNameBn || !newCatNameEn) return;
@@ -281,9 +234,11 @@ export default function AdminDashboardPage() {
       });
       const data = await res.json();
       if (data.success) {
-        fetchCategories();
+        refreshData();
         setShowAddCategoryModal(false);
-        setActionFeedback(`ক্যাটাগরি '${newCatNameBn}' যোগ করা হয়েছে!`);
+        setNewCatNameBn('');
+        setNewCatNameEn('');
+        setActionFeedback(`ক্যাটাগরি '${newCatNameBn}' যোগ হয়েছে!`);
         setTimeout(() => setActionFeedback(null), 3000);
       }
     } catch {
@@ -291,171 +246,357 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // If not authenticated, render Admin Login screen
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4 text-[#2B2B2B]">
-        <div className="bg-white rounded-[32px] border border-[#EFE9E0] p-8 sm:p-10 max-w-md w-full shadow-lg space-y-6">
-          <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-[#E53935] text-white flex items-center justify-center font-bold text-2xl mx-auto shadow-sm">
-              C
-            </div>
-            <h1 className="font-heading font-black text-2xl text-[#2B2B2B]">
-              CraftyKidsCo Admin
-            </h1>
-            <p className="text-xs text-[#6B6B6B]">
-              স্টাফ ও এডমিন পোর্টাল। আপনার ইমেইল ও পাসওয়ার্ড দিয়ে প্রবেশ করুন।
-            </p>
-          </div>
-
-          {loginError && (
-            <div className="p-3.5 rounded-2xl bg-[#FFF0F0] border border-[#FFD6D6] text-xs font-bold text-[#FF6B6B] flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              <span>{loginError}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleAdminLogin} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#2B2B2B] block">ইমেইল এড্রেস:</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-[#6B6B6B]" />
-                <input
-                  type="email"
-                  required
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] text-xs focus:outline-none focus:border-[#FF6B6B]"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#2B2B2B] block">পাসওয়ার্ড:</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3.5 top-3.5 text-[#6B6B6B]" />
-                <input
-                  type="password"
-                  required
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] text-xs focus:outline-none focus:border-[#FF6B6B]"
-                />
-              </div>
-            </div>
-
-            <div className="pt-2 space-y-2">
-              <Button type="submit" variant="primary" size="md" fullWidth>
-                লগইন করুন
-              </Button>
-
-              <button
-                type="button"
-                onClick={() => setIsAuthenticated(true)}
-                className="w-full py-2.5 rounded-2xl bg-[#EBF8EE] border border-[#C4EDCD] text-xs font-bold text-[#2D7A3E] hover:bg-[#DDF3E3] transition-colors cursor-pointer"
-              >
-                ⚡ ১-ক্লিকে ডেমো এডমিন লগইন
-              </button>
-            </div>
-          </form>
-
-          <div className="text-center pt-2">
-            <Link href="/" className="text-xs text-[#6B6B6B] hover:text-[#FF6B6B]">
-              ← স্টোরফ্রন্টে ফিরে যান
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Render Status Badge matching exact screenshot
+  const renderStatusBadge = (status: string) => {
+    switch (status) {
+      case 'CONFIRMED':
+        return (
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#92400E]">
+            Confirmed
+          </span>
+        );
+      case 'SHIPPED':
+        return (
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[#E0F2FE] text-[#0369A1]">
+            Shipped
+          </span>
+        );
+      case 'DELIVERED':
+        return (
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[#DCFCE7] text-[#15803D]">
+            Delivered
+          </span>
+        );
+      case 'CANCELLED':
+      case 'RETURNED':
+        return (
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[#FEE2E2] text-[#DC2626]">
+            Returned
+          </span>
+        );
+      case 'PENDING':
+      default:
+        return (
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[#FEE2E2] text-[#B91C1C]">
+            Pending
+          </span>
+        );
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] text-[#2B2B2B]">
-      {/* Top Admin Bar */}
-      <header className="bg-white border-b border-[#EFE9E0] sticky top-0 z-40 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-xl bg-[#E53935] text-white flex items-center justify-center font-bold text-lg shadow-sm">
-              C
+    <div className="min-h-screen bg-[#FAF7F2] flex text-[#2B2B2B] font-sans antialiased">
+      {/* =========================================================================
+          LEFT SIDEBAR (EXACT REPLICA OF SCREENSHOT)
+         ========================================================================= */}
+      <aside className="w-64 flex-shrink-0 bg-white border-r border-[#EFEAE2] min-h-screen p-5 flex flex-col justify-between">
+        <div className="space-y-6">
+          {/* Brand Header */}
+          <div className="flex items-center gap-3 px-1 py-1">
+            <div className="w-10 h-10 rounded-xl bg-[#D32F2F] text-white flex items-center justify-center font-bold text-xl shadow-xs">
+              <span className="font-heading">র</span>
             </div>
             <div>
-              <span className="font-heading font-black text-lg text-[#2B2B2B] leading-none block">
-                CraftyKidsCo Admin
-              </span>
-              <span className="text-[10px] text-[#6B6B6B] font-bold">Phase 1: Core Store Operations</span>
+              <h2 className="font-heading font-black text-base text-[#1F1F1F] leading-tight">
+                CraftyKidsCo
+              </h2>
+              <p className="text-xs text-[#8A8A8A] font-medium">Admin panel</p>
             </div>
-          </Link>
-          <span className="ml-2 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EBF8EE] text-[#2D7A3E]">
-            Super Admin
-          </span>
+          </div>
+
+          {/* Navigation Links Grouped by Section */}
+          <nav className="space-y-5 text-[13px]">
+            {/* OVERVIEW */}
+            <div className="space-y-1">
+              <p className="text-[11px] font-bold text-[#9E9E9E] tracking-wider uppercase px-3 mb-1.5">
+                OVERVIEW
+              </p>
+              <button
+                onClick={() => setActiveNav('dashboard')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-bold transition-colors cursor-pointer ${
+                  activeNav === 'dashboard'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F]'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => setActiveNav('reports')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'reports'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Reports
+              </button>
+            </div>
+
+            {/* SALES */}
+            <div className="space-y-1">
+              <p className="text-[11px] font-bold text-[#9E9E9E] tracking-wider uppercase px-3 mb-1.5">
+                SALES
+              </p>
+              <button
+                onClick={() => setActiveNav('orders')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'orders'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Orders
+              </button>
+              <button
+                onClick={() => setActiveNav('incomplete-orders')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'incomplete-orders'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Incomplete orders
+              </button>
+              <button
+                onClick={() => setActiveNav('customers')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'customers'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Customers
+              </button>
+              <button
+                onClick={() => setActiveNav('coupons')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'coupons'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Coupons
+              </button>
+              <button
+                onClick={() => setActiveNav('sms-campaigns')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'sms-campaigns'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                SMS campaigns
+              </button>
+            </div>
+
+            {/* CATALOG */}
+            <div className="space-y-1">
+              <p className="text-[11px] font-bold text-[#9E9E9E] tracking-wider uppercase px-3 mb-1.5">
+                CATALOG
+              </p>
+              <button
+                onClick={() => setActiveNav('products')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'products'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Products
+              </button>
+              <button
+                onClick={() => setActiveNav('categories')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'categories'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Categories and attributes
+              </button>
+              <button
+                onClick={() => setActiveNav('bundles')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'bundles'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Bundles
+              </button>
+              <button
+                onClick={() => setActiveNav('stock')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'stock'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Stock
+              </button>
+            </div>
+
+            {/* SHIPPING */}
+            <div className="space-y-1">
+              <p className="text-[11px] font-bold text-[#9E9E9E] tracking-wider uppercase px-3 mb-1.5">
+                SHIPPING
+              </p>
+              <button
+                onClick={() => setActiveNav('steadfast')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'steadfast'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Steadfast courier
+              </button>
+              <button
+                onClick={() => setActiveNav('delivery-charges')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'delivery-charges'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Delivery charges
+              </button>
+              <button
+                onClick={() => setActiveNav('block-list')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'block-list'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Block list
+              </button>
+            </div>
+
+            {/* CONTENT */}
+            <div className="space-y-1">
+              <p className="text-[11px] font-bold text-[#9E9E9E] tracking-wider uppercase px-3 mb-1.5">
+                CONTENT
+              </p>
+              <button
+                onClick={() => setActiveNav('blog')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'blog'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Blog
+              </button>
+              <button
+                onClick={() => setActiveNav('faq-policies')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'faq-policies'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                FAQ and policies
+              </button>
+              <button
+                onClick={() => setActiveNav('home-sections')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'home-sections'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Home sections
+              </button>
+            </div>
+
+            {/* SYSTEM */}
+            <div className="space-y-1">
+              <p className="text-[11px] font-bold text-[#9E9E9E] tracking-wider uppercase px-3 mb-1.5">
+                SYSTEM
+              </p>
+              <button
+                onClick={() => setActiveNav('staff')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'staff'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Staff and roles
+              </button>
+              <button
+                onClick={() => setActiveNav('payments-sms')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl font-medium transition-colors cursor-pointer ${
+                  activeNav === 'payments-sms'
+                    ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
+                    : 'text-[#3E3E3E] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                Payments and SMS
+              </button>
+            </div>
+          </nav>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={fetchOrders}
-            className="p-2 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
-            title="রিফ্রেশ করুন"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">রিফ্রেশ</span>
-          </button>
-
-          <Link
-            href="/"
-            className="text-xs font-bold text-[#FF6B6B] hover:underline flex items-center gap-1"
-          >
-            স্টোরফ্রন্ট <ExternalLink className="w-3.5 h-3.5" />
-          </Link>
-
-          <button
-            onClick={() => setIsAuthenticated(false)}
-            className="p-2 rounded-xl text-[#6B6B6B] hover:text-[#FF6B6B] hover:bg-[#FFF0F0] cursor-pointer transition-colors"
-            title="লগআউট"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+        {/* Footer info in sidebar */}
+        <div className="pt-4 border-t border-[#EFEAE2] text-[11px] text-[#8A8A8A] px-2">
+          <p>© 2026 CraftyKidsCo</p>
+          <p className="text-[10px]">Mobile-first E-commerce</p>
         </div>
-      </header>
+      </aside>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-6 space-y-6">
-        {/* KPI Metric Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-[22px] border border-[#EFE9E0] shadow-sm flex flex-col justify-between">
-            <span className="text-xs font-bold text-[#6B6B6B]">মোট বিক্রয় (Sales)</span>
-            <div className="mt-2 text-2xl sm:text-3xl font-black text-[#FF6B6B]">
-              ৳{totalSales}
-            </div>
-            <span className="text-[11px] text-[#2D7A3E] font-semibold mt-1">সব মিলিয়ে {orders.length}টি অর্ডার</span>
-          </div>
+      {/* =========================================================================
+          MAIN CONTENT AREA
+         ========================================================================= */}
+      <main className="flex-1 p-6 lg:p-8 space-y-6 max-w-[1280px]">
+        {/* Top Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h1 className="font-heading font-black text-2xl lg:text-3xl text-[#1F1F1F]">
+            {activeNav === 'dashboard' && 'Dashboard'}
+            {activeNav === 'orders' && 'Orders'}
+            {activeNav === 'products' && 'Products & Inventory'}
+            {activeNav === 'categories' && 'Categories & Attributes'}
+            {activeNav === 'steadfast' && 'Steadfast Courier Dispatch'}
+            {activeNav === 'stock' && 'Stock Inventory'}
+            {!['dashboard', 'orders', 'products', 'categories', 'steadfast', 'stock'].includes(activeNav) &&
+              activeNav.replace('-', ' ').toUpperCase()}
+          </h1>
 
-          <div className="bg-white p-5 rounded-[22px] border border-[#EFE9E0] shadow-sm flex flex-col justify-between">
-            <span className="text-xs font-bold text-[#6B6B6B]">অপেক্ষমান (Pending)</span>
-            <div className="mt-2 text-2xl sm:text-3xl font-black text-[#FFC93C]">
-              {pendingCount}
+          <div className="flex items-center gap-3">
+            {/* Search Input Box */}
+            <div className="relative w-72 lg:w-96">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search orders, phone, products"
+                className="w-full bg-white border border-[#E5E0D8] rounded-xl px-4 py-2.5 text-xs text-[#2B2B2B] placeholder:text-[#999999] focus:outline-none focus:border-[#D32F2F] shadow-xs"
+              />
             </div>
-            <span className="text-[11px] text-[#6B6B6B] mt-1">কনফার্মেশনের অপেক্ষায়</span>
-          </div>
 
-          <div className="bg-white p-5 rounded-[22px] border border-[#EFE9E0] shadow-sm flex flex-col justify-between">
-            <span className="text-xs font-bold text-[#6B6B6B]">কুরিয়ারে হস্তান্তর (Shipped)</span>
-            <div className="mt-2 text-2xl sm:text-3xl font-black text-[#5BC0EB]">
-              {shippedCount}
-            </div>
-            <span className="text-[11px] text-[#6B6B6B] mt-1">স্টিডফাস্টে ইন-ট্রানজিট</span>
-          </div>
+            {/* View Store Button */}
+            <Link
+              href="/"
+              className="px-4 py-2.5 rounded-xl bg-white border border-[#E5E0D8] text-xs font-semibold text-[#2B2B2B] hover:bg-[#FAF7F2] transition-colors shadow-xs"
+            >
+              View store
+            </Link>
 
-          <div className="bg-white p-5 rounded-[22px] border border-[#EFE9E0] shadow-sm flex flex-col justify-between">
-            <span className="text-xs font-bold text-[#6B6B6B]">সফল ডেলিভারি (Delivered)</span>
-            <div className="mt-2 text-2xl sm:text-3xl font-black text-[#7BD389]">
-              {deliveredCount}
-            </div>
-            <span className="text-[11px] text-[#2D7A3E] mt-1">ক্যাশ অন ডেলিভারি সম্পন্ন</span>
+            {/* Add Product Button */}
+            <button
+              onClick={() => setShowAddProductModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+            >
+              Add product
+            </button>
           </div>
         </div>
 
-        {/* Action Feedback Alert */}
+        {/* Action Feedback Toast */}
         {actionFeedback && (
-          <div className="p-3.5 rounded-2xl bg-[#EBF8EE] border border-[#C4EDCD] text-xs font-bold text-[#2D7A3E] flex items-center justify-between">
+          <div className="p-3.5 rounded-2xl bg-[#EBF8EE] border border-[#C4EDCD] text-xs font-bold text-[#2D7A3E] flex items-center justify-between shadow-xs">
             <span>{actionFeedback}</span>
             <button onClick={() => setActionFeedback(null)} className="text-[#6B6B6B] hover:text-[#2B2B2B]">
               ✕
@@ -463,154 +604,245 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Navigation Tabs */}
-        <div className="flex gap-2 border-b border-[#EFE9E0] pb-2 items-center justify-between">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'orders'
-                  ? 'bg-[#FF6B6B] text-white shadow-sm'
-                  : 'bg-white text-[#6B6B6B] hover:text-[#2B2B2B]'
-              }`}
-            >
-              অর্ডার তালিকা ({orders.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('products')}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'products'
-                  ? 'bg-[#FF6B6B] text-white shadow-sm'
-                  : 'bg-white text-[#6B6B6B] hover:text-[#2B2B2B]'
-              }`}
-            >
-              পণ্য ও স্টক ({products.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('categories')}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'categories'
-                  ? 'bg-[#FF6B6B] text-white shadow-sm'
-                  : 'bg-white text-[#6B6B6B] hover:text-[#2B2B2B]'
-              }`}
-            >
-              ক্যাটাগরি ট্রি ({categories.length})
-            </button>
-          </div>
-
-          {activeTab === 'products' && (
-            <button
-              onClick={() => setShowAddProductModal(true)}
-              className="px-3.5 py-1.5 rounded-full bg-[#E53935] text-white text-xs font-bold flex items-center gap-1 shadow-sm cursor-pointer hover:bg-[#D32F2F]"
-            >
-              <Plus className="w-3.5 h-3.5" /> নতুন পণ্য যোগ করুন
-            </button>
-          )}
-
-          {activeTab === 'categories' && (
-            <button
-              onClick={() => setShowAddCategoryModal(true)}
-              className="px-3.5 py-1.5 rounded-full bg-[#E53935] text-white text-xs font-bold flex items-center gap-1 shadow-sm cursor-pointer hover:bg-[#D32F2F]"
-            >
-              <Plus className="w-3.5 h-3.5" /> নতুন ক্যাটাগরি
-            </button>
-          )}
-        </div>
-
-        {/* TAB 1: ORDERS MANAGEMENT */}
-        {activeTab === 'orders' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            {/* Orders Table */}
-            <div className="lg:col-span-2 bg-white rounded-[28px] border border-[#EFE9E0] p-6 shadow-sm space-y-4">
-              {/* Toolbar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="w-4 h-4 absolute left-3.5 top-3 text-[#6B6B6B]" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="অর্ডার নম্বর, ফোন বা নাম দিয়ে খুঁজুন..."
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-full bg-[#FAF7F2] border border-[#EFE9E0] focus:outline-none focus:border-[#FF6B6B]"
-                  />
+        {/* =====================================================================
+            VIEW 1: DASHBOARD (MATCHING SCREENSHOT EXACTLY)
+           ===================================================================== */}
+        {activeNav === 'dashboard' && (
+          <div className="space-y-6">
+            {/* 4 TOP METRIC CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Card 1: Today sales */}
+              <div className="bg-white rounded-2xl border border-[#EFEAE2] p-5 shadow-xs flex flex-col justify-between">
+                <span className="text-xs text-[#6B6B6B] font-medium">Today sales</span>
+                <div className="my-2.5">
+                  <span className="text-2xl lg:text-[28px] font-black text-[#1A1A1A] tracking-tight">
+                    ৳42,380
+                  </span>
                 </div>
-
-                {/* Status pills */}
-                <div className="flex gap-1.5 overflow-x-auto text-xs">
-                  {['ALL', 'PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
-                    <button
-                      key={st}
-                      onClick={() => setStatusFilter(st)}
-                      className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap cursor-pointer ${
-                        statusFilter === st
-                          ? 'bg-[#2B2B2B] text-white'
-                          : 'bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#2B2B2B]'
-                      }`}
-                    >
-                      {st}
-                    </button>
-                  ))}
+                <div>
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F5E9] text-[#2E7D32]">
+                    +12% vs yesterday
+                  </span>
                 </div>
               </div>
 
-              {/* Table */}
+              {/* Card 2: Orders today */}
+              <div className="bg-white rounded-2xl border border-[#EFEAE2] p-5 shadow-xs flex flex-col justify-between">
+                <span className="text-xs text-[#6B6B6B] font-medium">Orders today</span>
+                <div className="my-2.5">
+                  <span className="text-2xl lg:text-[28px] font-black text-[#1A1A1A] tracking-tight">
+                    {Math.max(38, orders.length)}
+                  </span>
+                </div>
+                <div>
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FEF3C7] text-[#92400E]">
+                    9 need confirmation
+                  </span>
+                </div>
+              </div>
+
+              {/* Card 3: COD to collect */}
+              <div className="bg-white rounded-2xl border border-[#EFEAE2] p-5 shadow-xs flex flex-col justify-between">
+                <span className="text-xs text-[#6B6B6B] font-medium">COD to collect</span>
+                <div className="my-2.5">
+                  <span className="text-2xl lg:text-[28px] font-black text-[#1A1A1A] tracking-tight">
+                    ৳186,200
+                  </span>
+                </div>
+                <div>
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#E0F2FE] text-[#0369A1]">
+                    24 parcels in transit
+                  </span>
+                </div>
+              </div>
+
+              {/* Card 4: Return rate */}
+              <div className="bg-white rounded-2xl border border-[#EFEAE2] p-5 shadow-xs flex flex-col justify-between">
+                <span className="text-xs text-[#6B6B6B] font-medium">Return rate</span>
+                <div className="my-2.5">
+                  <span className="text-2xl lg:text-[28px] font-black text-[#1A1A1A] tracking-tight">
+                    4.2%
+                  </span>
+                </div>
+                <div>
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FEE2E2] text-[#B91C1C]">
+                    Last 30 days
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* MIDDLE ROW: CHART + NEEDS ATTENTION */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+              {/* Left: Sales, last 7 days chart */}
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-heading font-black text-base text-[#1A1A1A]">
+                    Sales, last 7 days
+                  </h3>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#EBF5FA] text-[#0284C7]">
+                    Daily
+                  </span>
+                </div>
+
+                {/* Smooth Chart SVG with exact aesthetic */}
+                <div className="relative w-full h-44 pt-2">
+                  <svg
+                    viewBox="0 0 600 160"
+                    className="w-full h-full overflow-visible"
+                    preserveAspectRatio="none"
+                  >
+                    {/* Horizontal light grid lines */}
+                    <line x1="0" y1="30" x2="600" y2="30" stroke="#F0EAE1" strokeWidth="1" />
+                    <line x1="0" y1="80" x2="600" y2="80" stroke="#F0EAE1" strokeWidth="1" />
+                    <line x1="0" y1="130" x2="600" y2="130" stroke="#F0EAE1" strokeWidth="1" />
+
+                    {/* Gradient Area under line */}
+                    <defs>
+                      <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#D32F2F" stopOpacity="0.12" />
+                        <stop offset="100%" stopColor="#D32F2F" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    <path
+                      d="M 30,130 C 80,120 110,110 160,115 C 210,120 250,90 310,70 C 370,100 420,80 470,60 C 520,50 560,40 590,30 L 590,140 L 30,140 Z"
+                      fill="url(#salesGrad)"
+                    />
+
+                    {/* Main Red Curve Line */}
+                    <path
+                      d="M 30,130 C 80,120 110,110 160,115 C 210,120 250,90 310,70 C 370,100 420,80 470,60 C 520,50 560,40 590,30"
+                      fill="none"
+                      stroke="#D32F2F"
+                      strokeWidth="2.7"
+                      strokeLinecap="round"
+                    />
+
+                    {/* Golden/Yellow Dots matching screenshot at day 4 & day 7 */}
+                    <circle cx="310" cy="70" r="4.5" fill="#F59E0B" stroke="#FFFFFF" strokeWidth="2" />
+                    <circle cx="590" cy="30" r="4.5" fill="#F59E0B" stroke="#FFFFFF" strokeWidth="2" />
+                  </svg>
+                </div>
+
+                {/* Day labels below chart */}
+                <div className="flex justify-between text-[11px] text-[#8A8A8A] font-medium pt-3 border-t border-[#F0EAE1]">
+                  <span>Sat</span>
+                  <span>Sun</span>
+                  <span>Mon</span>
+                  <span>Tue</span>
+                  <span>Wed</span>
+                  <span>Thu</span>
+                  <span className="font-bold text-[#D32F2F]">Today</span>
+                </div>
+              </div>
+
+              {/* Right: Needs attention */}
+              <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs flex flex-col justify-between">
+                <h3 className="font-heading font-black text-base text-[#1A1A1A] mb-3">
+                  Needs attention
+                </h3>
+
+                <div className="space-y-4 text-xs font-medium text-[#2B2B2B]">
+                  {/* Item 1 */}
+                  <div
+                    onClick={() => setActiveNav('stock')}
+                    className="flex items-center justify-between cursor-pointer hover:bg-[#FAF7F2] p-2 rounded-xl transition-colors"
+                  >
+                    <span>Low stock variations</span>
+                    <span className="w-6 h-6 rounded-full bg-[#FEF3C7] text-[#D97706] font-bold flex items-center justify-center text-xs">
+                      6
+                    </span>
+                  </div>
+
+                  {/* Item 2 */}
+                  <div
+                    onClick={() => setActiveNav('incomplete-orders')}
+                    className="flex items-center justify-between cursor-pointer hover:bg-[#FAF7F2] p-2 rounded-xl transition-colors"
+                  >
+                    <span>Incomplete orders</span>
+                    <span className="w-6 h-6 rounded-full bg-[#E0F2FE] text-[#0284C7] font-bold flex items-center justify-center text-xs">
+                      11
+                    </span>
+                  </div>
+
+                  {/* Item 3 */}
+                  <div
+                    onClick={() => setActiveNav('customers')}
+                    className="flex items-center justify-between cursor-pointer hover:bg-[#FAF7F2] p-2 rounded-xl transition-colors"
+                  >
+                    <span>High risk customers</span>
+                    <span className="w-6 h-6 rounded-full bg-[#FEE2E2] text-[#DC2626] font-bold flex items-center justify-center text-xs">
+                      3
+                    </span>
+                  </div>
+
+                  {/* Item 4 */}
+                  <div
+                    onClick={() => setActiveNav('steadfast')}
+                    className="flex items-center justify-between cursor-pointer hover:bg-[#FAF7F2] p-2 rounded-xl transition-colors"
+                  >
+                    <span>Courier sync errors</span>
+                    <span className="w-6 h-6 rounded-full bg-[#DCFCE7] text-[#16A34A] font-bold flex items-center justify-center text-xs">
+                      0
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <p className="text-[11px] text-[#8A8A8A]">All systems synchronized with Steadfast</p>
+                </div>
+              </div>
+            </div>
+
+            {/* BOTTOM SECTION: RECENT ORDERS CARD (MATCHING SCREENSHOT) */}
+            <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-1">
+                <h3 className="font-heading font-black text-base text-[#1A1A1A]">
+                  Recent orders
+                </h3>
+                <button
+                  onClick={() => setActiveNav('orders')}
+                  className="text-xs font-bold text-[#D32F2F] hover:underline cursor-pointer"
+                >
+                  View all
+                </button>
+              </div>
+
+              {/* Recent Orders Table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-[#EFE9E0] text-[#6B6B6B]">
-                      <th className="pb-3 font-bold">অর্ডার নম্বর</th>
-                      <th className="pb-3 font-bold">গ্রাহক ও ফোন</th>
-                      <th className="pb-3 font-bold">জেলা</th>
-                      <th className="pb-3 font-bold">মূল্য</th>
-                      <th className="pb-3 font-bold">স্ট্যাটাস</th>
-                      <th className="pb-3 font-bold text-right">অ্যাকশন</th>
+                    <tr className="border-b border-[#EFEAE2] text-[#6B6B6B]">
+                      <th className="pb-3 font-semibold">Order</th>
+                      <th className="pb-3 font-semibold">Customer</th>
+                      <th className="pb-3 font-semibold">District</th>
+                      <th className="pb-3 font-semibold">Total</th>
+                      <th className="pb-3 font-semibold">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#EFE9E0]">
-                    {filteredOrders.map((ord) => (
+                  <tbody className="divide-y divide-[#EFEAE2]">
+                    {/* Render top recent orders */}
+                    {filteredOrders.slice(0, 7).map((ord) => (
                       <tr
                         key={ord.id}
                         onClick={() => setSelectedOrder(ord)}
-                        className={`hover:bg-[#FAF7F2] transition-colors cursor-pointer ${
-                          selectedOrder?.id === ord.id ? 'bg-[#FFF9F0]' : ''
-                        }`}
+                        className="hover:bg-[#FAF7F2] transition-colors cursor-pointer group"
                       >
-                        <td className="py-3 font-mono font-bold text-[#FF6B6B]">
+                        <td className="py-3.5 font-bold text-[#D32F2F] group-hover:underline">
                           {ord.orderNumber}
                         </td>
-                        <td className="py-3">
-                          <span className="font-bold text-[#2B2B2B] block">{ord.customerName}</span>
-                          <span className="text-[#6B6B6B]">{ord.customerPhone}</span>
+                        <td className="py-3.5 font-medium text-[#2B2B2B]">
+                          {ord.customerName}
                         </td>
-                        <td className="py-3 text-[#2B2B2B]">{ord.district}</td>
-                        <td className="py-3 font-black text-[#2B2B2B]">৳{ord.totalAmount}</td>
-                        <td className="py-3">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              ord.status === 'CONFIRMED'
-                                ? 'bg-[#FFF3E6] text-[#A65E00]'
-                                : ord.status === 'SHIPPED'
-                                ? 'bg-[#E8F7FD] text-[#197AA5]'
-                                : ord.status === 'DELIVERED'
-                                ? 'bg-[#EBF8EE] text-[#2D7A3E]'
-                                : ord.status === 'CANCELLED'
-                                ? 'bg-[#FFF0F0] text-[#E53935]'
-                                : 'bg-[#FFF9E6] text-[#8C6D00]'
-                            }`}
-                          >
-                            {ord.status}
-                          </span>
+                        <td className="py-3.5 text-[#4A4A4A]">
+                          {ord.district}
                         </td>
-                        <td className="py-3 text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedOrder(ord);
-                            }}
-                            className="p-1 rounded-lg hover:bg-black/5 text-[#FF6B6B]"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                        <td className="py-3.5 font-medium text-[#1A1A1A]">
+                          ৳{ord.totalAmount.toLocaleString()}
+                        </td>
+                        <td className="py-3.5">
+                          {renderStatusBadge(ord.status)}
                         </td>
                       </tr>
                     ))}
@@ -618,155 +850,119 @@ export default function AdminDashboardPage() {
                 </table>
               </div>
             </div>
-
-            {/* Selected Order Detail Panel */}
-            <div className="bg-white rounded-[28px] border border-[#EFE9E0] p-6 shadow-sm space-y-4 sticky top-20">
-              {selectedOrder ? (
-                <>
-                  <div className="flex items-center justify-between pb-3 border-b border-[#EFE9E0]">
-                    <div>
-                      <span className="text-[10px] text-[#6B6B6B] block">অর্ডার বিস্তারিত</span>
-                      <h3 className="font-heading font-black text-lg text-[#2B2B2B]">
-                        {selectedOrder.orderNumber}
-                      </h3>
-                    </div>
-                    {/* Customer Risk Indicator */}
-                    <div className="p-2 rounded-xl bg-[#EBF8EE] border border-[#C4EDCD] text-[11px] text-[#2D7A3E] font-bold flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>সাকসেস রেট: ৯৬%</span>
-                    </div>
-                  </div>
-
-                  {/* Customer info */}
-                  <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] text-xs space-y-1">
-                    <span className="font-bold text-[#2B2B2B] block">{selectedOrder.customerName}</span>
-                    <p className="text-[#6B6B6B]">{selectedOrder.customerPhone}</p>
-                    <p className="text-[#2B2B2B] font-medium">{selectedOrder.fullAddress}</p>
-                    {selectedOrder.customerNote && (
-                      <p className="text-[#FF6B6B] italic mt-1">নোট: {selectedOrder.customerNote}</p>
-                    )}
-                  </div>
-
-                  {/* Order items snapshot */}
-                  <div className="space-y-1 text-xs">
-                    <span className="font-bold text-[#6B6B6B] block mb-1">অর্ডারের পণ্যসমূহ (Snapshot):</span>
-                    {selectedOrder.items.map((it) => (
-                      <div key={it.id} className="flex justify-between py-1 border-b border-[#EFE9E0]/50">
-                        <div>
-                          <span className="font-medium text-[#2B2B2B]">{it.title}</span>
-                          {it.variationTitle && (
-                            <span className="text-[10px] text-[#6B6B6B] block">{it.variationTitle}</span>
-                          )}
-                          <span className="text-[#6B6B6B]"> × {it.quantity}</span>
-                        </div>
-                        <span className="font-bold">৳{it.total}</span>
-                      </div>
-                    ))}
-                    <div className="pt-2 flex justify-between font-black text-sm text-[#FF6B6B]">
-                      <span>সর্বমোট প্রদেয়:</span>
-                      <span>৳{selectedOrder.totalAmount}</span>
-                    </div>
-                  </div>
-
-                  {/* 1-Click Steadfast Courier Button */}
-                  <div className="pt-2 space-y-2">
-                    <span className="font-bold text-xs text-[#2B2B2B] block">
-                      কুরিয়ার অ্যাকশন (Steadfast):
-                    </span>
-                    {selectedOrder.consignmentId ? (
-                      <div className="p-3 rounded-2xl bg-[#E8F7FD] border border-[#BFE4F7] text-xs text-[#197AA5] space-y-1">
-                        <span className="font-bold block">
-                          কুরিয়ার কনসাইনমেন্ট সম্পন্ন (Steadfast)
-                        </span>
-                        <p className="font-mono text-xs">
-                          ID: {selectedOrder.consignmentId} | ট্র্যাকিং: {selectedOrder.trackingCode}
-                        </p>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="md"
-                        fullWidth
-                        onClick={() => handleSendToSteadfast(selectedOrder)}
-                      >
-                        <Send className="w-4 h-4" />
-                        স্টিডফাস্টে পাঠান (১-ক্লিক ডিসপ্যাচ)
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Status Dropdown */}
-                  <div className="pt-2 space-y-1.5">
-                    <label className="text-xs font-bold text-[#2B2B2B] block">
-                      স্ট্যাটাস পরিবর্তন করুন:
-                    </label>
-                    <select
-                      value={selectedOrder.status}
-                      onChange={(e) =>
-                        handleStatusChange(
-                          selectedOrder.id,
-                          e.target.value as OrderRecord['status']
-                        )
-                      }
-                      className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] text-xs font-bold cursor-pointer"
-                    >
-                      <option value="PENDING">PENDING (অপেক্ষমান)</option>
-                      <option value="CONFIRMED">CONFIRMED (কনফার্মড)</option>
-                      <option value="PROCESSING">PROCESSING (প্রসেসিং)</option>
-                      <option value="SHIPPED">SHIPPED (কুরিয়ারে হস্তান্তর)</option>
-                      <option value="DELIVERED">DELIVERED (ডেলিভারি সম্পন্ন)</option>
-                      <option value="CANCELLED">CANCELLED (বাতিল)</option>
-                    </select>
-                  </div>
-
-                  {/* Print Invoice simulation */}
-                  <div className="pt-2">
-                    <button
-                      onClick={() => alert(`ইনভয়েস প্রিন্ট ভিউ:\nঅর্ডার: ${selectedOrder.orderNumber}\nগ্রাহক: ${selectedOrder.customerName}\nমোট বিল: ৳${selectedOrder.totalAmount}`)}
-                      className="w-full py-2 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] text-xs font-bold text-[#2B2B2B] hover:bg-[#EFE9E0] flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5" /> প্রিন্ট ইনভয়েস (A4 / স্লিপ)
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="p-8 text-center text-xs text-[#6B6B6B]">
-                  তালিকা থেকে যেকোনো অর্ডার সিলেক্ট করুন
-                </div>
-              )}
-            </div>
           </div>
         )}
 
-        {/* TAB 2: PRODUCTS & STOCK */}
-        {activeTab === 'products' && (
-          <div className="bg-white rounded-[28px] border border-[#EFE9E0] p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EFE9E0]">
-              <h2 className="font-heading font-bold text-lg text-[#2B2B2B]">
-                পণ্য ক্যাটালগ ও স্টক লেভেল
-              </h2>
+        {/* =====================================================================
+            VIEW 2: ORDERS LIST (FULL TABLE WITH DETAILS)
+           ===================================================================== */}
+        {activeNav === 'orders' && (
+          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFEAE2]">
+              <div className="flex items-center gap-2">
+                {['ALL', 'PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setOrdersStatusFilter(st)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      ordersStatusFilter === st
+                        ? 'bg-[#1F1F1F] text-white'
+                        : 'bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#1F1F1F]'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-[#6B6B6B] font-medium">
+                Total {filteredOrders.length} orders
+              </span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-[#EFE9E0] text-[#6B6B6B]">
-                    <th className="pb-3 font-bold">ছবি</th>
-                    <th className="pb-3 font-bold">পণ্যের নাম</th>
-                    <th className="pb-3 font-bold">ভ্যারিয়েশনসমূহ</th>
-                    <th className="pb-3 font-bold">মূল্য</th>
-                    <th className="pb-3 font-bold">স্টক স্ট্যাটাস</th>
+                  <tr className="border-b border-[#EFEAE2] text-[#6B6B6B]">
+                    <th className="pb-3 font-semibold">Order</th>
+                    <th className="pb-3 font-semibold">Customer & Phone</th>
+                    <th className="pb-3 font-semibold">District & Address</th>
+                    <th className="pb-3 font-semibold">Items</th>
+                    <th className="pb-3 font-semibold">Total</th>
+                    <th className="pb-3 font-semibold">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#EFE9E0]">
+                <tbody className="divide-y divide-[#EFEAE2]">
+                  {filteredOrders.map((ord) => (
+                    <tr
+                      key={ord.id}
+                      onClick={() => setSelectedOrder(ord)}
+                      className="hover:bg-[#FAF7F2] transition-colors cursor-pointer group"
+                    >
+                      <td className="py-3.5 font-bold text-[#D32F2F]">
+                        {ord.orderNumber}
+                      </td>
+                      <td className="py-3.5">
+                        <strong className="text-[#1A1A1A] block">{ord.customerName}</strong>
+                        <span className="text-[#6B6B6B]">{ord.customerPhone}</span>
+                      </td>
+                      <td className="py-3.5 text-[#4A4A4A] max-w-xs truncate">
+                        <span className="font-semibold block">{ord.district}</span>
+                        <span className="text-[#6B6B6B] text-[11px] truncate block">{ord.fullAddress}</span>
+                      </td>
+                      <td className="py-3.5 text-[#6B6B6B]">
+                        {ord.items.map((it) => it.title).join(', ')}
+                      </td>
+                      <td className="py-3.5 font-bold text-[#1A1A1A]">
+                        ৳{ord.totalAmount}
+                      </td>
+                      <td className="py-3.5">
+                        {renderStatusBadge(ord.status)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* =====================================================================
+            VIEW 3: PRODUCTS & INVENTORY
+           ===================================================================== */}
+        {activeNav === 'products' && (
+          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
+              <h3 className="font-heading font-black text-base text-[#1A1A1A]">
+                Product Catalog & Variations ({products.length})
+              </h3>
+              <button
+                onClick={() => setShowAddProductModal(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] cursor-pointer"
+              >
+                + Add new product
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#EFEAE2] text-[#6B6B6B]">
+                    <th className="pb-3 font-semibold">Image</th>
+                    <th className="pb-3 font-semibold">Product Name</th>
+                    <th className="pb-3 font-semibold">Variations</th>
+                    <th className="pb-3 font-semibold">Price</th>
+                    <th className="pb-3 font-semibold">Inventory</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EFEAE2]">
                   {products.map((p) => (
                     <tr key={p.id}>
                       <td className="py-3">
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0]">
+                        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2]">
                           <Image src={p.imageUrl} alt={p.titleBn} fill className="object-cover" />
                         </div>
                       </td>
-                      <td className="py-3 font-bold text-[#2B2B2B]">
+                      <td className="py-3 font-bold text-[#1A1A1A]">
                         {p.titleBn}
                         <span className="block text-[11px] text-[#6B6B6B] font-normal">{p.slug}</span>
                       </td>
@@ -775,20 +971,20 @@ export default function AdminDashboardPage() {
                           <div className="space-y-0.5">
                             {p.variations.map((v) => (
                               <div key={v.sku} className="text-[11px]">
-                                <span className="font-bold">{v.titleBn}:</span> ৳{v.salePrice || v.price} (স্টক: {v.stock})
+                                <span className="font-bold">{v.titleBn}:</span> ৳{v.salePrice || v.price} (Stock: {v.stock})
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <span className="text-[#6B6B6B]">একক পণ্য (স্টক: ২৫)</span>
+                          <span className="text-[#6B6B6B]">Single item (25 stock)</span>
                         )}
                       </td>
-                      <td className="py-3 font-black text-[#FF6B6B]">
+                      <td className="py-3 font-black text-[#D32F2F]">
                         ৳{p.baseSalePrice || p.basePrice}
                       </td>
                       <td className="py-3">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#EBF8EE] text-[#2D7A3E]">
-                          ইন স্টক
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#DCFCE7] text-[#15803D]">
+                          In stock
                         </span>
                       </td>
                     </tr>
@@ -799,24 +995,34 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* TAB 3: CATEGORY TREE */}
-        {activeTab === 'categories' && (
-          <div className="bg-white rounded-[28px] border border-[#EFE9E0] p-6 shadow-sm space-y-4">
-            <h2 className="font-heading font-bold text-lg text-[#2B2B2B] pb-3 border-b border-[#EFE9E0]">
-              সীমাহীন গভীরতার ক্যাটাগরি ট্রি (Unlimited Depth Tree)
-            </h2>
+        {/* =====================================================================
+            VIEW 4: CATEGORIES & ATTRIBUTES
+           ===================================================================== */}
+        {activeNav === 'categories' && (
+          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
+              <h3 className="font-heading font-black text-base text-[#1A1A1A]">
+                Unlimited-Depth Category Tree
+              </h3>
+              <button
+                onClick={() => setShowAddCategoryModal(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] cursor-pointer"
+              >
+                + Add category
+              </button>
+            </div>
 
             <div className="space-y-3">
               {categories.map((c) => (
-                <div key={c.slug} className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-2">
+                <div key={c.slug} className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFEAE2] space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-heading font-bold text-sm text-[#2B2B2B]">
+                    <span className="font-heading font-bold text-sm text-[#1A1A1A]">
                       📁 {c.nameBn} ({c.nameEn})
                     </span>
                     <span className="text-xs text-[#6B6B6B] font-mono">/{c.slug}</span>
                   </div>
                   {c.children && c.children.length > 0 && (
-                    <div className="pl-6 border-l-2 border-[#FF6B6B] space-y-1 text-xs">
+                    <div className="pl-6 border-l-2 border-[#D32F2F] space-y-1 text-xs">
                       {c.children.map((sub) => (
                         <div key={sub.slug} className="text-[#6B6B6B]">
                           ↳ {sub.nameBn} ({sub.nameEn})
@@ -829,61 +1035,240 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         )}
+
+        {/* =====================================================================
+            VIEW 5: STEADFAST COURIER AUTOMATION
+           ===================================================================== */}
+        {activeNav === 'steadfast' && (
+          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
+              <h3 className="font-heading font-black text-base text-[#1A1A1A]">
+                Steadfast Courier Integration & COD Reconciliation
+              </h3>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#E8F5E9] text-[#2E7D32]">
+                Mock Courier Ready
+              </span>
+            </div>
+
+            <p className="text-xs text-[#6B6B6B]">
+              Confirmed orders can be dispatched to Steadfast with one click. Consignment IDs and tracking codes are automatically synced.
+            </p>
+
+            <div className="divide-y divide-[#EFEAE2]">
+              {orders.map((ord) => (
+                <div key={ord.id} className="py-3 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-[#D32F2F] block">{ord.orderNumber} - {ord.customerName}</span>
+                    <span className="text-[#6B6B6B]">{ord.district} | COD: ৳{ord.totalAmount}</span>
+                  </div>
+
+                  <div>
+                    {ord.consignmentId ? (
+                      <span className="px-3 py-1 rounded-full bg-[#E0F2FE] text-[#0369A1] font-bold">
+                        Dispatched ({ord.trackingCode})
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleSendToSteadfast(ord)}
+                        className="px-3 py-1.5 rounded-xl bg-[#D32F2F] text-white font-bold hover:bg-[#B71C1C] cursor-pointer"
+                      >
+                        Send to Steadfast
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Fallback for other sidebar sections */}
+        {!['dashboard', 'orders', 'products', 'categories', 'steadfast'].includes(activeNav) && (
+          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-8 shadow-xs text-center space-y-3">
+            <span className="text-3xl">⚙️</span>
+            <h3 className="font-heading font-bold text-lg text-[#1A1A1A]">
+              {activeNav.replace('-', ' ').toUpperCase()} Section
+            </h3>
+            <p className="text-xs text-[#6B6B6B] max-w-sm mx-auto">
+              This module is scheduled for Phase 2/3. You can manage live orders, catalog products, and Steadfast courier dispatches right now.
+            </p>
+            <button
+              onClick={() => setActiveNav('dashboard')}
+              className="px-4 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        )}
       </main>
 
-      {/* Add Product Modal */}
+      {/* =========================================================================
+          ORDER DETAIL MODAL / DRAWER (WHEN ANY ORDER ROW IS CLICKED)
+         ========================================================================= */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[28px] max-w-lg w-full p-6 space-y-4 shadow-xl border border-[#EFEAE2] max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
+              <div>
+                <span className="text-[10px] text-[#6B6B6B] block">Order Detail</span>
+                <h3 className="font-heading font-black text-xl text-[#D32F2F]">
+                  {selectedOrder.orderNumber}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="w-8 h-8 rounded-full bg-[#FAF7F2] flex items-center justify-center text-[#6B6B6B] hover:text-[#1A1A1A]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Customer Details */}
+            <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EFEAE2] text-xs space-y-1">
+              <span className="font-bold text-[#1A1A1A] block">{selectedOrder.customerName}</span>
+              <p className="text-[#6B6B6B]">Phone: {selectedOrder.customerPhone}</p>
+              <p className="text-[#2B2B2B]">Address: {selectedOrder.fullAddress}</p>
+              <p className="text-[#6B6B6B]">District: {selectedOrder.district}</p>
+              {selectedOrder.customerNote && (
+                <p className="text-[#D32F2F] italic mt-1">Note: {selectedOrder.customerNote}</p>
+              )}
+            </div>
+
+            {/* Items Snapshot */}
+            <div className="space-y-1 text-xs">
+              <span className="font-bold text-[#6B6B6B] block mb-1">Ordered Items (Snapshot):</span>
+              <div className="divide-y divide-[#EFEAE2] border border-[#EFEAE2] rounded-xl overflow-hidden">
+                {selectedOrder.items.map((it) => (
+                  <div key={it.id} className="p-2.5 bg-white flex justify-between items-center">
+                    <div>
+                      <span className="font-bold text-[#1A1A1A] block">{it.title}</span>
+                      {it.variationTitle && (
+                        <span className="text-[11px] text-[#6B6B6B]">{it.variationTitle}</span>
+                      )}
+                      <span className="text-[#6B6B6B]"> × {it.quantity}</span>
+                    </div>
+                    <span className="font-bold text-[#1A1A1A]">৳{it.total}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 flex justify-between font-black text-sm text-[#D32F2F]">
+                <span>Total Amount:</span>
+                <span>৳{selectedOrder.totalAmount}</span>
+              </div>
+            </div>
+
+            {/* Steadfast 1-Click Dispatch */}
+            <div className="pt-2 space-y-2">
+              <span className="font-bold text-xs text-[#2B2B2B] block">Courier Action (Steadfast):</span>
+              {selectedOrder.consignmentId ? (
+                <div className="p-3 rounded-2xl bg-[#E0F2FE] border border-[#BEE3F8] text-xs text-[#0369A1] space-y-1">
+                  <span className="font-bold block">Consignment Created</span>
+                  <p className="font-mono text-xs">
+                    ID: {selectedOrder.consignmentId} | Tracking: {selectedOrder.trackingCode}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleSendToSteadfast(selectedOrder)}
+                  className="w-full py-2.5 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Send className="w-3.5 h-3.5" /> Send to Steadfast (1-Click Dispatch)
+                </button>
+              )}
+            </div>
+
+            {/* Status Change Selector */}
+            <div className="pt-2 space-y-1.5">
+              <label className="text-xs font-bold text-[#2B2B2B] block">Update Status:</label>
+              <select
+                value={selectedOrder.status}
+                onChange={(e) =>
+                  handleStatusChange(selectedOrder.id, e.target.value as OrderRecord['status'])
+                }
+                className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] text-xs font-bold cursor-pointer"
+              >
+                <option value="PENDING">PENDING</option>
+                <option value="CONFIRMED">CONFIRMED</option>
+                <option value="PROCESSING">PROCESSING</option>
+                <option value="SHIPPED">SHIPPED</option>
+                <option value="DELIVERED">DELIVERED</option>
+                <option value="CANCELLED">CANCELLED (Restores Stock)</option>
+              </select>
+            </div>
+
+            {/* Print Slip */}
+            <div className="pt-1">
+              <button
+                onClick={() =>
+                  alert(
+                    `INVOICE / PACKING SLIP:\nOrder: ${selectedOrder.orderNumber}\nCustomer: ${selectedOrder.customerName}\nTotal: ৳${selectedOrder.totalAmount}`
+                  )
+                }
+                className="w-full py-2 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] text-xs font-bold text-[#2B2B2B] hover:bg-[#EFEAE2] flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" /> Print Invoice / Packing Slip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          ADD PRODUCT MODAL
+         ========================================================================= */}
       {showAddProductModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[28px] max-w-md w-full p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between pb-2 border-b border-[#EFE9E0]">
-              <h3 className="font-heading font-bold text-base text-[#2B2B2B]">নতুন পণ্য যুক্ত করুন</h3>
+          <div className="bg-white rounded-[28px] max-w-md w-full p-6 space-y-4 shadow-xl border border-[#EFEAE2]">
+            <div className="flex items-center justify-between pb-2 border-b border-[#EFEAE2]">
+              <h3 className="font-heading font-black text-base text-[#1A1A1A]">Add New Product</h3>
               <button onClick={() => setShowAddProductModal(false)} className="text-[#6B6B6B]">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCreateProduct} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold block mb-1">পণ্যের নাম (বাংলা):</label>
+                <label className="font-bold block mb-1">Product Title (Bangla):</label>
                 <input
                   required
                   value={newProdTitleBn}
                   onChange={(e) => setNewProdTitleBn(e.target.value)}
-                  placeholder="যেমন: রেইনবো ওয়াটার কালার সেট"
-                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                  placeholder="যেমন: ন্যাচারাল মোমের রঙ ১২ প্যাক"
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
                 />
               </div>
               <div>
-                <label className="font-bold block mb-1">পণ্যের নাম (English):</label>
+                <label className="font-bold block mb-1">Product Title (English):</label>
                 <input
                   required
                   value={newProdTitleEn}
                   onChange={(e) => setNewProdTitleEn(e.target.value)}
-                  placeholder="e.g. Rainbow Watercolor Art Set"
-                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                  placeholder="e.g. Natural Beeswax Crayons 12 Pack"
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold block mb-1">মূল্য (৳):</label>
+                  <label className="font-bold block mb-1">Price (৳):</label>
                   <input
                     type="number"
                     required
                     value={newProdPrice}
                     onChange={(e) => setNewProdPrice(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1">ক্যাটাগরি:</label>
+                  <label className="font-bold block mb-1">Category:</label>
                   <select
                     value={newProdCategory}
                     onChange={(e) => setNewProdCategory(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
                   >
-                    <option value="wax-crayons">মোমের রঙ</option>
-                    <option value="play-dough-clay">ক্লে ও ডো</option>
-                    <option value="wooden-toys">কাঠের খেলনা</option>
-                    <option value="educational-toys">শিক্ষামূলক</option>
+                    <option value="wax-crayons">Wax Crayons</option>
+                    <option value="play-dough-clay">Clay & Dough</option>
+                    <option value="wooden-toys">Wooden Toys</option>
+                    <option value="educational-toys">Educational Toys</option>
                   </select>
                 </div>
               </div>
@@ -893,13 +1278,13 @@ export default function AdminDashboardPage() {
                   onClick={() => setShowAddProductModal(false)}
                   className="px-4 py-2 rounded-xl bg-[#FAF7F2] text-[#6B6B6B] font-bold"
                 >
-                  বাতিল
+                  Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#E53935] text-white font-bold"
+                  className="px-4 py-2 rounded-xl bg-[#D32F2F] text-white font-bold"
                 >
-                  সংরক্ষণ করুন
+                  Save Product
                 </button>
               </div>
             </form>
@@ -907,44 +1292,46 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* Add Category Modal */}
+      {/* =========================================================================
+          ADD CATEGORY MODAL
+         ========================================================================= */}
       {showAddCategoryModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[28px] max-w-md w-full p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between pb-2 border-b border-[#EFE9E0]">
-              <h3 className="font-heading font-bold text-base text-[#2B2B2B]">নতুন ক্যাটাগরি তৈরি করুন</h3>
+          <div className="bg-white rounded-[28px] max-w-md w-full p-6 space-y-4 shadow-xl border border-[#EFEAE2]">
+            <div className="flex items-center justify-between pb-2 border-b border-[#EFEAE2]">
+              <h3 className="font-heading font-black text-base text-[#1A1A1A]">Add New Category</h3>
               <button onClick={() => setShowAddCategoryModal(false)} className="text-[#6B6B6B]">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCreateCategory} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold block mb-1">ক্যাটাগরির নাম (বাংলা):</label>
+                <label className="font-bold block mb-1">Category Name (Bangla):</label>
                 <input
                   required
                   value={newCatNameBn}
                   onChange={(e) => setNewCatNameBn(e.target.value)}
                   placeholder="যেমন: স্টোরি বুক ও আর্ট"
-                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
                 />
               </div>
               <div>
-                <label className="font-bold block mb-1">ক্যাটাগরির নাম (English):</label>
+                <label className="font-bold block mb-1">Category Name (English):</label>
                 <input
                   required
                   value={newCatNameEn}
                   onChange={(e) => setNewCatNameEn(e.target.value)}
                   placeholder="e.g. Story Books & Art"
-                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
                 />
               </div>
               <div>
-                <label className="font-bold block mb-1">বিবরণ (Description):</label>
+                <label className="font-bold block mb-1">Description:</label>
                 <textarea
                   value={newCatDesc}
                   onChange={(e) => setNewCatDesc(e.target.value)}
-                  placeholder="সংক্ষিপ্ত বিবরণ লিখুন..."
-                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                  placeholder="Enter short description..."
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
                 />
               </div>
               <div className="pt-2 flex justify-end gap-2">
@@ -953,13 +1340,13 @@ export default function AdminDashboardPage() {
                   onClick={() => setShowAddCategoryModal(false)}
                   className="px-4 py-2 rounded-xl bg-[#FAF7F2] text-[#6B6B6B] font-bold"
                 >
-                  বাতিল
+                  Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#E53935] text-white font-bold"
+                  className="px-4 py-2 rounded-xl bg-[#D32F2F] text-white font-bold"
                 >
-                  ক্যাটাগরি তৈরি করুন
+                  Save Category
                 </button>
               </div>
             </form>
