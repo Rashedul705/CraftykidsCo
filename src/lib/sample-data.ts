@@ -98,7 +98,7 @@ export const sampleCategories: SampleCategory[] = [
     nameBn: 'শিক্ষামূলক',
     nameEn: 'Educational',
     description: 'মন্টেসরি মেথড লার্নিং বোর্ড ও আর্লি চাইল্ডহুড ডেভেলপমেন্ট কিটস',
-    imageUrl: 'https://images.unsplash.com/photo-1560421683-680b9c814e52?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=400&q=80',
     badgeColor: '#EDE7F6',
     children: [],
   },
@@ -277,7 +277,7 @@ export const sampleProducts: SampleProduct[] = [
     isBestSeller: true,
     targetAgeMin: 3,
     targetAgeMax: 7,
-    imageUrl: 'https://images.unsplash.com/photo-1560421683-680b9c814e52?auto=format&fit=crop&w=600&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=600&q=80',
     badge: 'সেরা উপহার',
   },
   {
@@ -470,7 +470,7 @@ export const sampleProducts: SampleProduct[] = [
     isBestSeller: false,
     targetAgeMin: 3,
     targetAgeMax: 7,
-    imageUrl: 'https://images.unsplash.com/photo-1560421683-680b9c814e52?auto=format&fit=crop&w=600&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=600&q=80',
     badge: 'ব্রেইন গেম',
   },
   {

@@ -35,22 +35,43 @@ function TrackContent() {
     }
   }, [initialOrder]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setHasSearched(true);
 
-    if (orderQuery.trim()) {
-      const ord = getOrderByIdOrNumber(orderQuery.trim());
-      if (ord) {
-        setFoundOrder(ord);
+    const q = orderQuery.trim();
+    const p = phoneQuery.trim();
+
+    if (q) {
+      try {
+        const res = await fetch(`/api/orders/${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (data.success && data.order) {
+          setFoundOrder(data.order);
+          return;
+        }
+      } catch {}
+
+      const localOrd = getOrderByIdOrNumber(q);
+      if (localOrd) {
+        setFoundOrder(localOrd);
         return;
       }
     }
 
-    if (phoneQuery.trim()) {
-      const orders = getOrdersByPhone(phoneQuery.trim());
-      if (orders.length > 0) {
-        setFoundOrder(orders[0]);
+    if (p) {
+      try {
+        const res = await fetch(`/api/orders?phone=${encodeURIComponent(p)}`);
+        const data = await res.json();
+        if (data.success && data.orders && data.orders.length > 0) {
+          setFoundOrder(data.orders[0]);
+          return;
+        }
+      } catch {}
+
+      const localOrders = getOrdersByPhone(p);
+      if (localOrders.length > 0) {
+        setFoundOrder(localOrders[0]);
         return;
       }
     }

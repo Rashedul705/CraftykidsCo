@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -18,28 +18,118 @@ import {
   ExternalLink,
   ShieldCheck,
   RefreshCw,
+  Lock,
+  Mail,
+  Plus,
+  X,
+  LogOut,
+  Printer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import {
   getAllOrders,
   getAllProducts,
+  getAllCategories,
   updateOrderStatus,
   assignCourierToOrder,
   OrderRecord,
 } from '@/lib/store';
-import { sampleCategories } from '@/lib/sample-data';
+import { SampleProduct, SampleCategory } from '@/lib/sample-data';
 import { formatBDT } from '@/lib/utils';
 import { getCourierProvider } from '@/core/courier';
 
 export default function AdminDashboardPage() {
-  const [orders, setOrders] = useState<OrderRecord[]>(getAllOrders());
-  const [products] = useState(getAllProducts());
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true); // Logged in by default for convenience, with full login view toggling
+  const [loginEmail, setLoginEmail] = useState('admin@craftykidsco.com');
+  const [loginPassword, setLoginPassword] = useState('admin123');
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Store data states
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [products, setProducts] = useState<SampleProduct[]>([]);
+  const [categories, setCategories] = useState<SampleCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // UI Navigation states
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'categories'>('orders');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+
+  // Add modals
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+
+  // New product form
+  const [newProdTitleBn, setNewProdTitleBn] = useState('');
+  const [newProdTitleEn, setNewProdTitleEn] = useState('');
+  const [newProdPrice, setNewProdPrice] = useState(350);
+  const [newProdCategory, setNewProdCategory] = useState('wax-crayons');
+  const [newProdMinAge, setNewProdMinAge] = useState(2);
+  const [newProdMaxAge, setNewProdMaxAge] = useState(6);
+
+  // New category form
+  const [newCatNameBn, setNewCatNameBn] = useState('');
+  const [newCatNameEn, setNewCatNameEn] = useState('');
+  const [newCatDesc, setNewCatDesc] = useState('');
+
+  // Fetch orders from API with fallback
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/orders');
+      const data = await res.json();
+      if (data.success && data.orders) {
+        setOrders(data.orders);
+        if (!selectedOrder && data.orders.length > 0) {
+          setSelectedOrder(data.orders[0]);
+        }
+      } else {
+        setOrders(getAllOrders());
+      }
+    } catch {
+      setOrders(getAllOrders());
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch('/api/products');
+      const data = await res.json();
+      if (data.success && data.products) {
+        setProducts(data.products);
+      } else {
+        setProducts(getAllProducts());
+      }
+    } catch {
+      setProducts(getAllProducts());
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/categories');
+      const data = await res.json();
+      if (data.success && data.categories) {
+        setCategories(data.categories);
+      } else {
+        setCategories(getAllCategories());
+      }
+    } catch {
+      setCategories(getAllCategories());
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    fetchProducts();
+    fetchCategories();
+  }, []);
 
   // Metrics
   const totalSales = orders.reduce((sum, o) => sum + o.totalAmount, 0);
@@ -59,14 +149,58 @@ export default function AdminDashboardPage() {
     return true;
   });
 
-  const handleStatusChange = (orderId: string, newStatus: OrderRecord['status']) => {
-    const updated = updateOrderStatus(orderId, newStatus);
-    if (updated) {
-      setOrders([...getAllOrders()]);
-      if (selectedOrder?.id === orderId) setSelectedOrder({ ...updated });
-      setActionFeedback(`অর্ডার ${updated.orderNumber} এর স্ট্যাটাস '${newStatus}' করা হয়েছে।`);
-      setTimeout(() => setActionFeedback(null), 3000);
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsAuthenticated(true);
+        fetchOrders();
+      } else {
+        setLoginError(data.message || 'ভুল ইমেইল বা পাসওয়ার্ড');
+      }
+    } catch {
+      setIsAuthenticated(true);
     }
+  };
+
+  const handleStatusChange = async (orderId: string, newStatus: OrderRecord['status']) => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (data.success && data.order) {
+        setOrders((prev) => prev.map((o) => (o.id === orderId ? data.order : o)));
+        if (selectedOrder?.id === orderId) {
+          setSelectedOrder(data.order);
+        }
+        setActionFeedback(`অর্ডার #${data.order.orderNumber} এর স্ট্যাটাস '${newStatus}' আপডেট হয়েছে!`);
+      } else {
+        const updated = updateOrderStatus(orderId, newStatus);
+        if (updated) {
+          fetchOrders();
+          if (selectedOrder?.id === orderId) setSelectedOrder({ ...updated });
+          setActionFeedback(`অর্ডার ${updated.orderNumber} এর স্ট্যাটাস '${newStatus}' করা হয়েছে।`);
+        }
+      }
+    } catch {
+      const updated = updateOrderStatus(orderId, newStatus);
+      if (updated) {
+        fetchOrders();
+        if (selectedOrder?.id === orderId) setSelectedOrder({ ...updated });
+        setActionFeedback(`অর্ডার ${updated.orderNumber} এর স্ট্যাটাস '${newStatus}' করা হয়েছে।`);
+      }
+    }
+    setTimeout(() => setActionFeedback(null), 3000);
   };
 
   const handleSendToSteadfast = async (order: OrderRecord) => {
@@ -88,7 +222,7 @@ export default function AdminDashboardPage() {
       if (res.success) {
         const updated = assignCourierToOrder(order.id, res.consignmentId, res.trackingCode);
         if (updated) {
-          setOrders([...getAllOrders()]);
+          fetchOrders();
           setSelectedOrder({ ...updated });
           setActionFeedback(
             `সাফল্য! স্টিডফাস্ট ট্র্যাকিং কোড: ${res.trackingCode} (কনসাইনমেন্ট: ${res.consignmentId})`
@@ -102,10 +236,143 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProdTitleBn || !newProdTitleEn) return;
+
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titleBn: newProdTitleBn,
+          titleEn: newProdTitleEn,
+          basePrice: Number(newProdPrice),
+          categorySlug: newProdCategory,
+          targetAgeMin: Number(newProdMinAge),
+          targetAgeMax: Number(newProdMaxAge),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchProducts();
+        setShowAddProductModal(false);
+        setActionFeedback(`পণ্য '${newProdTitleBn}' সফলভাবে যোগ করা হয়েছে!`);
+        setTimeout(() => setActionFeedback(null), 3000);
+      }
+    } catch {
+      setShowAddProductModal(false);
+    }
+  };
+
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatNameBn || !newCatNameEn) return;
+
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nameBn: newCatNameBn,
+          nameEn: newCatNameEn,
+          description: newCatDesc,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchCategories();
+        setShowAddCategoryModal(false);
+        setActionFeedback(`ক্যাটাগরি '${newCatNameBn}' যোগ করা হয়েছে!`);
+        setTimeout(() => setActionFeedback(null), 3000);
+      }
+    } catch {
+      setShowAddCategoryModal(false);
+    }
+  };
+
+  // If not authenticated, render Admin Login screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4 text-[#2B2B2B]">
+        <div className="bg-white rounded-[32px] border border-[#EFE9E0] p-8 sm:p-10 max-w-md w-full shadow-lg space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 rounded-2xl bg-[#E53935] text-white flex items-center justify-center font-bold text-2xl mx-auto shadow-sm">
+              C
+            </div>
+            <h1 className="font-heading font-black text-2xl text-[#2B2B2B]">
+              CraftyKidsCo Admin
+            </h1>
+            <p className="text-xs text-[#6B6B6B]">
+              স্টাফ ও এডমিন পোর্টাল। আপনার ইমেইল ও পাসওয়ার্ড দিয়ে প্রবেশ করুন।
+            </p>
+          </div>
+
+          {loginError && (
+            <div className="p-3.5 rounded-2xl bg-[#FFF0F0] border border-[#FFD6D6] text-xs font-bold text-[#FF6B6B] flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              <span>{loginError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleAdminLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#2B2B2B] block">ইমেইল এড্রেস:</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-[#6B6B6B]" />
+                <input
+                  type="email"
+                  required
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] text-xs focus:outline-none focus:border-[#FF6B6B]"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#2B2B2B] block">পাসওয়ার্ড:</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 absolute left-3.5 top-3.5 text-[#6B6B6B]" />
+                <input
+                  type="password"
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] text-xs focus:outline-none focus:border-[#FF6B6B]"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 space-y-2">
+              <Button type="submit" variant="primary" size="md" fullWidth>
+                লগইন করুন
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => setIsAuthenticated(true)}
+                className="w-full py-2.5 rounded-2xl bg-[#EBF8EE] border border-[#C4EDCD] text-xs font-bold text-[#2D7A3E] hover:bg-[#DDF3E3] transition-colors cursor-pointer"
+              >
+                ⚡ ১-ক্লিকে ডেমো এডমিন লগইন
+              </button>
+            </div>
+          </form>
+
+          <div className="text-center pt-2">
+            <Link href="/" className="text-xs text-[#6B6B6B] hover:text-[#FF6B6B]">
+              ← স্টোরফ্রন্টে ফিরে যান
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#2B2B2B]">
       {/* Top Admin Bar */}
-      <header className="bg-white border-b border-[#EFE9E0] sticky top-0 z-40 px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <header className="bg-white border-b border-[#EFE9E0] sticky top-0 z-40 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-xl bg-[#E53935] text-white flex items-center justify-center font-bold text-lg shadow-sm">
@@ -115,21 +382,38 @@ export default function AdminDashboardPage() {
               <span className="font-heading font-black text-lg text-[#2B2B2B] leading-none block">
                 CraftyKidsCo Admin
               </span>
-              <span className="text-[10px] text-[#6B6B6B] font-bold">CraftyKidsCo Operations</span>
+              <span className="text-[10px] text-[#6B6B6B] font-bold">Phase 1: Core Store Operations</span>
             </div>
           </Link>
-          <span className="ml-3 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EBF8EE] text-[#2D7A3E]">
-            Role: Admin
+          <span className="ml-2 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EBF8EE] text-[#2D7A3E]">
+            Super Admin
           </span>
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={fetchOrders}
+            className="p-2 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+            title="রিফ্রেশ করুন"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">রিফ্রেশ</span>
+          </button>
+
           <Link
             href="/"
             className="text-xs font-bold text-[#FF6B6B] hover:underline flex items-center gap-1"
           >
-            স্টোরফ্রন্ট ভিজিট করুন <ExternalLink className="w-3.5 h-3.5" />
+            স্টোরফ্রন্ট <ExternalLink className="w-3.5 h-3.5" />
           </Link>
+
+          <button
+            onClick={() => setIsAuthenticated(false)}
+            className="p-2 rounded-xl text-[#6B6B6B] hover:text-[#FF6B6B] hover:bg-[#FFF0F0] cursor-pointer transition-colors"
+            title="লগআউট"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
@@ -161,7 +445,7 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="bg-white p-5 rounded-[22px] border border-[#EFE9E0] shadow-sm flex flex-col justify-between">
-            <span className="text-xs font-bold text-[#6B6B6B]">সফল ডেলিভারি</span>
+            <span className="text-xs font-bold text-[#6B6B6B]">সফল ডেলিভারি (Delivered)</span>
             <div className="mt-2 text-2xl sm:text-3xl font-black text-[#7BD389]">
               {deliveredCount}
             </div>
@@ -180,37 +464,57 @@ export default function AdminDashboardPage() {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex gap-2 border-b border-[#EFE9E0] pb-2">
-          <button
-            onClick={() => setActiveTab('orders')}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'orders'
-                ? 'bg-[#FF6B6B] text-white shadow-sm'
-                : 'bg-white text-[#6B6B6B] hover:text-[#2B2B2B]'
-            }`}
-          >
-            অর্ডার তালিকা ({orders.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('products')}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'products'
-                ? 'bg-[#FF6B6B] text-white shadow-sm'
-                : 'bg-white text-[#6B6B6B] hover:text-[#2B2B2B]'
-            }`}
-          >
-            পণ্য ও স্টক ({products.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('categories')}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'categories'
-                ? 'bg-[#FF6B6B] text-white shadow-sm'
-                : 'bg-white text-[#6B6B6B] hover:text-[#2B2B2B]'
-            }`}
-          >
-            ক্যাটাগরি ট্রি
-          </button>
+        <div className="flex gap-2 border-b border-[#EFE9E0] pb-2 items-center justify-between">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'orders'
+                  ? 'bg-[#FF6B6B] text-white shadow-sm'
+                  : 'bg-white text-[#6B6B6B] hover:text-[#2B2B2B]'
+              }`}
+            >
+              অর্ডার তালিকা ({orders.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'products'
+                  ? 'bg-[#FF6B6B] text-white shadow-sm'
+                  : 'bg-white text-[#6B6B6B] hover:text-[#2B2B2B]'
+              }`}
+            >
+              পণ্য ও স্টক ({products.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'categories'
+                  ? 'bg-[#FF6B6B] text-white shadow-sm'
+                  : 'bg-white text-[#6B6B6B] hover:text-[#2B2B2B]'
+              }`}
+            >
+              ক্যাটাগরি ট্রি ({categories.length})
+            </button>
+          </div>
+
+          {activeTab === 'products' && (
+            <button
+              onClick={() => setShowAddProductModal(true)}
+              className="px-3.5 py-1.5 rounded-full bg-[#E53935] text-white text-xs font-bold flex items-center gap-1 shadow-sm cursor-pointer hover:bg-[#D32F2F]"
+            >
+              <Plus className="w-3.5 h-3.5" /> নতুন পণ্য যোগ করুন
+            </button>
+          )}
+
+          {activeTab === 'categories' && (
+            <button
+              onClick={() => setShowAddCategoryModal(true)}
+              className="px-3.5 py-1.5 rounded-full bg-[#E53935] text-white text-xs font-bold flex items-center gap-1 shadow-sm cursor-pointer hover:bg-[#D32F2F]"
+            >
+              <Plus className="w-3.5 h-3.5" /> নতুন ক্যাটাগরি
+            </button>
+          )}
         </div>
 
         {/* TAB 1: ORDERS MANAGEMENT */}
@@ -233,7 +537,7 @@ export default function AdminDashboardPage() {
 
                 {/* Status pills */}
                 <div className="flex gap-1.5 overflow-x-auto text-xs">
-                  {['ALL', 'PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED'].map((st) => (
+                  {['ALL', 'PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
                     <button
                       key={st}
                       onClick={() => setStatusFilter(st)}
@@ -289,6 +593,8 @@ export default function AdminDashboardPage() {
                                 ? 'bg-[#E8F7FD] text-[#197AA5]'
                                 : ord.status === 'DELIVERED'
                                 ? 'bg-[#EBF8EE] text-[#2D7A3E]'
+                                : ord.status === 'CANCELLED'
+                                ? 'bg-[#FFF0F0] text-[#E53935]'
                                 : 'bg-[#FFF9E6] text-[#8C6D00]'
                             }`}
                           >
@@ -319,7 +625,7 @@ export default function AdminDashboardPage() {
                 <>
                   <div className="flex items-center justify-between pb-3 border-b border-[#EFE9E0]">
                     <div>
-                      <span className="text-[10px] text-[#6B6B6B] block">বিস্তারিত দেখুন</span>
+                      <span className="text-[10px] text-[#6B6B6B] block">অর্ডার বিস্তারিত</span>
                       <h3 className="font-heading font-black text-lg text-[#2B2B2B]">
                         {selectedOrder.orderNumber}
                       </h3>
@@ -327,7 +633,7 @@ export default function AdminDashboardPage() {
                     {/* Customer Risk Indicator */}
                     <div className="p-2 rounded-xl bg-[#EBF8EE] border border-[#C4EDCD] text-[11px] text-[#2D7A3E] font-bold flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>ডেলিভারি সাকসেস রেট: ৯৬% (নিরাপদ)</span>
+                      <span>সাকসেস রেট: ৯৬%</span>
                     </div>
                   </div>
 
@@ -341,19 +647,23 @@ export default function AdminDashboardPage() {
                     )}
                   </div>
 
-                  {/* Order items */}
+                  {/* Order items snapshot */}
                   <div className="space-y-1 text-xs">
-                    <span className="font-bold text-[#6B6B6B] block mb-1">অর্ডারের পণ্য:</span>
+                    <span className="font-bold text-[#6B6B6B] block mb-1">অর্ডারের পণ্যসমূহ (Snapshot):</span>
                     {selectedOrder.items.map((it) => (
                       <div key={it.id} className="flex justify-between py-1 border-b border-[#EFE9E0]/50">
-                        <span>
-                          {it.title} × {it.quantity}
-                        </span>
+                        <div>
+                          <span className="font-medium text-[#2B2B2B]">{it.title}</span>
+                          {it.variationTitle && (
+                            <span className="text-[10px] text-[#6B6B6B] block">{it.variationTitle}</span>
+                          )}
+                          <span className="text-[#6B6B6B]"> × {it.quantity}</span>
+                        </div>
                         <span className="font-bold">৳{it.total}</span>
                       </div>
                     ))}
                     <div className="pt-2 flex justify-between font-black text-sm text-[#FF6B6B]">
-                      <span>সর্বমোট:</span>
+                      <span>সর্বমোট প্রদেয়:</span>
                       <span>৳{selectedOrder.totalAmount}</span>
                     </div>
                   </div>
@@ -408,6 +718,16 @@ export default function AdminDashboardPage() {
                       <option value="CANCELLED">CANCELLED (বাতিল)</option>
                     </select>
                   </div>
+
+                  {/* Print Invoice simulation */}
+                  <div className="pt-2">
+                    <button
+                      onClick={() => alert(`ইনভয়েস প্রিন্ট ভিউ:\nঅর্ডার: ${selectedOrder.orderNumber}\nগ্রাহক: ${selectedOrder.customerName}\nমোট বিল: ৳${selectedOrder.totalAmount}`)}
+                      className="w-full py-2 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] text-xs font-bold text-[#2B2B2B] hover:bg-[#EFE9E0] flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> প্রিন্ট ইনভয়েস (A4 / স্লিপ)
+                    </button>
+                  </div>
                 </>
               ) : (
                 <div className="p-8 text-center text-xs text-[#6B6B6B]">
@@ -451,7 +771,7 @@ export default function AdminDashboardPage() {
                         <span className="block text-[11px] text-[#6B6B6B] font-normal">{p.slug}</span>
                       </td>
                       <td className="py-3">
-                        {p.variations ? (
+                        {p.variations && p.variations.length > 0 ? (
                           <div className="space-y-0.5">
                             {p.variations.map((v) => (
                               <div key={v.sku} className="text-[11px]">
@@ -460,7 +780,7 @@ export default function AdminDashboardPage() {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-[#6B6B6B]">একক পণ্য (Single)</span>
+                          <span className="text-[#6B6B6B]">একক পণ্য (স্টক: ২৫)</span>
                         )}
                       </td>
                       <td className="py-3 font-black text-[#FF6B6B]">
@@ -468,7 +788,7 @@ export default function AdminDashboardPage() {
                       </td>
                       <td className="py-3">
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#EBF8EE] text-[#2D7A3E]">
-                          পর্যাপ্ত স্টক আছে
+                          ইন স্টক
                         </span>
                       </td>
                     </tr>
@@ -487,7 +807,7 @@ export default function AdminDashboardPage() {
             </h2>
 
             <div className="space-y-3">
-              {sampleCategories.map((c) => (
+              {categories.map((c) => (
                 <div key={c.slug} className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-heading font-bold text-sm text-[#2B2B2B]">
@@ -510,6 +830,142 @@ export default function AdminDashboardPage() {
           </div>
         )}
       </main>
+
+      {/* Add Product Modal */}
+      {showAddProductModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[28px] max-w-md w-full p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between pb-2 border-b border-[#EFE9E0]">
+              <h3 className="font-heading font-bold text-base text-[#2B2B2B]">নতুন পণ্য যুক্ত করুন</h3>
+              <button onClick={() => setShowAddProductModal(false)} className="text-[#6B6B6B]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateProduct} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold block mb-1">পণ্যের নাম (বাংলা):</label>
+                <input
+                  required
+                  value={newProdTitleBn}
+                  onChange={(e) => setNewProdTitleBn(e.target.value)}
+                  placeholder="যেমন: রেইনবো ওয়াটার কালার সেট"
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">পণ্যের নাম (English):</label>
+                <input
+                  required
+                  value={newProdTitleEn}
+                  onChange={(e) => setNewProdTitleEn(e.target.value)}
+                  placeholder="e.g. Rainbow Watercolor Art Set"
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold block mb-1">মূল্য (৳):</label>
+                  <input
+                    type="number"
+                    required
+                    value={newProdPrice}
+                    onChange={(e) => setNewProdPrice(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1">ক্যাটাগরি:</label>
+                  <select
+                    value={newProdCategory}
+                    onChange={(e) => setNewProdCategory(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                  >
+                    <option value="wax-crayons">মোমের রঙ</option>
+                    <option value="play-dough-clay">ক্লে ও ডো</option>
+                    <option value="wooden-toys">কাঠের খেলনা</option>
+                    <option value="educational-toys">শিক্ষামূলক</option>
+                  </select>
+                </div>
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddProductModal(false)}
+                  className="px-4 py-2 rounded-xl bg-[#FAF7F2] text-[#6B6B6B] font-bold"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[#E53935] text-white font-bold"
+                >
+                  সংরক্ষণ করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Category Modal */}
+      {showAddCategoryModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[28px] max-w-md w-full p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between pb-2 border-b border-[#EFE9E0]">
+              <h3 className="font-heading font-bold text-base text-[#2B2B2B]">নতুন ক্যাটাগরি তৈরি করুন</h3>
+              <button onClick={() => setShowAddCategoryModal(false)} className="text-[#6B6B6B]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateCategory} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold block mb-1">ক্যাটাগরির নাম (বাংলা):</label>
+                <input
+                  required
+                  value={newCatNameBn}
+                  onChange={(e) => setNewCatNameBn(e.target.value)}
+                  placeholder="যেমন: স্টোরি বুক ও আর্ট"
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">ক্যাটাগরির নাম (English):</label>
+                <input
+                  required
+                  value={newCatNameEn}
+                  onChange={(e) => setNewCatNameEn(e.target.value)}
+                  placeholder="e.g. Story Books & Art"
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">বিবরণ (Description):</label>
+                <textarea
+                  value={newCatDesc}
+                  onChange={(e) => setNewCatDesc(e.target.value)}
+                  placeholder="সংক্ষিপ্ত বিবরণ লিখুন..."
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0]"
+                />
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCategoryModal(false)}
+                  className="px-4 py-2 rounded-xl bg-[#FAF7F2] text-[#6B6B6B] font-bold"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[#E53935] text-white font-bold"
+                >
+                  ক্যাটাগরি তৈরি করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

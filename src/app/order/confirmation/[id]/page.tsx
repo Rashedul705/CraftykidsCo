@@ -17,7 +17,24 @@ function ConfirmationContent() {
   const params = useParams();
   const id = (params?.id as string) || 'RK-1001';
 
-  const order = getOrderByIdOrNumber(id) || getAllOrders()[0];
+  const [order, setOrder] = React.useState<any>(() => getOrderByIdOrNumber(id) || getAllOrders()[0]);
+
+  React.useEffect(() => {
+    if (id) {
+      fetch(`/api/orders/${id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.order) {
+            setOrder(data.order);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [id]);
+
+  if (!order) {
+    return <div className="p-12 text-center text-xs">অর্ডার লোড হচ্ছে...</div>;
+  }
 
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -90,7 +107,7 @@ function ConfirmationContent() {
         <div className="space-y-3 pt-2">
           <h3 className="font-heading font-bold text-sm text-[#2B2B2B]">অর্ডারের আইটেম</h3>
           <div className="divide-y divide-[#EFE9E0] border border-[#EFE9E0] rounded-2xl overflow-hidden">
-            {order.items.map((item) => (
+            {order.items.map((item: any) => (
               <div key={item.id} className="p-3 bg-white flex justify-between items-center text-xs">
                 <div>
                   <span className="font-bold text-[#2B2B2B] block">{item.title}</span>

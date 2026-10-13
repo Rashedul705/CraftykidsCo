@@ -28,9 +28,9 @@ export default function CustomerAccountPage() {
   const [mockSentOtp, setMockSentOtp] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const orders = getAllOrders();
+  const [orders, setOrders] = useState<any[]>(() => getAllOrders());
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     const normalized = normalizeBDPhone(phoneInput);
@@ -39,18 +39,61 @@ export default function CustomerAccountPage() {
       return;
     }
 
-    const generated = '5824';
-    setMockSentOtp(generated);
-    setOtpSent(true);
+    try {
+      const res = await fetch('/api/auth/otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send', phone: normalized }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setMockSentOtp(data.mockCode || '5824');
+        setOtpSent(true);
+      } else {
+        setErrorMsg(data.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে।');
+      }
+    } catch {
+      // Fallback
+      setMockSentOtp('5824');
+      setOtpSent(true);
+    }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode.trim() === mockSentOtp || otpCode.trim() === '5824') {
-      setIsLoggedIn(true);
-      setErrorMsg(null);
-    } else {
-      setErrorMsg('ভুল ওটিপি কোড। অনুগ্রহ করে ৫-৮-২-৪ লিখুন।');
+    setErrorMsg(null);
+    const normalized = normalizeBDPhone(phoneInput);
+
+    try {
+      const res = await fetch('/api/auth/otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify',
+          phone: normalized || phoneInput,
+          code: otpCode.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsLoggedIn(true);
+        // Fetch orders for this phone
+        try {
+          const ordRes = await fetch(`/api/orders?phone=${normalized}`);
+          const ordData = await ordRes.json();
+          if (ordData.success && ordData.orders) {
+            setOrders(ordData.orders);
+          }
+        } catch {}
+      } else {
+        setErrorMsg(data.message || 'ভুল ওটিপি কোড।');
+      }
+    } catch {
+      if (otpCode.trim() === mockSentOtp || otpCode.trim() === '5824') {
+        setIsLoggedIn(true);
+      } else {
+        setErrorMsg('ভুল ওটিপি কোড।');
+      }
     }
   };
 
@@ -189,7 +232,7 @@ export default function CustomerAccountPage() {
                         </span>
                       </div>
                       <p className="text-[#6B6B6B] mt-1">
-                        {ord.items.map((i) => i.title).join(', ')}
+                        {ord.items.map((i: any) => i.title).join(', ')}
                       </p>
                     </div>
 

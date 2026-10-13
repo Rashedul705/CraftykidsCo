@@ -49,7 +49,7 @@ export interface OrderRecord {
 }
 
 // In-memory persistent state (shared across client sessions and API routes in server environment)
-let globalOrders: OrderRecord[] = [
+export let globalOrders: OrderRecord[] = [
   {
     id: 'ord-rk-1001',
     orderNumber: 'RK-1001',
@@ -120,7 +120,7 @@ let globalOrders: OrderRecord[] = [
   },
 ];
 
-let globalProducts: SampleProduct[] = [...sampleProducts];
+export let globalProducts: SampleProduct[] = [...sampleProducts];
 
 // Add extra rich products for Phase 1 catalog
 if (globalProducts.length <= 4) {
@@ -154,8 +154,31 @@ if (globalProducts.length <= 4) {
   );
 }
 
+export let globalCategories: SampleCategory[] = [...sampleCategories];
+
+export function getAllCategories(): SampleCategory[] {
+  return globalCategories;
+}
+
+export function addCategory(cat: SampleCategory): SampleCategory {
+  globalCategories.push(cat);
+  return cat;
+}
+
 export function getAllProducts(): SampleProduct[] {
   return globalProducts;
+}
+
+export function addProduct(prod: SampleProduct): SampleProduct {
+  globalProducts.unshift(prod);
+  return prod;
+}
+
+export function updateProduct(id: string, updates: Partial<SampleProduct>): SampleProduct | null {
+  const index = globalProducts.findIndex((p) => p.id === id || p.slug === id);
+  if (index === -1) return null;
+  globalProducts[index] = { ...globalProducts[index], ...updates };
+  return globalProducts[index];
 }
 
 export function getProductBySlug(slug: string): SampleProduct | undefined {
@@ -207,6 +230,19 @@ export function createOrder(data: Omit<OrderRecord, 'id' | 'orderNumber' | 'crea
     ],
   };
 
+  // Deduct variation stock if variations present
+  for (const item of newOrder.items) {
+    const product = globalProducts.find((p) => p.id === item.productId || p.slug === item.productId);
+    if (product && product.variations && item.variationTitle) {
+      const variation = product.variations.find(
+        (v) => v.titleBn === item.variationTitle || v.titleEn === item.variationTitle
+      );
+      if (variation) {
+        variation.stock = Math.max(0, variation.stock - item.quantity);
+      }
+    }
+  }
+
   globalOrders = [newOrder, ...globalOrders];
   return newOrder;
 }
@@ -215,12 +251,28 @@ export function updateOrderStatus(orderId: string, status: OrderRecord['status']
   const order = globalOrders.find((o) => o.id === orderId || o.orderNumber === orderId);
   if (!order) return null;
 
+  const previousStatus = order.status;
   order.status = status;
   order.timeline.push({
     status,
     timestamp: new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }),
     note: note || `অর্ডার স্ট্যাটাস পরিবর্তিত হয়ে '${status}' হয়েছে`,
   });
+
+  // If order is cancelled, restore stock
+  if (status === 'CANCELLED' && previousStatus !== 'CANCELLED') {
+    for (const item of order.items) {
+      const product = globalProducts.find((p) => p.id === item.productId || p.slug === item.productId);
+      if (product && product.variations && item.variationTitle) {
+        const variation = product.variations.find(
+          (v) => v.titleBn === item.variationTitle || v.titleEn === item.variationTitle
+        );
+        if (variation) {
+          variation.stock += item.quantity;
+        }
+      }
+    }
+  }
 
   return order;
 }

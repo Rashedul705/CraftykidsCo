@@ -96,9 +96,45 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
-      // Simulate small server latency for realistic feel
-      await new Promise((r) => setTimeout(r, 600));
+      const payload = {
+        customerName: customerName.trim(),
+        customerPhone: normalizedPhone,
+        district: isInsideDhaka ? 'Dhaka' : district.split(' ')[0],
+        fullAddress: fullAddress.trim(),
+        customerNote: customerNote.trim() || undefined,
+        paymentMethod,
+        couponCode: couponCode || undefined,
+        items: items.map((i) => ({
+          productId: i.productId,
+          title: i.titleBn || i.title,
+          variationSku: i.variationSku,
+          variationTitle: i.variationTitleBn || i.variationTitle,
+          price: Math.round(i.price),
+          quantity: i.quantity,
+        })),
+      };
 
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const resData = await res.json();
+
+      if (res.ok && resData.success && resData.order) {
+        clearCart();
+        router.push(`/order/confirmation/${resData.order.orderNumber}`);
+        return;
+      }
+
+      if (!res.ok) {
+        setErrorMessage(resData.message || 'অর্ডার সম্পন্ন করতে সমস্যা হয়েছে।');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Fallback
       const newOrder = createOrder({
         customerName: customerName.trim(),
         customerPhone: normalizedPhone,
@@ -124,14 +160,41 @@ export default function CheckoutPage() {
         })),
       });
 
-      // Clear cart on successful order
       clearCart();
-
-      // Redirect to Order Confirmation page
       router.push(`/order/confirmation/${newOrder.orderNumber}`);
-    } catch {
-      setErrorMessage('অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
-      setIsSubmitting(false);
+    } catch (err: unknown) {
+      // Fallback on network error
+      try {
+        const newOrder = createOrder({
+          customerName: customerName.trim(),
+          customerPhone: normalizedPhone,
+          district: isInsideDhaka ? 'Dhaka' : district.split(' ')[0],
+          fullAddress: fullAddress.trim(),
+          customerNote: customerNote.trim() || undefined,
+          subtotal,
+          deliveryCharge,
+          discountAmount,
+          totalAmount: grandTotal,
+          couponCode: couponCode || undefined,
+          status: 'PENDING',
+          paymentStatus: 'UNPAID',
+          paymentMethod,
+          items: items.map((i) => ({
+            id: i.id,
+            productId: i.productId,
+            title: i.titleBn,
+            variationTitle: i.variationTitleBn,
+            price: i.price,
+            quantity: i.quantity,
+            total: i.price * i.quantity,
+          })),
+        });
+        clearCart();
+        router.push(`/order/confirmation/${newOrder.orderNumber}`);
+      } catch {
+        setErrorMessage('অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
+        setIsSubmitting(false);
+      }
     }
   };
 
