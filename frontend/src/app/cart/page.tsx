@@ -84,61 +84,64 @@ export default function CartPage() {
               {/* Items Card List */}
               <div className="bg-white rounded-[28px] border border-[#EFE9E0] p-4 sm:p-6 divide-y divide-[#EFE9E0] shadow-sm">
                 {items.map((item) => (
-                  <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex items-center gap-4">
-                    {/* Item Image */}
-                    <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] flex-shrink-0">
-                      <Image
-                        src={item.imageUrl}
-                        alt={item.titleBn}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
+                  <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                      {/* Item Image */}
+                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shrink-0">
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.titleBn}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
 
-                    {/* Item Info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-heading font-bold text-sm sm:text-base text-[#2B2B2B] truncate">
-                        {item.titleBn}
-                      </h3>
-                      {item.variationTitleBn && (
-                        <span className="text-xs text-[#FF6B6B] font-semibold block">
-                          {item.variationTitleBn}
-                        </span>
-                      )}
-                      <div className="text-sm font-black text-[#2B2B2B] mt-1">
-                        ৳{item.price}
+                      {/* Item Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-heading font-bold text-sm sm:text-base text-[#2B2B2B] truncate">
+                          {item.titleBn}
+                        </h3>
+                        {item.variationTitleBn && (
+                          <span className="text-xs text-[#FF6B6B] font-semibold block">
+                            {item.variationTitleBn}
+                          </span>
+                        )}
+                        <div className="text-xs sm:text-sm font-black text-[#2B2B2B] mt-0.5">
+                          ৳{item.price}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Quantity controls */}
-                    <div className="flex items-center bg-[#FAF7F2] border border-[#EFE9E0] rounded-full p-1">
-                      <button
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#FF6B6B] shadow-sm cursor-pointer"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="w-8 text-center font-bold text-xs">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#FF6B6B] shadow-sm cursor-pointer"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    {/* Line total & remove */}
-                    <div className="text-right">
-                      <div className="font-black text-sm text-[#FF6B6B]">
-                        ৳{item.price * item.quantity}
+                    {/* Quantity controls & Line total */}
+                    <div className="flex items-center justify-between sm:justify-end gap-4 pl-[74px] sm:pl-0">
+                      <div className="flex items-center bg-[#FAF7F2] border border-[#EFE9E0] rounded-full p-1">
+                        <button
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#FF6B6B] shadow-sm cursor-pointer"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-8 text-center font-bold text-xs">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#FF6B6B] shadow-sm cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        className="text-xs text-[#6B6B6B] hover:text-[#FF6B6B] mt-1 p-1 inline-flex items-center gap-1 cursor-pointer"
-                        title="রিমুভ করুন"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+
+                      <div className="text-right">
+                        <div className="font-black text-sm text-[#FF6B6B]">
+                          ৳{item.price * item.quantity}
+                        </div>
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="text-xs text-[#6B6B6B] hover:text-[#FF6B6B] mt-0.5 p-1 inline-flex items-center gap-1 cursor-pointer"
+                          title="রিমুভ করুন"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

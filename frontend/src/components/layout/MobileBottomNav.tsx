@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Home, Grid, ShoppingBag, User } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 
 interface MobileBottomNavProps {
   cartCount?: number;
@@ -11,10 +12,12 @@ interface MobileBottomNavProps {
 }
 
 export function MobileBottomNav({
-  cartCount = 2,
+  cartCount: propCartCount,
   locale = 'bn',
   activeTab = 'home',
 }: MobileBottomNavProps) {
+  const { cartCount: liveCartCount } = useCart();
+  const effectiveCartCount = propCartCount !== undefined ? propCartCount : liveCartCount;
   const navItems = [
     {
       id: 'home',
@@ -33,7 +36,7 @@ export function MobileBottomNav({
       label: locale === 'bn' ? 'কার্ট' : 'Cart',
       icon: ShoppingBag,
       href: '/cart',
-      badge: cartCount > 0 ? cartCount : undefined,
+      badge: effectiveCartCount > 0 ? effectiveCartCount : undefined,
     },
     {
       id: 'account',

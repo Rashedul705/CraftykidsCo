@@ -110,15 +110,36 @@ The repository is organized as a clean Monorepo:
       - Verified `.env` files are untracked and never committed to GitHub.
       - Created `.env.example` templates with sanitized placeholders for team onboarding.
 
+[G] Mobile & Tablet Responsiveness Audit & Polishing:
+  [x] Admin Panel Responsive Layout (`frontend/src/app/admin/page.tsx`):
+      - Replaced fixed desktop sidebar with a responsive slide-out drawer on screens < 1024px.
+      - Added sleek Mobile Admin Topbar with hamburger menu toggle, brand badge, and quick action buttons.
+      - Fixed search and header controls to be fully responsive without horizontal page overflow.
+      - Fixed Add Product modal layout to single-column stacking on mobile and constrained vertical height (`max-h-[92vh] overflow-y-auto`).
+      - Added horizontal scroll guarantees (`min-w-[540px]`, `min-w-[700px]`) to admin tables.
+  [x] Single Product Detail Page (`frontend/src/app/product/[slug]/page.tsx`):
+      - Resolved conflicting z-index overlay between `MobileBottomNav` and the sticky buy bar.
+      - Upgraded mobile sticky purchase bar to a high-converting bar featuring Home, Cart with live count badge, Add to Cart ("কার্টে যোগ"), and Buy Now ("অর্ডার করুন").
+  [x] Mobile Header Search Bar (`frontend/src/components/layout/Header.tsx`):
+      - Added a dedicated mobile search bar on screens < 640px so mobile shoppers can instantly search.
+      - Made top announcement bar responsive without text cutoff.
+  [x] Cart Page Responsive Items (`frontend/src/app/cart/page.tsx`):
+      - Polished cart item rows to stack quantity counter and line price cleanly on mobile without truncation.
+  [x] Homepage Banner Copy Cleanup (`frontend/src/app/page.tsx`):
+      - Replaced placeholder headline text with compelling Bengali headline.
+  [x] Dynamic Mobile Bottom Nav (`frontend/src/components/layout/MobileBottomNav.tsx`):
+      - Connected cart badge directly to `useCart()` state.
+
 --------------------------------------------------------------------------------
 3. WHAT IS RUNNING CURRENTLY
 --------------------------------------------------------------------------------
 - Next.js 16 Frontend: Port 3000 (Development server running with Turbopack)
 - Express.js Backend: Port 5000 (Connected to MongoDB Atlas & ImgBB API)
 - Production Build: Successfully verified (`npm run build` completed with 0 errors across all 24 routes)
+- Responsive Viewports: Verified on Mobile (375x812 iPhone), Tablet (768x1024 iPad), and Desktop
 - Database: MongoDB Atlas Cloud Cluster (Active & Shared between Next.js & Express)
 - Image Hosting: ImgBB Cloud CDN (Active)
-- Git Remote: Ready to synchronize with GitHub repository (`origin/main`)
+- Git Remote: Synchronized with GitHub repository (`origin/main`)
 
 --------------------------------------------------------------------------------
 4. WHAT NEEDS TO BE DONE NEXT (ACTIONABLE ROADMAP)

@@ -30,10 +30,10 @@ import {
   Zap,
   ArrowRight,
   Share2,
+  Home,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
-import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -46,7 +46,7 @@ function ProductContent() {
   const params = useParams();
   const router = useRouter();
   const slug = (params?.slug as string) || 'craftykidsco-natural-wax-crayons-24-shades';
-  const { addItem } = useCart();
+  const { addItem, cartCount } = useCart();
 
   const allProducts = getAllProducts();
   const product: SampleProduct = getProductBySlug(slug) || allProducts[0];
@@ -990,25 +990,54 @@ function ProductContent() {
       {/* =========================================================================
           MOBILE STICKY "ORDER NOW" BUY BAR (CONVERSION BOOSTER)
          ========================================================================= */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-md border-t border-[#EFEAE2] p-3 px-4 flex items-center justify-between gap-3 shadow-[0_-8px_25px_rgba(0,0,0,0.08)]">
-        <div>
-          <span className="text-[11px] text-[#6B6B6B] block">মোট মূল্য:</span>
-          <span className="text-xl font-black text-[#D32F2F]">
-            {formatBDT(currentPrice * quantity)}
-          </span>
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 backdrop-blur-md border-t border-[#EFEAE2] py-2 px-3 flex items-center justify-between gap-2 shadow-[0_-8px_25px_rgba(0,0,0,0.08)] pb-safe">
+        {/* Quick Nav Icons */}
+        <div className="flex items-center gap-1 shrink-0">
+          <Link
+            href="/"
+            className="flex flex-col items-center justify-center p-1.5 rounded-xl text-[#555] hover:text-[#D32F2F] hover:bg-[#FAF7F2] transition-colors"
+            title="হোম"
+          >
+            <Home className="w-5 h-5" />
+            <span className="text-[9px] mt-0.5 font-bold">হোম</span>
+          </Link>
+
+          <Link
+            href="/cart"
+            className="flex flex-col items-center justify-center p-1.5 rounded-xl text-[#555] hover:text-[#D32F2F] hover:bg-[#FAF7F2] transition-colors relative"
+            title="কার্ট"
+          >
+            <ShoppingBag className="w-5 h-5" />
+            {cartCount > 0 && (
+              <span className="absolute top-0.5 right-0.5 bg-[#D32F2F] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                {cartCount}
+              </span>
+            )}
+            <span className="text-[9px] mt-0.5 font-bold">কার্ট</span>
+          </Link>
         </div>
 
-        <button
-          onClick={handleBuyNow}
-          disabled={isOutOfStock}
-          className="flex-1 max-w-[210px] py-3 px-4 rounded-xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-        >
-          <Zap className="w-4 h-4 fill-current" />
-          <span>{isOutOfStock ? 'স্টক শেষ' : 'Buy Now'}</span>
-        </button>
-      </div>
+        {/* Action Buttons: Add to Cart + Buy Now */}
+        <div className="flex items-center gap-2 flex-1 max-w-[280px]">
+          <button
+            onClick={handleAddToCart}
+            disabled={isOutOfStock}
+            className="flex-1 py-2.5 px-2 rounded-xl bg-[#FAF0E6] text-[#D32F2F] border border-[#F3D7C6] font-bold text-xs flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span className="whitespace-nowrap">কার্টে যোগ</span>
+          </button>
 
-      <MobileBottomNav activeTab="shop" />
+          <button
+            onClick={handleBuyNow}
+            disabled={isOutOfStock}
+            className="flex-1 py-2.5 px-3 rounded-xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <Zap className="w-3.5 h-3.5 fill-current" />
+            <span className="whitespace-nowrap">{isOutOfStock ? 'স্টক শেষ' : 'অর্ডার করুন'}</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

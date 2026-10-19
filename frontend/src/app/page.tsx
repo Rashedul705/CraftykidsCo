@@ -107,9 +107,9 @@ export default function HomePage() {
               </div>
 
               <h1 className="font-heading font-black text-2xl sm:text-4xl lg:text-5xl text-[#222222] leading-tight tracking-tight">
-                [ক্যাম্পেইন ব্যানারের হেডলাইন]
+                শিশুর সৃজনশীল প্রতিভা বিকাশে
                 <span className="block text-[#E53935] text-xl sm:text-3xl lg:text-4xl mt-1">
-                  ছোট্ট সোনামণিদের জন্য নিরাপদ মোমের রঙ ও খেলনা
+                  ছোট্ট সোনামণিদের জন্য নিরাপদ রঙ ও খেলনা
                 </span>
               </h1>
 

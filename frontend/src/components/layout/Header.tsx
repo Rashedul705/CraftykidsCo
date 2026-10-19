@@ -39,26 +39,26 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
     <>
       {/* 1. Top Announcement Bar */}
       <div className="bg-[#1F1F1F] text-white py-1.5 px-4 text-xs font-medium border-b border-black/10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-[#E53935] animate-pulse" />
-            <span className="text-[#E0E0E0]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="inline-block w-2 h-2 rounded-full bg-[#E53935] animate-pulse shrink-0" />
+            <span className="text-[#E0E0E0] truncate text-[11px] sm:text-xs">
               {activeLocale === 'bn'
-                ? 'দেশজুড়ে দ্রুত হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি সুবিধা!'
-                : 'Nationwide Fast Home Delivery & Cash on Delivery Available!'}
+                ? 'দেশজুড়ে দ্রুত হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি!'
+                : 'Nationwide Fast Home Delivery & Cash on Delivery!'}
             </span>
           </div>
-          <div className="hidden sm:flex items-center gap-4 text-xs text-[#B0B0B0]">
+          <div className="flex items-center gap-3 text-xs text-[#B0B0B0] shrink-0">
             <a
               href="tel:+8801700000000"
-              className="flex items-center gap-1.5 hover:text-white transition-colors"
+              className="hidden sm:flex items-center gap-1.5 hover:text-white transition-colors"
             >
               <PhoneCall className="w-3.5 h-3.5 text-[#E53935]" />
               <span>হটলাইন: 01700-000000</span>
             </a>
             <button
               onClick={toggle}
-              className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
+              className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer text-[11px] sm:text-xs"
             >
               <Globe className="w-3 h-3 text-[#FFC107]" />
               <span>{activeLocale === 'bn' ? 'English' : 'বাংলা'}</span>
@@ -69,23 +69,23 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
 
       {/* 2. Main Branding & Search Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-[#EFE9E0] shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-3">
           {/* Brand Logo - ALWAYS in English CraftyKidsCo */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
-            <div className="w-10 h-10 rounded-2xl bg-[#E53935] flex items-center justify-center text-white font-black text-2xl shadow-[0_4px_12px_rgba(229,57,53,0.3)] group-hover:scale-105 transition-transform">
+          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0 group">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#E53935] flex items-center justify-center text-white font-black text-xl sm:text-2xl shadow-[0_4px_12px_rgba(229,57,53,0.3)] group-hover:scale-105 transition-transform">
               C
             </div>
             <div className="flex flex-col">
-              <span className="font-heading font-black text-xl sm:text-2xl text-[#222222] tracking-tight leading-none">
+              <span className="font-heading font-black text-lg sm:text-2xl text-[#222222] tracking-tight leading-none">
                 CraftyKidsCo
               </span>
-              <span className="text-[10px] font-bold text-[#888888] tracking-wider uppercase mt-0.5">
+              <span className="text-[9px] sm:text-[10px] font-bold text-[#888888] tracking-wider uppercase mt-0.5">
                 Safe Colors & Creative Toys
               </span>
             </div>
           </Link>
 
-          {/* Search Bar */}
+          {/* Desktop Search Bar */}
           <form
             onSubmit={handleSearchSubmit}
             className="flex-1 max-w-xl mx-2 hidden sm:flex relative items-center"
@@ -107,7 +107,7 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
           </form>
 
           {/* Right Actions: Hotline, Wishlist & Cart */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link
               href="/shop"
               className="p-2 rounded-full hover:bg-[#FAF7F2] text-[#555] transition-colors hidden md:flex items-center justify-center"
@@ -118,7 +118,7 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
 
             <Link
               href="/cart"
-              className="flex items-center gap-2.5 py-1.5 px-3.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white shadow-[0_3px_10px_rgba(229,57,53,0.25)] transition-all"
+              className="flex items-center gap-2 py-1.5 px-3 sm:px-3.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white shadow-[0_3px_10px_rgba(229,57,53,0.25)] transition-all"
             >
               <div className="relative">
                 <ShoppingBag className="w-4 h-4" />
@@ -134,6 +134,26 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
               </div>
             </Link>
           </div>
+        </div>
+
+        {/* Mobile Search Input (< sm) */}
+        <div className="px-4 pb-2.5 sm:hidden">
+          <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="খেলনা, মোমের রঙ বা আর্ট কিট খুঁজুন..."
+              className="w-full pl-3.5 pr-9 py-1.5 rounded-full border border-[#DFD7CC] bg-[#FAF8F5] text-xs text-[#222222] focus:bg-white focus:outline-none focus:border-[#E53935] transition-all"
+            />
+            <button
+              type="submit"
+              className="absolute right-1 p-1.5 rounded-full bg-[#E53935] text-white hover:bg-[#D32F2F] transition-colors"
+              aria-label="Search"
+            >
+              <Search className="w-3.5 h-3.5" />
+            </button>
+          </form>
         </div>
 
         {/* 3. Secondary Category Bar */}
