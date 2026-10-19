@@ -14,6 +14,9 @@ import {
   CheckCircle2,
   Gift,
   ChevronRight,
+  ChevronLeft,
+  Maximize2,
+  X,
   Send,
   PhoneCall,
   Mail,
@@ -26,10 +29,132 @@ import { ProductCard } from '@/components/storefront/ProductCard';
 import { sampleCategories, sampleProducts } from '@/lib/sample-data';
 import { formatBDT } from '@/lib/utils';
 
+const heroSlides = [
+  {
+    id: 'slide-plaster',
+    tagBn: 'বেস্ট সেলার • ৩ডি প্লাস্টার পেইন্টিং',
+    tagEn: 'Best Seller • 3D Plaster Painting',
+    titleBn: 'শিশুর সৃজনশীল প্রতিভা বিকাশে',
+    titleBnHighlight: '৩ডি প্লাস্টার পেইন্টিং ও ক্রাফট কিট',
+    titleEn: 'Bring Kids Creative Imagination to Life',
+    subtitleBn: 'সুইট ফ্রুট, কার, টুলস ও বাটারফ্লাই প্লাস্টার পেইন্টিং কিটস',
+    descBn: '১০০% নিরাপদ প্রাকৃতিক জিপসাম মডেল ও ওয়াশেবল ফুড-গ্রেড রঙ। বাচ্চা নিজে রঙ করে বানাবে আকর্ষণীয় শোপিস ও ফ্রিজ ম্যাগনেট!',
+    descEn: '100% safe non-toxic gypsum models & washable colors. Kids paint their own fridge magnets and room decor!',
+    imageUrl: 'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+    badgeTop: '★ ৬টি প্লাস্টার ফল + ৪টি ওয়াশেবল রঙ + ব্রাশ',
+    badgeBottom: '১০০% নন-টক্সিক ও স্ক্রিন-ফ্রি ক্রিয়েটিভ প্লে',
+    ctaPrimaryText: 'প্লাস্টার কিট কিনুন',
+    ctaPrimaryHref: '/category/art-kits',
+    ctaSecondaryText: 'সব পণ্য দেখুন',
+    ctaSecondaryHref: '/shop',
+    bgGradient: 'from-[#FFF5EB] via-[#FFF9F0] to-[#FFE8E8]',
+    borderColor: '#F3E5D8',
+    accentColor: '#E53935',
+  },
+  {
+    id: 'slide-crayons',
+    tagBn: '১০০% ফুড-গ্রেড মোম • কেমিক্যাল মুক্ত',
+    tagEn: '100% Food-Grade Beeswax • Chemical Free',
+    titleBn: 'ছোট সোনামণির প্রথম আঁকাআঁকি হোক',
+    titleBnHighlight: 'খাঁটি মৌচাকের মোমে তৈরি নিরাপদ ক্রেয়ন',
+    titleEn: 'Safe First Coloring Journey for Little Artists',
+    subtitleBn: 'শিশুর কোমল ত্বকের জন্য সম্পূর্ণ নিরাপদ ও ক্ষতিকর প্যারাফিন মুক্ত',
+    descBn: 'বাচ্চা মুখে দিলেও কোনো ভয় নেই। মসৃণ গ্রিপ, সহজে ভাঙে না এবং জামা বা মেঝেতে লাগলে সাধারণ পানিতেই ধুয়ে যায়!',
+    descEn: 'Worry-free even if toddlers put it in their mouth. Smooth grip, durable and 100% washable from clothes and floors!',
+    imageUrl: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=1200&q=80',
+    badgeTop: '★ খাঁটি প্রাকৃতিক বিসওয়াক্স ও ফুড কালার',
+    badgeBottom: 'সহজে ওয়াশেবল ও প্রিমিয়াম মসৃণ ফিনিশ',
+    ctaPrimaryText: 'মোমের রঙ দেখুন',
+    ctaPrimaryHref: '/category/wax-crayons',
+    ctaSecondaryText: 'অর্ডার করুন',
+    ctaSecondaryHref: '/shop',
+    bgGradient: 'from-[#FFFDF0] via-[#FFF8E7] to-[#FFF3D6]',
+    borderColor: '#F5E6BE',
+    accentColor: '#D97706',
+  },
+  {
+    id: 'slide-dough',
+    tagBn: 'সুপার সফট ও নন-স্টিকি • সেন্সরি প্লে',
+    tagEn: 'Super Soft & Non-Sticky • Sensory Play',
+    titleBn: 'কল্পনার রঙে গড়ে উঠুক নিজের মজার পৃথিবী',
+    titleBnHighlight: 'নরম, সুবাসিত ও নন-টক্সিক প্লে-ডো ও ক্লে',
+    titleEn: 'Sculpt Your Own Fun World with Colorful Dough',
+    subtitleBn: 'আঙুলের ফাইন মোটর স্কিল ও স্পর্শের অনুভূতি বৃদ্ধির সেরা উপায়',
+    descBn: 'হাতে আঠার মতো লেগে থাকে না। নানা রঙের প্লে-ডো দিয়ে ফল, ফুল ও পশুপাখি বানিয়ে শিশুরা পায় অফুরন্ত আনন্দ!',
+    descEn: 'Non-sticky and super pliable. Enhances toddler hand-eye coordination, fine motor skills and tactile sensing!',
+    imageUrl: 'https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=1200&q=80',
+    badgeTop: '★ ৬ রঙের সফট প্লে-ডো + ৪টি শেপ কাটার',
+    badgeBottom: 'হ্যান্ড-আই কোঅর্ডিনেশন ও সেন্সরি বুস্টার',
+    ctaPrimaryText: 'প্লে-ডো কিনুন',
+    ctaPrimaryHref: '/category/play-dough-clay',
+    ctaSecondaryText: 'অফারসমূহ দেখুন',
+    ctaSecondaryHref: '/shop',
+    bgGradient: 'from-[#F0F9FF] via-[#E0F2FE] to-[#F0F9FF]',
+    borderColor: '#BAE6FD',
+    accentColor: '#0284C7',
+  },
+  {
+    id: 'slide-wooden',
+    tagBn: 'ব্রেইন ডেভেলপমেন্ট • স্ক্রিন-ফ্রি শিক্ষা',
+    tagEn: 'Brain Development • Screen-Free STEM Toys',
+    titleBn: 'খেলতে খেলতে শিখুক গণিত, ভাষা ও লজিক',
+    titleBnHighlight: 'প্রাকৃতিক পাইন কাঠের মসৃণ খেলনা ও পাজল',
+    titleEn: 'Learn Math, Language & Logic Through Play',
+    subtitleBn: 'মোবাইলের আসক্তি দূর করে বুদ্ধি ও একাগ্রতা বিকাশের সেরা মাধ্যম',
+    descBn: 'শিশুদের মোবাইলের স্ক্রিন আসক্তি দূর করে বুদ্ধি, মেধা ও একাগ্রতা বাড়াতে মন্টেসরি কাঠের খেলনা ও পাজলের জুড়ি নেই!',
+    descEn: 'Replace mobile screen addiction with tactile, screen-free cognitive growth and spatial memory building!',
+    imageUrl: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=1200&q=80',
+    badgeTop: '★ মসৃণ ফিনিশ ও ন্যাচারাল বিচ উড',
+    badgeBottom: '১ থেকে ৮ বছর বয়সীদের সেরা উপহার',
+    ctaPrimaryText: 'কাঠের খেলনা ও পাজল',
+    ctaPrimaryHref: '/category/wooden-toys',
+    ctaSecondaryText: 'সব কালেকশন',
+    ctaSecondaryHref: '/shop',
+    bgGradient: 'from-[#F0FDF4] via-[#DCFCE7] to-[#F0FDF4]',
+    borderColor: '#BBF7D0',
+    accentColor: '#16A34A',
+  },
+];
+
 export default function HomePage() {
   const [locale, setLocale] = useState<'bn' | 'en'>('bn');
   const [emailSub, setEmailSub] = useState('');
   const [subSuccess, setSubSuccess] = useState(false);
+
+  // Hero Slider & Zoom State
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+
+  // Auto-play timer for Hero Slider (pauses on hover or zoom modal)
+  useEffect(() => {
+    if (isHovered || isZoomModalOpen) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5500);
+    return () => clearInterval(interval);
+  }, [isHovered, isZoomModalOpen]);
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const touchEnd = e.changedTouches[0].clientX;
+    if (touchStart - touchEnd > 50) nextSlide();
+    if (touchStart - touchEnd < -50) prevSlide();
+    setTouchStart(null);
+  };
 
   const toggleLocale = () => {
     setLocale((prev) => (prev === 'bn' ? 'en' : 'bn'));
@@ -95,72 +220,180 @@ export default function HomePage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-10 sm:space-y-12">
         {/* ========================================================================= */}
-        {/* 2. Hero Campaign Banner (as shown in wireframe)                           */}
+        {/* 2. Hero Campaign Slider with Continuous Ken-Burns Zoom & Interactive Zoom */}
         {/* ========================================================================= */}
-        <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-[#FFF5EB] border border-[#F3E5D8] p-6 sm:p-10 lg:p-14">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* Banner Text Content */}
-            <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E0F7FA] text-[#00838F] font-bold text-xs">
-                <Sparkles className="w-3.5 h-3.5 text-[#00ACC1]" />
-                <span>New Promotion • নতুন অফার</span>
-              </div>
-
-              <h1 className="font-heading font-black text-2xl sm:text-4xl lg:text-5xl text-[#222222] leading-tight tracking-tight">
-                শিশুর সৃজনশীল প্রতিভা বিকাশে
-                <span className="block text-[#E53935] text-xl sm:text-3xl lg:text-4xl mt-1">
-                  ছোট্ট সোনামণিদের জন্য নিরাপদ রঙ ও খেলনা
-                </span>
-              </h1>
-
-              <p className="text-sm sm:text-base text-[#666666] max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                ১০০% প্রাকৃতিক খাদ্য-মানের মোম এবং নন-টক্সিক উপাদান দিয়ে তৈরি। CraftyKidsCo দিচ্ছে শিশুদের সৃজনশীল কল্পনায় রঙিন আনন্দের ছোঁয়া।
-              </p>
-
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
-                <Link
-                  href="/shop"
-                  className="px-8 py-3.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] active:scale-95 text-white font-bold text-sm sm:text-base shadow-[0_4px_16px_rgba(229,57,53,0.3)] transition-all flex items-center gap-2"
+        <section
+          className="relative overflow-hidden rounded-3xl sm:rounded-[36px] shadow-[0_8px_30px_rgba(43,43,43,0.06)] border border-[#EFEAE2] select-none group"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Slides Container */}
+          <div className="relative w-full min-h-[500px] sm:min-h-[460px] lg:min-h-[480px]">
+            {heroSlides.map((slide, idx) => {
+              const isActive = idx === currentSlide;
+              return (
+                <div
+                  key={slide.id}
+                  className={`transition-opacity duration-700 ease-in-out ${
+                    isActive
+                      ? 'opacity-100 z-10 relative'
+                      : 'opacity-0 z-0 absolute inset-0 pointer-events-none'
+                  } bg-gradient-to-r ${slide.bgGradient} p-6 sm:p-10 lg:p-12 h-full flex flex-col justify-center`}
                 >
-                  <span>অর্ডার করুন</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-                <Link
-                  href="/category/wax-crayons"
-                  className="px-6 py-3.5 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#DFD7CC] text-[#333] font-bold text-sm sm:text-base transition-colors"
-                >
-                  মোমের রঙ দেখুন
-                </Link>
-              </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    {/* Banner Text Content */}
+                    <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-center lg:text-left">
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-xs text-[#222] font-bold text-xs shadow-xs border border-white/60">
+                        <Sparkles className="w-3.5 h-3.5" style={{ color: slide.accentColor }} />
+                        <span>{locale === 'bn' ? slide.tagBn : slide.tagEn}</span>
+                      </div>
 
-              {/* Slider Dots Indicator */}
-              <div className="flex items-center justify-center lg:justify-start gap-2 pt-4">
-                <span className="w-6 h-2 rounded-full bg-[#E53935] transition-all" />
-                <span className="w-2 h-2 rounded-full bg-[#DFD7CC]" />
-                <span className="w-2 h-2 rounded-full bg-[#DFD7CC]" />
-              </div>
-            </div>
+                      <h1 className="font-heading font-black text-2xl sm:text-4xl lg:text-5xl text-[#222222] leading-tight tracking-tight">
+                        {locale === 'bn' ? slide.titleBn : slide.titleEn}
+                        <span
+                          className="block text-xl sm:text-3xl lg:text-4xl mt-1.5"
+                          style={{ color: slide.accentColor }}
+                        >
+                          {slide.titleBnHighlight}
+                        </span>
+                      </h1>
 
-            {/* Banner Real Photo */}
-            <div className="lg:col-span-5 relative">
-              <div className="relative w-full aspect-4/3 sm:aspect-16/10 lg:aspect-square rounded-2xl overflow-hidden shadow-lg border-4 border-white">
-                <Image
-                  src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=1000&q=80"
-                  alt="CraftyKidsCo Safe Toys and Colors"
-                  fill
-                  priority
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent flex items-end p-4 sm:p-6">
-                  <div className="bg-white/95 backdrop-blur-xs rounded-xl p-3 shadow-md border border-white/60">
-                    <p className="text-xs font-bold text-[#E53935]">★ ১০০% ফুড-গ্রেড ন্যাচারাল মোম</p>
-                    <p className="text-[11px] text-[#555]">শিশুর ত্বকের জন্য সম্পূর্ণ নিরাপদ ও ওয়াশেবল</p>
+                      <p className="text-sm sm:text-base text-[#555555] max-w-xl mx-auto lg:mx-0 leading-relaxed font-medium">
+                        {locale === 'bn' ? slide.descBn : slide.descEn}
+                      </p>
+
+                      <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-4 pt-2">
+                        <Link
+                          href={slide.ctaPrimaryHref}
+                          className="px-7 sm:px-8 py-3.5 rounded-full text-white font-black text-sm sm:text-base shadow-[0_4px_18px_rgba(229,57,53,0.35)] hover:shadow-[0_6px_24px_rgba(229,57,53,0.45)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                          style={{ backgroundColor: slide.accentColor }}
+                        >
+                          <span>{slide.ctaPrimaryText}</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          href={slide.ctaSecondaryHref}
+                          className="px-6 py-3.5 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#DFD7CC] text-[#333] font-bold text-sm sm:text-base shadow-xs hover:border-[#999] transition-all"
+                        >
+                          {slide.ctaSecondaryText}
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* Banner Hero Photo with Continuous Ken-Burns Zoom In & Interactive Hover Zoom */}
+                    <div className="lg:col-span-5 relative">
+                      <div
+                        className="relative w-full aspect-4/3 sm:aspect-16/10 lg:aspect-square rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border-4 border-white group/image cursor-pointer"
+                        onClick={() => setIsZoomModalOpen(true)}
+                        title="ক্লিক করে বড় করে দেখুন (Click to Zoom)"
+                      >
+                        <div className="relative w-full h-full overflow-hidden bg-white">
+                          <Image
+                            src={slide.imageUrl}
+                            alt={slide.titleBn}
+                            fill
+                            priority={idx === 0}
+                            className={`object-cover transition-transform duration-[6500ms] ease-out ${
+                              isActive ? 'scale-115' : 'scale-100'
+                            } group-hover/image:scale-125 transition-all duration-700`}
+                          />
+                        </div>
+
+                        {/* Floating Bottom Card Over Image */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent flex items-end justify-between p-4 sm:p-5 pointer-events-none">
+                          <div className="bg-white/95 backdrop-blur-xs rounded-xl p-3 shadow-md border border-white/60 max-w-[85%]">
+                            <p className="text-xs font-bold" style={{ color: slide.accentColor }}>
+                              {slide.badgeTop}
+                            </p>
+                            <p className="text-[11px] text-[#555] font-medium mt-0.5">
+                              {slide.badgeBottom}
+                            </p>
+                          </div>
+
+                          {/* Zoom In Badge Indicator */}
+                          <div className="bg-black/60 backdrop-blur-xs text-white p-2 rounded-xl flex items-center gap-1 shadow-md shrink-0">
+                            <Maximize2 className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-bold hidden sm:inline">জুম</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+
+          {/* Slider Navigation Arrows */}
+          <button
+            onClick={prevSlide}
+            className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] hover:text-[#E53935] shadow-lg flex items-center justify-center transition-all opacity-80 hover:opacity-100 hover:scale-110 z-20 cursor-pointer"
+            title="পূর্ববর্তী স্লাইড"
+          >
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] hover:text-[#E53935] shadow-lg flex items-center justify-center transition-all opacity-80 hover:opacity-100 hover:scale-110 z-20 cursor-pointer"
+            title="পরবর্তী স্লাইড"
+          >
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
+
+          {/* Bottom Slider Dots Indicator with active progress */}
+          <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+            {heroSlides.map((s, i) => (
+              <button
+                key={s.id}
+                onClick={() => setCurrentSlide(i)}
+                className={`rounded-full transition-all cursor-pointer ${
+                  currentSlide === i
+                    ? 'w-7 sm:w-8 h-2 bg-[#E53935] shadow-sm'
+                    : 'w-2 h-2 bg-white/70 hover:bg-white'
+                }`}
+                title={`স্লাইড ${i + 1}`}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Fullscreen Hero Image Zoom Modal */}
+        {isZoomModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
+              <button
+                onClick={() => setIsZoomModalOpen(false)}
+                className="absolute -top-12 right-0 text-white hover:text-[#E53935] p-2 cursor-pointer z-10"
+                title="বন্ধ করুন"
+              >
+                <X className="w-7 h-7" />
+              </button>
+              <div className="relative w-full aspect-square max-h-[80vh] rounded-2xl overflow-hidden bg-white shadow-2xl">
+                <Image
+                  src={heroSlides[currentSlide].imageUrl}
+                  alt={heroSlides[currentSlide].titleBn}
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                {heroSlides.map((s, idx) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setCurrentSlide(idx)}
+                    className={`w-12 h-12 rounded-xl overflow-hidden border-2 relative transition-all ${
+                      currentSlide === idx ? 'border-[#E53935] scale-105' : 'border-white/40 opacity-70'
+                    }`}
+                  >
+                    <Image src={s.imageUrl} alt="Thumbnail" fill className="object-cover" />
+                  </button>
+                ))}
               </div>
             </div>
           </div>
-        </section>
+        )}
 
         {/* ========================================================================= */}
         {/* 3. Shop by Category Circular Icons ("ক্যাটাগরি অনুযায়ী কিনুন")               */}
