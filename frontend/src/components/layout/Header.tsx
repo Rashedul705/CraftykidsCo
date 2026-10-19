@@ -69,17 +69,17 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
 
       {/* 2. Main Branding & Search Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-[#EFE9E0] shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3">
           {/* Brand Logo - ALWAYS in English CraftyKidsCo */}
-          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0 group">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#E53935] flex items-center justify-center text-white font-black text-xl sm:text-2xl shadow-[0_4px_12px_rgba(229,57,53,0.3)] group-hover:scale-105 transition-transform">
+          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink min-w-0 group">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-[#E53935] flex items-center justify-center text-white font-black text-lg sm:text-2xl shadow-[0_4px_12px_rgba(229,57,53,0.3)] group-hover:scale-105 transition-transform shrink-0">
               C
             </div>
-            <div className="flex flex-col">
-              <span className="font-heading font-black text-lg sm:text-2xl text-[#222222] tracking-tight leading-none">
+            <div className="flex flex-col min-w-0">
+              <span className="font-heading font-black text-base sm:text-2xl text-[#222222] tracking-tight leading-none truncate">
                 CraftyKidsCo
               </span>
-              <span className="text-[9px] sm:text-[10px] font-bold text-[#888888] tracking-wider uppercase mt-0.5">
+              <span className="text-[8px] sm:text-[10px] font-bold text-[#888888] tracking-wider uppercase mt-0.5 truncate">
                 Safe Colors & Creative Toys
               </span>
             </div>
@@ -118,7 +118,7 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
 
             <Link
               href="/cart"
-              className="flex items-center gap-2 py-1.5 px-3 sm:px-3.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white shadow-[0_3px_10px_rgba(229,57,53,0.25)] transition-all"
+              className="flex items-center gap-1.5 sm:gap-2 py-1.5 px-2.5 sm:px-3.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white shadow-[0_3px_10px_rgba(229,57,53,0.25)] transition-all shrink-0"
             >
               <div className="relative">
                 <ShoppingBag className="w-4 h-4" />
@@ -137,14 +137,14 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
         </div>
 
         {/* Mobile Search Input (< sm) */}
-        <div className="px-4 pb-2.5 sm:hidden">
+        <div className="px-3 pb-2.5 sm:hidden">
           <form onSubmit={handleSearchSubmit} className="relative flex items-center">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="খেলনা, মোমের রঙ বা আর্ট কিট খুঁজুন..."
-              className="w-full pl-3.5 pr-9 py-1.5 rounded-full border border-[#DFD7CC] bg-[#FAF8F5] text-xs text-[#222222] focus:bg-white focus:outline-none focus:border-[#E53935] transition-all"
+              className="w-full pl-3.5 pr-9 py-2 rounded-full border border-[#DFD7CC] bg-[#FAF8F5] text-sm text-[#222222] focus:bg-white focus:outline-none focus:border-[#E53935] transition-all"
             />
             <button
               type="submit"
