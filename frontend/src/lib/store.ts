@@ -186,6 +186,9 @@ export function getProductBySlug(slug: string): SampleProduct | undefined {
 }
 
 export function getProductsByCategory(categorySlug: string): SampleProduct[] {
+  const direct = globalProducts.filter((p) => p.categorySlug === categorySlug);
+  if (direct.length > 0) return direct;
+
   if (categorySlug === 'art-kits') {
     return globalProducts.filter((p) => p.categorySlug === 'art-kits' || p.slug.includes('paint') || p.slug.includes('kit'));
   }
@@ -193,13 +196,12 @@ export function getProductsByCategory(categorySlug: string): SampleProduct[] {
     return globalProducts.filter((p) => p.slug.includes('crayon') || p.slug.includes('washable') || p.categorySlug === 'wax-crayons');
   }
   if (categorySlug === 'educational-toys') {
-    return globalProducts.filter((p) => p.slug.includes('puzzle') || p.slug.includes('blocks') || p.categorySlug === 'educational-toys');
+    return globalProducts.filter((p) => p.categorySlug === 'educational-toys' || p.slug.includes('edu') || p.slug.includes('blocks'));
   }
   if (categorySlug === 'play-dough-clay') {
-    return globalProducts.filter((p) => p.slug.includes('dough') || p.categorySlug === 'play-dough-clay');
+    return globalProducts.filter((p) => p.slug.includes('dough') || p.slug.includes('clay') || p.categorySlug === 'play-dough-clay');
   }
-  const filtered = globalProducts.filter((p) => p.categorySlug === categorySlug);
-  return filtered.length > 0 ? filtered : globalProducts;
+  return globalProducts;
 }
 
 export function getAllOrders(): OrderRecord[] {
