@@ -176,18 +176,17 @@ export function ProductCard({
                   ? 'bg-[#E8F5E9] border-[#A5D6A7] text-[#2E7D32]'
                   : 'bg-[#FAF8F5] border-[#DFD7CC] hover:bg-[#F2ECE4] text-[#333333] active:scale-[0.98]'
               }`}
-              title="কার্টে যোগ করুন"
+              title="Add to Cart"
             >
               {added ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-[#2E7D32]" />
-                  <span className="text-[11px] sm:text-xs">যোগ হয়েছে</span>
+                  <span className="text-[11px] sm:text-xs">Added</span>
                 </>
               ) : (
                 <>
                   <ShoppingBag className="w-3.5 h-3.5 text-[#555]" />
-                  <span className="text-[11px] sm:text-xs hidden sm:inline">কার্টে যোগ</span>
-                  <span className="text-[11px] sm:text-xs sm:hidden">কার্ট</span>
+                  <span className="text-[11px] sm:text-xs">Add to Cart</span>
                 </>
               )}
             </button>
@@ -197,10 +196,10 @@ export function ProductCard({
               type="button"
               onClick={handleOrderNow}
               className="py-2 px-1.5 sm:px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition-all duration-200 cursor-pointer bg-[#E53935] hover:bg-[#D32F2F] active:scale-[0.98] text-white shadow-xs"
-              title="সরাসরি অর্ডার করুন"
+              title="Order Now"
             >
               <Zap className="w-3.5 h-3.5 fill-current" />
-              <span className="text-[11px] sm:text-xs">অর্ডার করুন</span>
+              <span className="text-[11px] sm:text-xs">Order Now</span>
             </button>
           </div>
         </div>

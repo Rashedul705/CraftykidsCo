@@ -106,7 +106,7 @@ export default function BundlesPage() {
                   onClick={() => handleAddBundle(b)}
                 >
                   <ShoppingBag className="w-4 h-4" />
-                  {added === b.id ? 'যোগ হয়েছে!' : 'কম্বোটি নিন'}
+                  {added === b.id ? 'Added!' : 'Add to Cart'}
                 </Button>
               </div>
             </div>

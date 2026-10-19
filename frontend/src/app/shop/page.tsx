@@ -167,7 +167,7 @@ export default function ShopPage() {
                 className="text-xs text-[#6B6B6B] hover:text-[#FF6B6B] flex items-center gap-1 font-semibold"
               >
                 <RotateCcw className="w-3 h-3" />
-                {locale === 'bn' ? 'রিসেট' : 'Reset'}
+                Reset
               </button>
             </div>
 
@@ -266,7 +266,7 @@ export default function ShopPage() {
                   onClick={resetFilters}
                   className="px-5 py-2.5 rounded-full bg-[#FF6B6B] text-white font-bold text-xs"
                 >
-                  ফিল্টার রিসেট করুন
+                  Reset Filters
                 </button>
               </div>
             )}

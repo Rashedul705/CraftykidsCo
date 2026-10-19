@@ -142,7 +142,7 @@ function TrackContent() {
 
           <Button type="submit" variant="primary" size="md" fullWidth>
             <Search className="w-4 h-4" />
-            স্ট্যাটাস দেখুন
+            Track Order
           </Button>
         </form>
       </div>

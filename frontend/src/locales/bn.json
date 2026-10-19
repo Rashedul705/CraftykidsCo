@@ -27,8 +27,8 @@
   "home": {
     "heroTitle": "বাচ্চাদের সৃজনশীল কল্পনায় যোগ করুন নিরাপদ রঙ!",
     "heroSubtitle": "শিশুদের কোমল হাতের জন্য প্রাকৃতিক উপাদান দিয়ে তৈরি মোমের রঙ এবং ব্রেইন ডেভলপমেন্ট খেলনা।",
-    "heroCta": "পণ্যগুলো দেখুন",
-    "secondaryCta": "কম্বো অফার",
+    "heroCta": "Shop Now",
+    "secondaryCta": "Combo Offers",
     "shopByAge": "বয়স অনুযায়ী কিনুন",
     "bestSellers": "সবচেয়ে জনপ্রিয় পণ্য",
     "combosTitle": "গিফট সেট ও কম্বো অফার",
@@ -36,8 +36,8 @@
     "freeDeliveryNotice": "৳১,০০০ টাকার অর্ডারে ফ্রি ডেলিভারি!"
   },
   "product": {
-    "addToCart": "কার্টে যোগ করুন",
-    "orderNow": "অর্ডার করুন",
+    "addToCart": "Add to Cart",
+    "orderNow": "Order Now",
     "outOfStock": "স্টক শেষ",
     "inStock": "স্টকে আছে",
     "selectVariation": "ভ্যারিয়েশন নির্বাচন করুন",
@@ -49,14 +49,14 @@
   "cart": {
     "title": "আপনার শপিং কার্ট",
     "empty": "আপনার কার্ট বর্তমানে খালি আছে",
-    "startShopping": "কেনাকাটা শুরু করুন",
+    "startShopping": "Shop Now",
     "subtotal": "মোট পণ্য মূল্য",
     "deliveryCharge": "ডেলিভারি চার্জ",
     "discount": "ছাড়",
     "total": "সর্বমোট",
     "freeDeliveryProgress": "ফ্রি ডেলিভারি পেতে আরও {remaining} যোগ করুন!",
     "freeDeliveryAchieved": "অভিনন্দন! আপনি পাচ্ছেন ফ্রি ডেলিভারি!",
-    "proceedToCheckout": "অর্ডার নিশ্চিত করতে এগিয়ে যান"
+    "proceedToCheckout": "Proceed to Checkout"
   },
   "checkout": {
     "title": "সহজ এক পৃষ্ঠার চেকআউট",
@@ -70,6 +70,6 @@
     "cod": "ক্যাশ অন ডেলিভারি (পণ্য পেয়ে টাকা দিন)",
     "bkash": "বিকাশ পেমেন্ট",
     "nagad": "নগদ পেমেন্ট",
-    "placeOrder": "অর্ডার সম্পন্ন করুন ৳{total}"
+    "placeOrder": "Order Now (৳{total})"
   }
 }

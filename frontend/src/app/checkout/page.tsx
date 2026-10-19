@@ -457,11 +457,11 @@ export default function CheckoutPage() {
                 disabled={isSubmitting || items.length === 0}
               >
                 {isSubmitting ? (
-                  'অর্ডার প্রক্রিয়াকরণ হচ্ছে...'
+                  'Processing Order...'
                 ) : (
                   <>
                     <ShoppingBag className="w-5 h-5" />
-                    Confirm order
+                    Order Now
                   </>
                 )}
               </Button>

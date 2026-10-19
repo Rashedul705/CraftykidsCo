@@ -56,7 +56,7 @@
     "total": "Total Amount",
     "freeDeliveryProgress": "Add {remaining} more for Free Delivery!",
     "freeDeliveryAchieved": "Congratulations! You unlocked Free Delivery!",
-    "proceedToCheckout": "Continue Checkout"
+    "proceedToCheckout": "Proceed to Checkout"
   },
   "checkout": {
     "title": "Quick Single-Page Checkout",
@@ -70,6 +70,6 @@
     "cod": "Cash on Delivery",
     "bkash": "bKash Online Payment",
     "nagad": "Nagad Online Payment",
-    "placeOrder": "Confirm order"
+    "placeOrder": "Order Now (৳{total})"
   }
 }

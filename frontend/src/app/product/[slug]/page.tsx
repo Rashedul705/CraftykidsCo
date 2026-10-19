@@ -387,7 +387,7 @@ function ProductContent() {
                       : 'bg-[#FAF7F2] text-[#666] hover:text-black'
                   }`}
                 >
-                  সব মিডিয়া ({galleryImages.length + productVideos.length})
+                  All Media ({galleryImages.length + productVideos.length})
                 </button>
                 <button
                   onClick={() => {
@@ -401,7 +401,7 @@ function ProductContent() {
                   }`}
                 >
                   <Camera className="w-3 h-3" />
-                  <span>ছবি ({galleryImages.length})</span>
+                  <span>Photos ({galleryImages.length})</span>
                 </button>
                 <button
                   onClick={() => {
@@ -415,7 +415,7 @@ function ProductContent() {
                   }`}
                 >
                   <Film className="w-3 h-3" />
-                  <span>শর্ট ভিডিও ({productVideos.length})</span>
+                  <span>Videos ({productVideos.length})</span>
                 </button>
               </div>
 
@@ -423,13 +423,13 @@ function ProductContent() {
               <div className="flex items-center gap-2">
                 <span className="hidden sm:inline-block text-[11px] font-bold text-[#888] bg-[#FAF7F2] px-2.5 py-0.5 rounded-full border border-[#EFEAE2]">
                   {activeMedia.type === 'image'
-                    ? `📷 ছবি ${activeMedia.index + 1} / ${galleryImages.length}`
-                    : `🎥 ভিডিও ${activeMedia.index + 1} / ${productVideos.length}`}
+                    ? `📷 Photo ${activeMedia.index + 1} / ${galleryImages.length}`
+                    : `🎥 Video ${activeMedia.index + 1} / ${productVideos.length}`}
                 </span>
                 <button
                   onClick={handleShare}
                   className="p-1.5 rounded-full hover:bg-[#FAF7F2] text-[#666] hover:text-[#E53935] transition-colors cursor-pointer"
-                  title="শেয়ার করুন"
+                  title="Share"
                 >
                   <Share2 className="w-4 h-4" />
                 </button>
@@ -474,7 +474,7 @@ function ProductContent() {
                       }
                     }}
                     className="absolute bottom-3 right-14 z-20 p-2 rounded-full bg-black/75 backdrop-blur-md text-white hover:bg-black transition-colors"
-                    title={isMuted ? 'সাউন্ড চালু করুন' : 'সাউন্ড মিউট করুন'}
+                    title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
                   >
                     {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                   </button>
@@ -483,7 +483,7 @@ function ProductContent() {
                   <button
                     onClick={() => setActiveMedia({ type: 'image', index: 0 })}
                     className="absolute top-3 right-3 z-20 bg-white/90 hover:bg-white text-[#2B2B2B] p-1.5 rounded-full shadow-md transition-colors"
-                    title="ছবিতে ফিরে যান"
+                    title="Back to Photos"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -530,10 +530,10 @@ function ProductContent() {
                   <button
                     onClick={() => setIsZoomOpen(true)}
                     className="absolute bottom-3.5 right-3.5 p-2 rounded-xl bg-white/90 hover:bg-white text-[#2B2B2B] shadow-md transition-all duration-200 cursor-pointer flex items-center gap-1 text-xs font-bold z-10"
-                    title="জুম করে দেখুন"
+                    title="Zoom Image"
                   >
                     <Maximize2 className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">জুম</span>
+                    <span className="hidden sm:inline">Zoom</span>
                   </button>
                 </>
               )}
@@ -542,14 +542,14 @@ function ProductContent() {
               <button
                 onClick={handlePrevMedia}
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] shadow-md flex items-center justify-center transition-all opacity-80 hover:opacity-100 z-20 cursor-pointer"
-                title="পূর্ববর্তী"
+                title="Previous"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={handleNextMedia}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] shadow-md flex items-center justify-center transition-all opacity-80 hover:opacity-100 z-20 cursor-pointer"
-                title="পরবর্তী"
+                title="Next"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -576,7 +576,7 @@ function ProductContent() {
                     <Image src={img} alt={`Thumbnail ${idx + 1}`} fill className="object-cover" />
                     {idx === 0 && (
                       <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] font-bold text-center py-0.5">
-                        মেইন
+                        Main
                       </span>
                     )}
                   </button>
@@ -653,7 +653,7 @@ function ProductContent() {
                     className="px-3 py-1.5 rounded-full bg-white hover:bg-[#FAF7F2] border border-[#E53935]/40 text-[#E53935] text-xs font-bold flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
                   >
                     <Play className="w-3 h-3 fill-current" />
-                    <span>ভিডিও {i + 1} ({v.duration})</span>
+                    <span>Video {i + 1} ({v.duration})</span>
                   </button>
                 ))}
               </div>
@@ -791,7 +791,7 @@ function ProductContent() {
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                     disabled={quantity <= 1}
                     className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#E53935] shadow-xs cursor-pointer disabled:opacity-40 transition-colors"
-                    title="কমান"
+                    title="Decrease"
                   >
                     <Minus className="w-3.5 h-3.5" />
                   </button>
@@ -800,7 +800,7 @@ function ProductContent() {
                     onClick={() => setQuantity((q) => Math.min(currentStock, q + 1))}
                     disabled={quantity >= currentStock}
                     className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#E53935] shadow-xs cursor-pointer disabled:opacity-40 transition-colors"
-                    title="বাড়ান"
+                    title="Increase"
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </button>
@@ -819,7 +819,7 @@ function ProductContent() {
                   className="py-3.5 px-4 rounded-2xl bg-[#E53935] hover:bg-[#D32F2F] active:scale-[0.98] text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(229,57,53,0.35)] hover:shadow-[0_6px_22px_rgba(229,57,53,0.45)] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Zap className="w-4 h-4 fill-current" />
-                  <span>সরাসরি অর্ডার করুন</span>
+                  <span>Order Now</span>
                 </button>
 
                 {/* 2. Add to Cart */}
@@ -836,12 +836,12 @@ function ProductContent() {
                   {addedToast ? (
                     <>
                       <Check className="w-4 h-4 text-[#2E7D32]" />
-                      <span>কার্টে যুক্ত হয়েছে!</span>
+                      <span>Added to Cart!</span>
                     </>
                   ) : (
                     <>
                       <ShoppingBag className="w-4 h-4" />
-                      <span>কার্টে যোগ করুন</span>
+                      <span>Add to Cart</span>
                     </>
                   )}
                 </button>
@@ -868,14 +868,14 @@ function ProductContent() {
                   rel="noopener noreferrer"
                   className="px-3.5 py-2 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold flex items-center gap-1.5 shadow-xs transition-colors"
                 >
-                  <MessageCircle className="w-3.5 h-3.5" /> হোয়াটসঅ্যাপ
+                  <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                 </a>
 
                 <a
                   href="tel:+8801700000000"
                   className="px-3.5 py-2 rounded-xl bg-white border border-[#C8E6C9] text-[#1B5E20] hover:bg-[#F1F8F2] font-bold flex items-center gap-1.5 shadow-xs transition-colors"
                 >
-                  <Phone className="w-3.5 h-3.5" /> কল করুন
+                  <Phone className="w-3.5 h-3.5" /> Call Now
                 </a>
               </div>
             </div>
@@ -1242,7 +1242,7 @@ function ProductContent() {
               onClick={handleAddCombo}
               className="py-3 px-5 rounded-2xl bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
             >
-              কম্বোটি কার্টে নিন
+              Add Combo to Cart
             </button>
           </div>
         </div>
@@ -1256,7 +1256,7 @@ function ProductContent() {
               সম্পর্কিত অন্যান্য পণ্যসমূহ
             </h3>
             <Link href="/shop" className="text-xs font-bold text-[#E53935] hover:underline flex items-center gap-1">
-              সব পণ্য দেখুন <ArrowRight className="w-3.5 h-3.5" />
+              View All Products <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -1314,7 +1314,7 @@ function ProductContent() {
             <button
               onClick={() => setIsZoomOpen(false)}
               className="absolute -top-12 right-0 text-white hover:text-[#E53935] p-2 cursor-pointer z-10"
-              title="বন্ধ করুন"
+              title="Close"
             >
               <X className="w-7 h-7" />
             </button>
@@ -1375,7 +1375,7 @@ function ProductContent() {
             onClick={handleAddToCart}
             disabled={isOutOfStock}
             className="p-2.5 rounded-xl bg-[#FFF8F6] text-[#E53935] border border-[#FADCD5] font-bold text-xs flex items-center justify-center active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-            title="কার্টে যোগ"
+            title="Add to Cart"
           >
             <ShoppingBag className="w-4 h-4" />
           </button>
@@ -1386,7 +1386,7 @@ function ProductContent() {
             className="py-2.5 px-3.5 rounded-xl bg-[#E53935] hover:bg-[#D32F2F] text-white font-black text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
             <Zap className="w-3.5 h-3.5 fill-current" />
-            <span className="whitespace-nowrap">{isOutOfStock ? 'স্টক শেষ' : 'অর্ডার করুন'}</span>
+            <span className="whitespace-nowrap">{isOutOfStock ? 'Out of Stock' : 'Order Now'}</span>
           </button>
         </div>
       </div>

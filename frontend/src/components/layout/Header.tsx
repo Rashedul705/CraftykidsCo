@@ -111,7 +111,7 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
             <Link
               href="/shop"
               className="p-2 rounded-full hover:bg-[#FAF7F2] text-[#555] transition-colors hidden md:flex items-center justify-center"
-              title="পছন্দের তালিকা"
+              title="Wishlist"
             >
               <Heart className="w-5 h-5 text-[#666] hover:text-[#E53935]" />
             </Link>
@@ -129,7 +129,7 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
                 )}
               </div>
               <div className="hidden lg:flex flex-col text-left leading-tight">
-                <span className="text-[10px] font-semibold text-white/80">কার্ট</span>
+                <span className="text-[10px] font-semibold text-white/80">Cart</span>
                 <span className="text-xs font-black">{formatBDT(subtotal, { locale: activeLocale })}</span>
               </div>
             </Link>

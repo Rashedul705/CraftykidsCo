@@ -143,7 +143,7 @@ export default function CustomerAccountPage() {
                 </div>
 
                 <Button type="submit" variant="primary" size="md" fullWidth>
-                  ওটিপি (OTP) কোড পাঠান
+                  Send OTP Code
                 </Button>
               </form>
             ) : (
@@ -172,7 +172,7 @@ export default function CustomerAccountPage() {
                 </div>
 
                 <Button type="submit" variant="primary" size="md" fullWidth>
-                  যাচাই করে লগইন করুন
+                  Verify & Login
                 </Button>
 
                 <button
@@ -180,7 +180,7 @@ export default function CustomerAccountPage() {
                   onClick={() => setOtpSent(false)}
                   className="text-xs text-[#6B6B6B] hover:text-[#FF6B6B] font-bold"
                 >
-                  নম্বর পরিবর্তন করুন
+                  Change Phone Number
                 </button>
               </form>
             )}
@@ -204,7 +204,7 @@ export default function CustomerAccountPage() {
                 onClick={() => setIsLoggedIn(false)}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#EFE9E0] bg-[#FAF7F2] text-xs font-bold text-[#6B6B6B] hover:text-[#FF6B6B]"
               >
-                <LogOut className="w-3.5 h-3.5" /> লগআউট
+                <LogOut className="w-3.5 h-3.5" /> Logout
               </button>
             </div>
 
@@ -247,7 +247,7 @@ export default function CustomerAccountPage() {
 
                       <Link href={`/track?order=${ord.orderNumber}`}>
                         <Button size="sm" variant="outline">
-                          ট্র্যাক
+                          Track Order
                         </Button>
                       </Link>
                     </div>

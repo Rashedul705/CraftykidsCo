@@ -70,7 +70,7 @@ export default function CartPage() {
           </div>
 
           <Link href="/shop" className="text-xs font-bold text-[#FF6B6B] hover:underline flex items-center gap-1">
-            আরও কেনাকাটা করুন <ArrowRight className="w-3.5 h-3.5" />
+            Continue Shopping <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
@@ -137,7 +137,7 @@ export default function CartPage() {
                         <button
                           onClick={() => removeItem(item.id)}
                           className="text-xs text-[#6B6B6B] hover:text-[#FF6B6B] mt-0.5 p-1 inline-flex items-center gap-1 cursor-pointer"
-                          title="রিমুভ করুন"
+                          title="Remove"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -169,7 +169,7 @@ export default function CartPage() {
                       onClick={removeCoupon}
                       className="text-xs font-bold text-[#FF6B6B] hover:underline"
                     >
-                      মুছে দিন
+                      Remove
                     </button>
                   </div>
                 ) : (
@@ -182,7 +182,7 @@ export default function CartPage() {
                       className="flex-1 px-3 py-2 text-xs rounded-full bg-[#FAF7F2] border border-[#EFE9E0] uppercase font-bold focus:outline-none focus:border-[#FF6B6B]"
                     />
                     <Button type="submit" size="sm" variant="outline">
-                      প্রয়োগ
+                      Apply
                     </Button>
                   </form>
                 )}
@@ -239,7 +239,7 @@ export default function CartPage() {
                 <Link href="/checkout" className="block pt-2">
                   <Button variant="primary" size="lg" fullWidth>
                     <ShoppingBag className="w-5 h-5" />
-                    Continue Checkout
+                    Proceed to Checkout
                   </Button>
                 </Link>
 
@@ -262,7 +262,7 @@ export default function CartPage() {
             <div className="pt-2">
               <Link href="/shop">
                 <Button variant="primary" size="md">
-                  পণ্য ক্যাটালগ দেখুন
+                  Shop Now
                 </Button>
               </Link>
             </div>

@@ -131,13 +131,13 @@ function ConfirmationContent() {
           >
             <Button variant="primary" size="md" fullWidth>
               <Truck className="w-4 h-4" />
-              অর্ডার ট্র্যাক করুন
+              Track Order
             </Button>
           </Link>
 
           <Link href="/" className="flex-1">
             <Button variant="outline" size="md" fullWidth>
-              হোমে ফিরে যান
+              Back to Home
             </Button>
           </Link>
         </div>

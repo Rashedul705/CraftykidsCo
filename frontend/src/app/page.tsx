@@ -43,9 +43,9 @@ const heroSlides = [
     imageUrl: 'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
     badgeTop: '★ ৬টি প্লাস্টার ফল + ৪টি ওয়াশেবল রঙ + ব্রাশ',
     badgeBottom: '১০০% নন-টক্সিক ও স্ক্রিন-ফ্রি ক্রিয়েটিভ প্লে',
-    ctaPrimaryText: 'প্লাস্টার কিট কিনুন',
+    ctaPrimaryText: 'Shop Art Kits',
     ctaPrimaryHref: '/category/art-kits',
-    ctaSecondaryText: 'সব পণ্য দেখুন',
+    ctaSecondaryText: 'Explore All',
     ctaSecondaryHref: '/shop',
     bgGradient: 'from-[#FFF5EB] via-[#FFF9F0] to-[#FFE8E8]',
     borderColor: '#F3E5D8',
@@ -64,9 +64,9 @@ const heroSlides = [
     imageUrl: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=1200&q=80',
     badgeTop: '★ খাঁটি প্রাকৃতিক বিসওয়াক্স ও ফুড কালার',
     badgeBottom: 'সহজে ওয়াশেবল ও প্রিমিয়াম মসৃণ ফিনিশ',
-    ctaPrimaryText: 'মোমের রঙ দেখুন',
+    ctaPrimaryText: 'Shop Crayons',
     ctaPrimaryHref: '/category/wax-crayons',
-    ctaSecondaryText: 'অর্ডার করুন',
+    ctaSecondaryText: 'Order Now',
     ctaSecondaryHref: '/shop',
     bgGradient: 'from-[#FFFDF0] via-[#FFF8E7] to-[#FFF3D6]',
     borderColor: '#F5E6BE',
@@ -85,9 +85,9 @@ const heroSlides = [
     imageUrl: 'https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=1200&q=80',
     badgeTop: '★ ৬ রঙের সফট প্লে-ডো + ৪টি শেপ কাটার',
     badgeBottom: 'হ্যান্ড-আই কোঅর্ডিনেশন ও সেন্সরি বুস্টার',
-    ctaPrimaryText: 'প্লে-ডো কিনুন',
+    ctaPrimaryText: 'Shop Play-Dough',
     ctaPrimaryHref: '/category/play-dough-clay',
-    ctaSecondaryText: 'অফারসমূহ দেখুন',
+    ctaSecondaryText: 'View Offers',
     ctaSecondaryHref: '/shop',
     bgGradient: 'from-[#F0F9FF] via-[#E0F2FE] to-[#F0F9FF]',
     borderColor: '#BAE6FD',
@@ -106,9 +106,9 @@ const heroSlides = [
     imageUrl: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=1200&q=80',
     badgeTop: '★ মসৃণ ফিনিশ ও ন্যাচারাল বিচ উড',
     badgeBottom: '১ থেকে ৮ বছর বয়সীদের সেরা উপহার',
-    ctaPrimaryText: 'কাঠের খেলনা ও পাজল',
+    ctaPrimaryText: 'Shop Wooden Toys',
     ctaPrimaryHref: '/category/wooden-toys',
-    ctaSecondaryText: 'সব কালেকশন',
+    ctaSecondaryText: 'View Catalog',
     ctaSecondaryHref: '/shop',
     bgGradient: 'from-[#F0FDF4] via-[#DCFCE7] to-[#F0FDF4]',
     borderColor: '#BBF7D0',
@@ -287,7 +287,7 @@ export default function HomePage() {
                       <div
                         className="relative w-full aspect-4/3 sm:aspect-16/10 lg:aspect-square rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border-4 border-white group/image cursor-pointer"
                         onClick={() => setIsZoomModalOpen(true)}
-                        title="ক্লিক করে বড় করে দেখুন (Click to Zoom)"
+                        title="Click to Zoom"
                       >
                         <div className="relative w-full h-full overflow-hidden bg-white">
                           <Image
@@ -315,7 +315,7 @@ export default function HomePage() {
                           {/* Zoom In Badge Indicator */}
                           <div className="bg-black/60 backdrop-blur-xs text-white p-2 rounded-xl flex items-center gap-1 shadow-md shrink-0">
                             <Maximize2 className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-bold hidden sm:inline">জুম</span>
+                            <span className="text-[10px] font-bold hidden sm:inline">Zoom</span>
                           </div>
                         </div>
                       </div>
@@ -330,14 +330,14 @@ export default function HomePage() {
           <button
             onClick={prevSlide}
             className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] hover:text-[#E53935] shadow-lg flex items-center justify-center transition-all opacity-80 hover:opacity-100 hover:scale-110 z-20 cursor-pointer"
-            title="পূর্ববর্তী স্লাইড"
+            title="Previous Slide"
           >
             <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
           <button
             onClick={nextSlide}
             className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] hover:text-[#E53935] shadow-lg flex items-center justify-center transition-all opacity-80 hover:opacity-100 hover:scale-110 z-20 cursor-pointer"
-            title="পরবর্তী স্লাইড"
+            title="Next Slide"
           >
             <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
@@ -353,7 +353,7 @@ export default function HomePage() {
                     ? 'w-7 sm:w-8 h-2 bg-[#E53935] shadow-sm'
                     : 'w-2 h-2 bg-white/70 hover:bg-white'
                 }`}
-                title={`স্লাইড ${i + 1}`}
+                title={`Slide ${i + 1}`}
               />
             ))}
           </div>
@@ -366,7 +366,7 @@ export default function HomePage() {
               <button
                 onClick={() => setIsZoomModalOpen(false)}
                 className="absolute -top-12 right-0 text-white hover:text-[#E53935] p-2 cursor-pointer z-10"
-                title="বন্ধ করুন"
+                title="Close"
               >
                 <X className="w-7 h-7" />
               </button>
@@ -410,7 +410,7 @@ export default function HomePage() {
               href="/shop"
               className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
             >
-              <span>সব দেখুন</span>
+              <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -460,7 +460,7 @@ export default function HomePage() {
               href="/shop"
               className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
             >
-              <span>সব দেখুন</span>
+              <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -499,7 +499,7 @@ export default function HomePage() {
               href="/shop"
               className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
             >
-              <span>সব দেখুন</span>
+              <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -540,7 +540,7 @@ export default function HomePage() {
               href="/category/art-kits"
               className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
             >
-              <span>{locale === 'bn' ? 'সব দেখুন' : 'View All'}</span>
+              <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -612,7 +612,7 @@ export default function HomePage() {
               href="/category/wax-crayons"
               className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
             >
-              <span>সব দেখুন</span>
+              <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -645,7 +645,7 @@ export default function HomePage() {
                 href="/category/wax-crayons"
                 className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
               >
-                সব পণ্য দেখুন
+                View All Products
               </Link>
             </div>
 
@@ -684,7 +684,7 @@ export default function HomePage() {
               href="/category/play-dough-clay"
               className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
             >
-              <span>সব দেখুন</span>
+              <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -717,7 +717,7 @@ export default function HomePage() {
                 href="/category/play-dough-clay"
                 className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
               >
-                সব পণ্য দেখুন
+                View All Products
               </Link>
             </div>
 
@@ -756,7 +756,7 @@ export default function HomePage() {
               href="/category/educational-toys"
               className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
             >
-              <span>সব দেখুন</span>
+              <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -789,7 +789,7 @@ export default function HomePage() {
                 href="/category/educational-toys"
                 className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
               >
-                সব পণ্য দেখুন
+                View All Products
               </Link>
             </div>
 
@@ -834,7 +834,7 @@ export default function HomePage() {
               href="/shop"
               className="px-6 py-2.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors"
             >
-              শপ নাও
+              Shop Now
             </Link>
           </div>
 
@@ -855,7 +855,7 @@ export default function HomePage() {
               href="/shop"
               className="px-6 py-2.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors"
             >
-              অর্ডার করুন
+              Order Now
             </Link>
           </div>
         </section>
@@ -1027,7 +1027,7 @@ export default function HomePage() {
               type="submit"
               className="px-6 py-2.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer shrink-0"
             >
-              যুক্ত হোন
+              Subscribe
             </button>
           </form>
 
