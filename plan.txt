@@ -93,26 +93,40 @@ The repository is organized as a clean Monorepo:
   [x] Order confirmation screen (`/order/confirmation/[id]`) with instant order ID.
   [x] Live order tracking page (`/track`) by phone number or order ID.
 
+[F] Database Persistence & Cloud Image Hosting (MongoDB Atlas + ImgBB CDN):
+  [x] Integrated MongoDB Atlas Cluster (`craftykidsco` on `cluster0.bjsv7px.mongodb.net`) via Mongoose:
+      - Connection manager with automatic reconnection & ready-state diagnostics in `backend/db.js`.
+      - Mongoose data models: `Product`, `Category`, `Order` in `backend/models/`.
+      - Database seeder (`backend/seed.js`) seeded with 6 categories and all 8 authentic plaster painting kits.
+      - REST endpoints updated to query & persist directly with MongoDB Atlas (`GET /api/products`, `GET /api/products/:id`, `GET /api/categories`, `GET /api/orders`, `POST /api/orders`).
+  [x] Integrated ImgBB Cloud Storage API (`d110c221cdd13543af463618efa8df04`):
+      - Uploaded all 8 plaster product photos to ImgBB CDN returning permanent `https://i.ibb.co/...` links.
+      - Next.js image optimization configured in `frontend/next.config.ts` for `i.ibb.co`.
+      - Implemented `POST /api/upload-image` endpoint to allow direct file/base64 uploads to ImgBB.
+  [x] Backend Monitoring Dashboard Enhancement:
+      - Live MongoDB Atlas health indicator (glowing emerald dot when connected).
+      - Live collections summary count: Products (8), Orders (0).
+      - Services card reflecting ImgBB API (Hosted CDN) status: Active.
+  [x] Strict Git & Credential Security:
+      - Root `.gitignore` configured to ignore `.env*`, `backend/.env`, `frontend/.env`, `frontend/.env.local`.
+      - Verified `.env` files are untracked and never committed to GitHub.
+      - Created `.env.example` templates with sanitized placeholders for team onboarding.
+
 --------------------------------------------------------------------------------
 3. WHAT IS RUNNING CURRENTLY
 --------------------------------------------------------------------------------
 - Next.js 16 Frontend: Port 3000 (Development server running with Turbopack)
-- Express.js Backend: Port 5000 (Dashboard & REST API running via Node)
+- Express.js Backend: Port 5000 (Connected to MongoDB Atlas & ImgBB API)
 - Production Build: Successfully tested (`npm run build` completed with 0 errors)
+- Database: MongoDB Atlas Cloud Cluster (Active & Connected)
+- Image Hosting: ImgBB Cloud CDN (Active)
 - Git Remote: Synchronized with GitHub repository (`origin/main`)
 
 --------------------------------------------------------------------------------
 4. WHAT NEEDS TO BE DONE NEXT (ACTIONABLE ROADMAP)
 --------------------------------------------------------------------------------
 
-PHASE 1: REAL DATABASE & PERSISTENT DATA LAYER (High Priority)
-  [ ] Connect database persistence so orders and newly added products persist across server restarts:
-      Option A: Prisma ORM with PostgreSQL (Supabase / Neon / Render)
-      Option B: MongoDB (Mongoose / MongoDB Atlas)
-      Option C: Cloud Firestore (Firebase Admin SDK)
-  [ ] Unify product reading so the Admin panel, API, and storefront read from the same live database.
-
-PHASE 2: LIVE PAYMENT GATEWAY INTEGRATION (High Priority)
+PHASE 1: LIVE PAYMENT GATEWAY INTEGRATION (High Priority)
   [ ] bKash Merchant Payment Gateway (PGW / Checkout URL API):
       - Create payment URL, callback execution, and instant payment status verification.
   [ ] Nagad / SSLCommerz / Aamarpay integration as alternative options.

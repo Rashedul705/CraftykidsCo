@@ -329,7 +329,7 @@ export default function HomePage() {
 
               <div className="relative w-full h-44 sm:h-52 lg:h-auto lg:aspect-square my-3 sm:my-4 rounded-xl overflow-hidden shadow-xs">
                 <Image
-                  src="/images/products/little-bug-adventure.jpg"
+                  src="https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg"
                   alt="Plaster Painting Kits Collection"
                   fill
                   className="object-cover group-hover:scale-105 transition-transform"

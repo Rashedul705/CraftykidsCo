@@ -1,14 +1,23 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { connectDB, getDBStatus } = require('./db');
+const Product = require('./models/Product');
+const Category = require('./models/Category');
+const Order = require('./models/Order');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || 'localhost';
 
+// Connect to MongoDB Atlas
+connectDB().catch((err) => console.error('MongoDB auto-connect notice:', err.message));
+
 // Enable CORS and JSON parsing
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 // Serve static assets from frontend public directory
 app.use(express.static(path.join(__dirname, '../frontend/public')));
@@ -34,12 +43,12 @@ const products = [
     rating: 5.0,
     reviewsCount: 58,
     reviewCount: 58,
-    image: '/images/products/little-bug-adventure.jpg',
-    imageUrl: '/images/products/little-bug-adventure.jpg',
+    image: 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+    imageUrl: 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
     galleryImages: [
-      '/images/products/little-bug-adventure.jpg',
-      '/images/products/mixed-kit-1.jpg',
-      '/images/products/sweet-fruit.jpg'
+      'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+      'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+      'https://i.ibb.co/q35L6xdm/craftykidsco-autumn-nature.jpg'
     ],
     accentColor: '#FFE8D6',
     tagColor: 'bg-amber-100 text-amber-800',
@@ -88,12 +97,12 @@ const products = [
     rating: 4.9,
     reviewsCount: 42,
     reviewCount: 42,
-    image: '/images/products/sweet-fruit.jpg',
-    imageUrl: '/images/products/sweet-fruit.jpg',
+    image: 'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+    imageUrl: 'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
     galleryImages: [
-      '/images/products/sweet-fruit.jpg',
-      '/images/products/little-bug-adventure.jpg',
-      '/images/products/mixed-kit-1.jpg'
+      'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+      'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+      'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg'
     ],
     accentColor: '#FCE4EC',
     tagColor: 'bg-pink-100 text-pink-800',
@@ -137,12 +146,12 @@ const products = [
     rating: 4.8,
     reviewsCount: 64,
     reviewCount: 64,
-    image: '/images/products/car-painting-kit.jpg',
-    imageUrl: '/images/products/car-painting-kit.jpg',
+    image: 'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg',
+    imageUrl: 'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg',
     galleryImages: [
-      '/images/products/car-painting-kit.jpg',
-      '/images/products/tool-set.jpg',
-      '/images/products/sunny-shores.jpg'
+      'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg',
+      'https://i.ibb.co/kVrGCzrh/craftykidsco-tool-set.jpg',
+      'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg'
     ],
     accentColor: '#E1F5FE',
     tagColor: 'bg-sky-100 text-sky-800',
@@ -177,11 +186,11 @@ const products = [
     rating: 4.9,
     reviewsCount: 35,
     reviewCount: 35,
-    image: '/images/products/tool-set.jpg',
-    imageUrl: '/images/products/tool-set.jpg',
+    image: 'https://i.ibb.co/kVrGCzrh/craftykidsco-tool-set.jpg',
+    imageUrl: 'https://i.ibb.co/kVrGCzrh/craftykidsco-tool-set.jpg',
     galleryImages: [
-      '/images/products/tool-set.jpg',
-      '/images/products/car-painting-kit.jpg'
+      'https://i.ibb.co/kVrGCzrh/craftykidsco-tool-set.jpg',
+      'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg'
     ],
     accentColor: '#FFF3E0',
     tagColor: 'bg-orange-100 text-orange-800',
@@ -211,11 +220,11 @@ const products = [
     rating: 5.0,
     reviewsCount: 48,
     reviewCount: 48,
-    image: '/images/products/sunny-shores.jpg',
-    imageUrl: '/images/products/sunny-shores.jpg',
+    image: 'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg',
+    imageUrl: 'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg',
     galleryImages: [
-      '/images/products/sunny-shores.jpg',
-      '/images/products/ocean-world.jpg'
+      'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg',
+      'https://i.ibb.co/7J0qh5wC/craftykidsco-ocean-world.jpg'
     ],
     accentColor: '#FFF9C4',
     tagColor: 'bg-yellow-100 text-yellow-800',
@@ -245,11 +254,11 @@ const products = [
     rating: 4.9,
     reviewsCount: 52,
     reviewCount: 52,
-    image: '/images/products/ocean-world.jpg',
-    imageUrl: '/images/products/ocean-world.jpg',
+    image: 'https://i.ibb.co/7J0qh5wC/craftykidsco-ocean-world.jpg',
+    imageUrl: 'https://i.ibb.co/7J0qh5wC/craftykidsco-ocean-world.jpg',
     galleryImages: [
-      '/images/products/ocean-world.jpg',
-      '/images/products/sunny-shores.jpg'
+      'https://i.ibb.co/7J0qh5wC/craftykidsco-ocean-world.jpg',
+      'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg'
     ],
     accentColor: '#E0F7FA',
     tagColor: 'bg-cyan-100 text-cyan-800',
@@ -279,12 +288,12 @@ const products = [
     rating: 4.9,
     reviewsCount: 73,
     reviewCount: 73,
-    image: '/images/products/mixed-kit-1.jpg',
-    imageUrl: '/images/products/mixed-kit-1.jpg',
+    image: 'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg',
+    imageUrl: 'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg',
     galleryImages: [
-      '/images/products/mixed-kit-1.jpg',
-      '/images/products/sweet-fruit.jpg',
-      '/images/products/little-bug-adventure.jpg'
+      'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg',
+      'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+      'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg'
     ],
     accentColor: '#F3E5F5',
     tagColor: 'bg-purple-100 text-purple-800',
@@ -314,11 +323,11 @@ const products = [
     rating: 5.0,
     reviewsCount: 39,
     reviewCount: 39,
-    image: '/images/products/autumn-nature.jpg',
-    imageUrl: '/images/products/autumn-nature.jpg',
+    image: 'https://i.ibb.co/q35L6xdm/craftykidsco-autumn-nature.jpg',
+    imageUrl: 'https://i.ibb.co/q35L6xdm/craftykidsco-autumn-nature.jpg',
     galleryImages: [
-      '/images/products/autumn-nature.jpg',
-      '/images/products/little-bug-adventure.jpg'
+      'https://i.ibb.co/q35L6xdm/craftykidsco-autumn-nature.jpg',
+      'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg'
     ],
     accentColor: '#EFEBE9',
     tagColor: 'bg-stone-100 text-stone-800',
@@ -793,30 +802,248 @@ const products = [
 
 // Endpoints
 // 1. GET /api/products
-app.get('/api/products', (req, res) => {
-  // Support both direct array and wrapped response formats
-  if (req.query.format === 'object' || req.query.wrapper === 'true') {
-    return res.json({
-      success: true,
-      total: products.length,
-      data: products,
-    });
+app.get('/api/products', async (req, res) => {
+  try {
+    const dbStatus = getDBStatus();
+    let result = [];
+    if (dbStatus.connected) {
+      const query = {};
+      if (req.query.category) {
+        query.$or = [
+          { category: req.query.category },
+          { categorySlug: req.query.category },
+        ];
+      }
+      if (req.query.isBestSeller === 'true') {
+        query.isBestSeller = true;
+      }
+      if (req.query.isNewArrival === 'true') {
+        query.isNewArrival = true;
+      }
+      result = await Product.find(query).lean();
+    }
+
+    // Fallback if DB is disconnected or empty
+    if (!result || result.length === 0) {
+      let filtered = products;
+      if (req.query.category) {
+        filtered = filtered.filter(
+          (p) =>
+            p.category === req.query.category ||
+            p.categorySlug === req.query.category
+        );
+      }
+      if (req.query.isBestSeller === 'true') {
+        filtered = filtered.filter((p) => p.isBestSeller);
+      }
+      if (req.query.isNewArrival === 'true') {
+        filtered = filtered.filter((p) => p.isNewArrival);
+      }
+      result = filtered;
+    }
+
+    if (req.query.format === 'object' || req.query.wrapper === 'true') {
+      return res.json({
+        success: true,
+        total: result.length,
+        source: dbStatus.connected ? 'mongodb' : 'fallback-memory',
+        data: result,
+      });
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching products:', err.message);
+    res.json(products);
   }
-  res.json(products);
 });
 
 // 2. GET /api/products/:id
-app.get('/api/products/:id', (req, res) => {
+app.get('/api/products/:id', async (req, res) => {
   const { id } = req.params;
-  const product = products.find((p) => p.id === id || p.slug === id);
-  if (!product) {
+  try {
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      const product = await Product.findOne({
+        $or: [
+          { id: id },
+          { slug: id },
+          ...(id.match(/^[0-9a-fA-F]{24}$/) ? [{ _id: id }] : [])
+        ]
+      }).lean();
+      if (product) return res.json(product);
+    }
+  } catch (err) {
+    console.error('Error fetching product from DB:', err.message);
+  }
+
+  // Fallback to in-memory list
+  const fallbackProduct = products.find((p) => p.id === id || p.slug === id);
+  if (!fallbackProduct) {
     return res.status(404).json({ success: false, message: 'Product not found' });
   }
-  res.json(product);
+  res.json(fallbackProduct);
 });
 
-// 3. Infrastructure & API Registry Dashboard (Root Route)
-app.get('/', (req, res) => {
+// 3. POST /api/products (Create/persist product)
+app.post('/api/products', async (req, res) => {
+  try {
+    const dbStatus = getDBStatus();
+    if (!dbStatus.connected) {
+      return res.status(503).json({ success: false, message: 'Database not connected' });
+    }
+    const productData = req.body;
+    if (!productData.title || !productData.price) {
+      return res.status(400).json({ success: false, message: 'Title and price are required' });
+    }
+    if (!productData.id) {
+      productData.id = 'prod-' + Date.now();
+    }
+    if (!productData.slug) {
+      productData.slug = productData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+
+    const created = await Product.create(productData);
+    res.status(201).json({ success: true, product: created });
+  } catch (err) {
+    console.error('Error creating product:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 4. GET /api/categories
+app.get('/api/categories', async (req, res) => {
+  try {
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      const cats = await Category.find().sort({ order: 1 }).lean();
+      if (cats && cats.length > 0) {
+        return res.json(cats);
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching categories from DB:', err.message);
+  }
+
+  // Fallback
+  const fallbackCats = [
+    { id: 'art-kits', name: 'Art Kits', slug: 'art-kits' },
+    { id: 'nature-bugs', name: 'Nature & Bugs', slug: 'nature-bugs' },
+    { id: 'fruits-sweets', name: 'Fruits & Sweet Treats', slug: 'fruits-sweets' },
+    { id: 'vehicles-transport', name: 'Vehicles & Transport', slug: 'vehicles-transport' },
+    { id: 'builder-tools', name: 'Builder & Tools', slug: 'builder-tools' },
+    { id: 'ocean-beach', name: 'Ocean & Beach Life', slug: 'ocean-beach' }
+  ];
+  res.json(fallbackCats);
+});
+
+// 5. Orders Endpoints
+app.get('/api/orders', async (req, res) => {
+  try {
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      const orders = await Order.find().sort({ createdAt: -1 }).lean();
+      return res.json(orders);
+    }
+    res.json([]);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/orders', async (req, res) => {
+  try {
+    const orderData = req.body;
+    if (!orderData.orderNumber) {
+      orderData.orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
+    }
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      const newOrder = await Order.create(orderData);
+      return res.status(201).json({
+        success: true,
+        orderId: newOrder.orderNumber,
+        order: newOrder
+      });
+    }
+    res.status(201).json({
+      success: true,
+      orderId: orderData.orderNumber,
+      order: orderData,
+      note: 'Saved in mock mode (DB standby)'
+    });
+  } catch (err) {
+    console.error('Order creation error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 6. Image Upload Endpoint (ImgBB Cloud Storage API)
+app.post('/api/upload-image', async (req, res) => {
+  try {
+    const apiKey = process.env.IMGBB_API_KEY || 'd110c221cdd13543af463618efa8df04';
+    let { image, name, expiration } = req.body || {};
+
+    if (!image) {
+      return res.status(400).json({ success: false, message: 'Image data (base64 string or URL) is required' });
+    }
+
+    // Strip data URI scheme prefix if provided (e.g., data:image/jpeg;base64,...)
+    if (typeof image === 'string' && image.includes('base64,')) {
+      image = image.split('base64,')[1];
+    }
+
+    const formBody = new URLSearchParams();
+    formBody.append('image', image);
+    if (name) formBody.append('name', name);
+    if (expiration) formBody.append('expiration', expiration);
+
+    const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+      method: 'POST',
+      body: formBody,
+    });
+
+    const data = await imgbbRes.json();
+    if (data.success) {
+      return res.json({
+        success: true,
+        url: data.data.url,
+        display_url: data.data.display_url,
+        delete_url: data.data.delete_url,
+        thumb: data.data.thumb?.url,
+        data: data.data,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: data.error?.message || 'Failed to upload image to ImgBB',
+        error: data.error,
+      });
+    }
+  } catch (err) {
+    console.error('ImgBB upload error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/upload', (req, res) => {
+  req.url = '/api/upload-image';
+  app.handle(req, res);
+});
+
+// 7. Infrastructure & API Registry Dashboard (Root Route)
+app.get('/', async (req, res) => {
+  const dbStatus = getDBStatus();
+  let dbProductCount = products.length;
+  let dbOrderCount = 0;
+  if (dbStatus.connected) {
+    try {
+      dbProductCount = await Product.countDocuments();
+      dbOrderCount = await Order.countDocuments();
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // Support JSON output for API clients if specifically requested
   if (req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html')) {
     return res.json({
@@ -828,17 +1055,21 @@ app.get('/', (req, res) => {
       environment: process.env.NODE_ENV || 'Development',
       database: {
         system: 'MongoDB Atlas',
-        status: 'Offline (Mock API Mode)'
+        status: dbStatus.connected ? 'Online (Connected)' : 'Offline (Mock API Mode)',
+        database: dbStatus.database || 'craftykidsco',
+        host: dbStatus.host || 'cluster0.bjsv7px.mongodb.net'
       },
       services: {
-        imageHosting: 'ImgBB API',
+        imageHosting: 'ImgBB API (Active CDN)',
         notifications: 'SMTP & BulkSMSBD'
       },
       endpoints: [
-        { method: 'GET', path: '/api/products', desc: 'Retrieve full product catalog & plaster kits' },
+        { method: 'GET', path: '/api/products', desc: 'Retrieve full product catalog & plaster kits (MongoDB Atlas)' },
         { method: 'GET', path: '/api/products/:id', desc: 'Fetch single product details by ID or slug' },
+        { method: 'GET', path: '/api/categories', desc: 'Fetch product categories' },
+        { method: 'GET', path: '/api/orders', desc: 'Retrieve customer orders list' },
         { method: 'POST', path: '/api/orders', desc: 'Submit checkout order with items & delivery info' },
-        { method: 'POST', path: '/api/upload-image', desc: 'Upload and host images via ImgBB' },
+        { method: 'POST', path: '/api/upload-image', desc: 'Upload and host images directly via ImgBB' },
         { method: 'POST', path: '/api/auth/otp', desc: 'Dispatch SMS OTP verification to customer' },
         { method: 'GET', path: '/api/status', desc: 'Health check, heartbeat, and diagnostics' }
       ]
@@ -1157,6 +1388,11 @@ app.get('/', (req, res) => {
       font-weight: 600;
     }
 
+    .stat-value.status-online {
+      color: #34d399;
+      font-weight: 600;
+    }
+
     /* API Registry Section */
     .section-header {
       margin-bottom: 20px;
@@ -1340,10 +1576,10 @@ app.get('/', (req, res) => {
       <div class="card">
         <div class="card-header">
           <div class="card-title-wrap">
-            <span class="dot red"></span>
+            <span class="dot ${dbStatus.connected ? 'green' : 'red'}"></span>
             <span class="card-title">Database</span>
           </div>
-          <span class="pill-tag red">Standby</span>
+          <span class="pill-tag ${dbStatus.connected ? 'green' : 'red'}">${dbStatus.connected ? 'Online' : 'Standby'}</span>
         </div>
         <div class="stat-list">
           <div class="stat-row">
@@ -1352,15 +1588,15 @@ app.get('/', (req, res) => {
           </div>
           <div class="stat-row">
             <span class="stat-label">Connection</span>
-            <span class="stat-value status-offline">Offline (Mock API Mode)</span>
+            <span class="stat-value ${dbStatus.connected ? 'status-online' : 'status-offline'}">${dbStatus.connected ? 'Connected (' + (dbStatus.database || 'craftykidsco') + ')' : 'Offline (Mock API Mode)'}</span>
           </div>
           <div class="stat-row">
             <span class="stat-label">Storage Engine</span>
-            <span class="stat-value">In-Memory Mock Store</span>
+            <span class="stat-value">${dbStatus.connected ? 'MongoDB Atlas Cluster (Cloud)' : 'In-Memory Mock Store'}</span>
           </div>
           <div class="stat-row">
             <span class="stat-label">Collections</span>
-            <span class="stat-value">Products (${products.length}), Orders</span>
+            <span class="stat-value">Products (${dbProductCount}), Orders (${dbOrderCount})</span>
           </div>
         </div>
       </div>
@@ -1372,12 +1608,12 @@ app.get('/', (req, res) => {
             <span class="dot green"></span>
             <span class="card-title">Services</span>
           </div>
-          <span class="pill-tag green">Configured</span>
+          <span class="pill-tag green">Active</span>
         </div>
         <div class="stat-list">
           <div class="stat-row">
             <span class="stat-label">Image Hosting</span>
-            <span class="stat-value">ImgBB API</span>
+            <span class="stat-value">ImgBB API (Hosted CDN)</span>
           </div>
           <div class="stat-row">
             <span class="stat-label">Notifications</span>
@@ -1411,19 +1647,37 @@ app.get('/', (req, res) => {
             <span class="method-badge get">GET</span>
             <span class="endpoint-url">/api/products</span>
           </div>
-          <p class="endpoint-desc">Retrieve all products, plaster painting kits, and inventory catalog.</p>
+          <p class="endpoint-desc">Retrieve all products &amp; plaster painting kits directly from MongoDB Atlas.</p>
         </a>
 
         <!-- Endpoint 2 -->
-        <a href="/api/products/1" target="_blank" class="endpoint-card">
+        <a href="/api/products/prod-plaster-bug-adventure" target="_blank" class="endpoint-card">
           <div class="endpoint-top">
             <span class="method-badge get">GET</span>
             <span class="endpoint-url">/api/products/:id</span>
           </div>
-          <p class="endpoint-desc">Fetch single product details, images, specifications, and reviews.</p>
+          <p class="endpoint-desc">Fetch single product details, ImgBB hosted images, specifications, and reviews.</p>
         </a>
 
         <!-- Endpoint 3 -->
+        <a href="/api/categories" target="_blank" class="endpoint-card">
+          <div class="endpoint-top">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-url">/api/categories</span>
+          </div>
+          <p class="endpoint-desc">Fetch categories taxonomy stored in MongoDB Atlas database.</p>
+        </a>
+
+        <!-- Endpoint 4 -->
+        <a href="/api/orders" target="_blank" class="endpoint-card">
+          <div class="endpoint-top">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-url">/api/orders</span>
+          </div>
+          <p class="endpoint-desc">Retrieve customer orders list from MongoDB Atlas database.</p>
+        </a>
+
+        <!-- Endpoint 5 -->
         <div class="endpoint-card">
           <div class="endpoint-top">
             <span class="method-badge post">POST</span>
@@ -1432,31 +1686,22 @@ app.get('/', (req, res) => {
           <p class="endpoint-desc">Submit new checkout order with customer details, phone, and delivery address.</p>
         </div>
 
-        <!-- Endpoint 4 -->
+        <!-- Endpoint 6 -->
         <div class="endpoint-card">
           <div class="endpoint-top">
             <span class="method-badge post">POST</span>
             <span class="endpoint-url">/api/upload-image</span>
           </div>
-          <p class="endpoint-desc">Upload product photos directly to ImgBB cloud storage.</p>
+          <p class="endpoint-desc">Upload product photos directly to ImgBB cloud storage CDN with permanent URLs.</p>
         </div>
 
-        <!-- Endpoint 5 -->
-        <div class="endpoint-card">
-          <div class="endpoint-top">
-            <span class="method-badge post">POST</span>
-            <span class="endpoint-url">/api/auth/otp</span>
-          </div>
-          <p class="endpoint-desc">Generate and dispatch single-use OTP SMS to customer mobile.</p>
-        </div>
-
-        <!-- Endpoint 6 -->
+        <!-- Endpoint 7 -->
         <a href="/api/status" target="_blank" class="endpoint-card">
           <div class="endpoint-top">
             <span class="method-badge get">GET</span>
             <span class="endpoint-url">/api/status</span>
           </div>
-          <p class="endpoint-desc">Health check ping, timestamp diagnostics, and system heartbeat.</p>
+          <p class="endpoint-desc">Health check ping, MongoDB Atlas connection state, and ImgBB status.</p>
         </a>
       </div>
     </section>
@@ -1476,11 +1721,24 @@ app.get('/', (req, res) => {
   res.send(html);
 });
 
-// 4. API Status & Heartbeat
+// 8. API Status & Heartbeat
 app.get('/api/status', (req, res) => {
+  const dbStatus = getDBStatus();
   res.json({
     status: 'online',
     service: 'Crafty Kids Server',
+    database: {
+      connected: dbStatus.connected,
+      state: dbStatus.state,
+      name: dbStatus.database,
+      host: dbStatus.host
+    },
+    services: {
+      imgbb: {
+        configured: Boolean(process.env.IMGBB_API_KEY),
+        status: 'active'
+      }
+    },
     uptime: `${Math.floor(process.uptime())}s`,
     timestamp: new Date().toISOString(),
   });

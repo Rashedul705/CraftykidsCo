@@ -111,7 +111,7 @@ export const sampleCategories: SampleCategory[] = [
     nameBn: 'আর্ট কিট',
     nameEn: 'Art Kits',
     description: 'রঙ, ব্রাশ ও ক্রাফট টুলের কমপ্লিট ক্রিয়েটিভ বক্স',
-    imageUrl: '/images/products/little-bug-adventure.jpg',
+    imageUrl: 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
     badgeColor: '#E0F7FA',
     children: [],
   },
@@ -152,11 +152,11 @@ export const sampleProducts: SampleProduct[] = [
     isNewArrival: true,
     targetAgeMin: 2,
     targetAgeMax: 8,
-    imageUrl: '/images/products/sweet-fruit.jpg',
+    imageUrl: 'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
     galleryImages: [
-      '/images/products/sweet-fruit.jpg',
-      '/images/products/little-bug-adventure.jpg',
-      '/images/products/mixed-kit-1.jpg'
+      'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+      'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+      'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg'
     ],
     badge: 'সেরা উপহার',
     safetyBadges: ['১০০% ফুড-গ্রেড ন্যাচারাল জিপসাম', 'ওয়াশেবল ও নন-টক্সিক কালার', 'স্মুথ ও নিরাপদ এজ', 'স্ক্রিন-ফ্রি ক্রিয়েটিভ প্লে'],
@@ -220,11 +220,11 @@ export const sampleProducts: SampleProduct[] = [
     isNewArrival: true,
     targetAgeMin: 2,
     targetAgeMax: 8,
-    imageUrl: '/images/products/little-bug-adventure.jpg',
+    imageUrl: 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
     galleryImages: [
-      '/images/products/little-bug-adventure.jpg',
-      '/images/products/sweet-fruit.jpg',
-      '/images/products/autumn-nature.jpg'
+      'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+      'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+      'https://i.ibb.co/q35L6xdm/craftykidsco-autumn-nature.jpg'
     ],
     badge: 'টপ সেলার',
     safetyBadges: ['১০০% নন-টক্সিক ও নিরাপদ', '৪টি কিউট বাগ মডেল', 'মিনি ইজেল আর্ট বোর্ড অন্তর্ভুক্ত', 'সহজে ওয়াশেবল'],
@@ -275,11 +275,11 @@ export const sampleProducts: SampleProduct[] = [
     isNewArrival: true,
     targetAgeMin: 3,
     targetAgeMax: 9,
-    imageUrl: '/images/products/car-painting-kit.jpg',
+    imageUrl: 'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg',
     galleryImages: [
-      '/images/products/car-painting-kit.jpg',
-      '/images/products/tool-set.jpg',
-      '/images/products/sunny-shores.jpg'
+      'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg',
+      'https://i.ibb.co/kVrGCzrh/craftykidsco-tool-set.jpg',
+      'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg'
     ],
     badge: 'জনপ্রিয়',
     safetyBadges: ['৬টি ভিন্ন যানবাহন মডেল', 'কালার গাইড কার্ড অন্তর্ভুক্ত', '৫টি শেডের কালার পট', 'স্মুথ সারফেস'],
@@ -324,10 +324,10 @@ export const sampleProducts: SampleProduct[] = [
     isNewArrival: true,
     targetAgeMin: 3,
     targetAgeMax: 10,
-    imageUrl: '/images/products/tool-set.jpg',
+    imageUrl: 'https://i.ibb.co/kVrGCzrh/craftykidsco-tool-set.jpg',
     galleryImages: [
-      '/images/products/tool-set.jpg',
-      '/images/products/car-painting-kit.jpg'
+      'https://i.ibb.co/kVrGCzrh/craftykidsco-tool-set.jpg',
+      'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg'
     ],
     badge: 'নতুন',
     safetyBadges: ['৮টি মেকানিকাল টুলস প্লাস্টার', 'বাস্তব জীবনের শিক্ষামূলক খেলনা', 'নন-টক্সিক ও মসৃণ', 'স্ক্রিন-ফ্রি অ্যাক্টিভিটি'],
@@ -360,10 +360,10 @@ export const sampleProducts: SampleProduct[] = [
     isNewArrival: false,
     targetAgeMin: 3,
     targetAgeMax: 10,
-    imageUrl: '/images/products/sunny-shores.jpg',
+    imageUrl: 'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg',
     galleryImages: [
-      '/images/products/sunny-shores.jpg',
-      '/images/products/ocean-world.jpg'
+      'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg',
+      'https://i.ibb.co/7J0qh5wC/craftykidsco-ocean-world.jpg'
     ],
     badge: 'মেগা প্যাক',
     safetyBadges: ['১৬টি মেগা প্লাস্টার শেপস', 'সাদা রঙ দিয়ে শেডিং সুবিধা', 'পুরো ফ্যামিলি অ্যাক্টিভিটি'],
@@ -388,10 +388,10 @@ export const sampleProducts: SampleProduct[] = [
     isNewArrival: false,
     targetAgeMin: 3,
     targetAgeMax: 9,
-    imageUrl: '/images/products/ocean-world.jpg',
+    imageUrl: 'https://i.ibb.co/7J0qh5wC/craftykidsco-ocean-world.jpg',
     galleryImages: [
-      '/images/products/ocean-world.jpg',
-      '/images/products/sunny-shores.jpg'
+      'https://i.ibb.co/7J0qh5wC/craftykidsco-ocean-world.jpg',
+      'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg'
     ],
     badge: 'সেরা রেটিং',
     safetyBadges: ['৮টি বিভিন্ন মাছ ও জলচর প্রাণী', 'বাস্তবধর্মী থ্রিডি খোদাই', 'নন-টক্সিক ও টেকসই'],
@@ -416,11 +416,11 @@ export const sampleProducts: SampleProduct[] = [
     isNewArrival: false,
     targetAgeMin: 2,
     targetAgeMax: 8,
-    imageUrl: '/images/products/mixed-kit-1.jpg',
+    imageUrl: 'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg',
     galleryImages: [
-      '/images/products/mixed-kit-1.jpg',
-      '/images/products/sweet-fruit.jpg',
-      '/images/products/little-bug-adventure.jpg'
+      'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg',
+      'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+      'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg'
     ],
     badge: 'টপ সেলার',
     safetyBadges: ['ভ্যারাইটি কম্বো প্যাক', 'ছোট্ট হাতের উপযোগী সাইজ', '১০০% ফুড-গ্রেড ন্যাচারাল জিপসাম'],
@@ -445,10 +445,10 @@ export const sampleProducts: SampleProduct[] = [
     isNewArrival: false,
     targetAgeMin: 3,
     targetAgeMax: 12,
-    imageUrl: '/images/products/autumn-nature.jpg',
+    imageUrl: 'https://i.ibb.co/q35L6xdm/craftykidsco-autumn-nature.jpg',
     galleryImages: [
-      '/images/products/autumn-nature.jpg',
-      '/images/products/little-bug-adventure.jpg'
+      'https://i.ibb.co/q35L6xdm/craftykidsco-autumn-nature.jpg',
+      'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg'
     ],
     badge: 'কালেক্টরস কিট',
     safetyBadges: ['উডেন প্যালেট অন্তর্ভুক্ত', 'উষ্ণ ও প্রাকৃতিক রঙসমূহ', 'নান্দনিক ড্রয়িং অ্যাক্টিভিটি'],
