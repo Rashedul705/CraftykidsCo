@@ -18,6 +18,9 @@ import {
   ShieldCheck,
   ChevronRight,
   TrendingUp,
+  Upload,
+  Image as ImageIcon,
+  Loader2,
 } from 'lucide-react';
 import {
   getAllOrders,
@@ -50,8 +53,15 @@ export default function AdminDashboardPage() {
   // New product form
   const [newProdTitleBn, setNewProdTitleBn] = useState('');
   const [newProdTitleEn, setNewProdTitleEn] = useState('');
-  const [newProdPrice, setNewProdPrice] = useState(350);
-  const [newProdCategory, setNewProdCategory] = useState('wax-crayons');
+  const [newProdPrice, setNewProdPrice] = useState(1200);
+  const [newProdSalePrice, setNewProdSalePrice] = useState(999);
+  const [newProdCategory, setNewProdCategory] = useState('art-kits');
+  const [newProdImage, setNewProdImage] = useState('');
+  const [newProdDescription, setNewProdDescription] = useState('');
+  const [newProdPieces, setNewProdPieces] = useState('');
+  const [newProdBadge, setNewProdBadge] = useState('সেরা অফার');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // New category form
   const [newCatNameBn, setNewCatNameBn] = useState('');
@@ -187,6 +197,39 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Handle image upload to ImgBB
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    setUploadError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('name', `craftykidsco_${Date.now()}`);
+
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && (data.url || data.display_url)) {
+        const cdnUrl = data.url || data.display_url;
+        setNewProdImage(cdnUrl);
+        setActionFeedback('ছবি ImgBB CDN এ সফলভাবে আপলোড হয়েছে!');
+      } else {
+        setUploadError(data.message || 'ImgBB আপলোডে সমস্যা হয়েছে');
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'ছবি আপলোড ব্যর্থ হয়েছে');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   // Create Product handler
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,7 +243,14 @@ export default function AdminDashboardPage() {
           titleBn: newProdTitleBn,
           titleEn: newProdTitleEn,
           basePrice: Number(newProdPrice),
+          baseSalePrice: Number(newProdSalePrice || newProdPrice),
           categorySlug: newProdCategory,
+          imageUrl: newProdImage || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+          image: newProdImage || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+          description: newProdDescription,
+          pieces: newProdPieces,
+          badge: newProdBadge,
+          isNewArrival: true,
         }),
       });
       const data = await res.json();
@@ -209,8 +259,13 @@ export default function AdminDashboardPage() {
         setShowAddProductModal(false);
         setNewProdTitleBn('');
         setNewProdTitleEn('');
-        setActionFeedback(`পণ্য '${newProdTitleBn}' যোগ করা হয়েছে!`);
-        setTimeout(() => setActionFeedback(null), 3000);
+        setNewProdPrice(1200);
+        setNewProdSalePrice(999);
+        setNewProdImage('');
+        setNewProdDescription('');
+        setNewProdPieces('');
+        setActionFeedback(`পণ্য '${newProdTitleBn}' MongoDB Atlas এ সফলভাবে সংরক্ষিত হয়েছে!`);
+        setTimeout(() => setActionFeedback(null), 3500);
       }
     } catch {
       setShowAddProductModal(false);
@@ -1215,41 +1270,116 @@ export default function AdminDashboardPage() {
       )}
 
       {/* =========================================================================
-          ADD PRODUCT MODAL
+          ADD PRODUCT MODAL (With ImgBB CDN Upload & MongoDB Atlas)
          ========================================================================= */}
       {showAddProductModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[28px] max-w-md w-full p-6 space-y-4 shadow-xl border border-[#EFEAE2]">
-            <div className="flex items-center justify-between pb-2 border-b border-[#EFEAE2]">
-              <h3 className="font-heading font-black text-base text-[#1A1A1A]">Add New Product</h3>
-              <button onClick={() => setShowAddProductModal(false)} className="text-[#6B6B6B]">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-[28px] max-w-lg w-full p-6 space-y-4 shadow-2xl border border-[#EFEAE2] my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
+              <div>
+                <h3 className="font-heading font-black text-lg text-[#1A1A1A]">Add New Product</h3>
+                <p className="text-[11px] text-[#6B6B6B]">Upload photo to ImgBB and save directly to MongoDB Atlas</p>
+              </div>
+              <button onClick={() => setShowAddProductModal(false)} className="text-[#6B6B6B] hover:text-[#1A1A1A]">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleCreateProduct} className="space-y-3 text-xs">
+
+            <form onSubmit={handleCreateProduct} className="space-y-3.5 text-xs">
+              {/* ImgBB Image Upload */}
               <div>
-                <label className="font-bold block mb-1">Product Title (Bangla):</label>
-                <input
-                  required
-                  value={newProdTitleBn}
-                  onChange={(e) => setNewProdTitleBn(e.target.value)}
-                  placeholder="যেমন: ন্যাচারাল মোমের রঙ ১২ প্যাক"
-                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
-                />
+                <label className="font-bold block mb-1.5 text-[#2B2B2B]">
+                  Product Photo (ImgBB Cloud Storage):
+                </label>
+                <div className="border-2 border-dashed border-[#E2D9CC] rounded-2xl p-4 text-center bg-[#FAF7F2] hover:bg-[#F5F0E8] transition-colors relative">
+                  {newProdImage ? (
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-[#EFEAE2] bg-white shrink-0">
+                        <Image src={newProdImage} alt="Uploaded product" fill className="object-cover" />
+                      </div>
+                      <div className="text-left overflow-hidden flex-1">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#2D7A3E] bg-[#EBF8EE] px-2 py-0.5 rounded-md">
+                          <CheckCircle className="w-3 h-3" /> ImgBB CDN Active
+                        </span>
+                        <p className="text-[11px] text-[#6B6B6B] truncate font-mono mt-0.5">{newProdImage}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNewProdImage('')}
+                        className="text-xs text-[#D32F2F] font-bold px-2 py-1 rounded-lg hover:bg-red-50"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="prod-image-file"
+                        onChange={handleImageFileChange}
+                        className="hidden"
+                        disabled={isUploadingImage}
+                      />
+                      <label
+                        htmlFor="prod-image-file"
+                        className="cursor-pointer flex flex-col items-center justify-center gap-2 py-2"
+                      >
+                        {isUploadingImage ? (
+                          <div className="flex items-center gap-2 text-[#FF6B6B] font-bold">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Uploading to ImgBB CDN...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-xs text-[#FF6B6B]">
+                              <Upload className="w-5 h-5" />
+                            </div>
+                            <span className="font-bold text-[#2B2B2B]">
+                              Click to choose photo or drag &amp; drop
+                            </span>
+                            <span className="text-[10px] text-[#888]">
+                              PNG, JPG, WebP up to 15MB (Hosted automatically on ImgBB)
+                            </span>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  )}
+                  {uploadError && (
+                    <p className="text-[11px] text-[#D32F2F] font-bold mt-2">{uploadError}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="font-bold block mb-1">Product Title (English):</label>
-                <input
-                  required
-                  value={newProdTitleEn}
-                  onChange={(e) => setNewProdTitleEn(e.target.value)}
-                  placeholder="e.g. Natural Beeswax Crayons 12 Pack"
-                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              {/* Title Bangla & English */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold block mb-1">Price (৳):</label>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Title (Bangla):</label>
+                  <input
+                    required
+                    value={newProdTitleBn}
+                    onChange={(e) => setNewProdTitleBn(e.target.value)}
+                    placeholder="যেমন: ডাইনোসর পেইন্টিং কিট"
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] focus:bg-white focus:outline-[#FF6B6B]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Title (English):</label>
+                  <input
+                    required
+                    value={newProdTitleEn}
+                    onChange={(e) => setNewProdTitleEn(e.target.value)}
+                    placeholder="e.g. Dinosaur Plaster Painting Kit"
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] focus:bg-white focus:outline-[#FF6B6B]"
+                  />
+                </div>
+              </div>
+
+              {/* Prices & Category */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Regular Price (৳):</label>
                   <input
                     type="number"
                     required
@@ -1259,32 +1389,78 @@ export default function AdminDashboardPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1">Category:</label>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Sale Price (৳):</label>
+                  <input
+                    type="number"
+                    value={newProdSalePrice}
+                    onChange={(e) => setNewProdSalePrice(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Category:</label>
                   <select
                     value={newProdCategory}
                     onChange={(e) => setNewProdCategory(e.target.value)}
                     className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
                   >
-                    <option value="wax-crayons">Wax Crayons</option>
-                    <option value="play-dough-clay">Clay & Dough</option>
-                    <option value="wooden-toys">Wooden Toys</option>
-                    <option value="educational-toys">Educational Toys</option>
+                    <option value="art-kits">আর্ট কিট (Plaster Art)</option>
+                    <option value="wax-crayons">মোমের রঙ (Wax Crayons)</option>
+                    <option value="play-dough-clay">ক্লে ও ডো (Clay &amp; Dough)</option>
+                    <option value="wooden-toys">কাঠের খেলনা (Wooden Toys)</option>
+                    <option value="educational-toys">শিক্ষামূলক (Educational)</option>
                   </select>
                 </div>
               </div>
-              <div className="pt-2 flex justify-end gap-2">
+
+              {/* Pieces & Badge */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Pieces / Components:</label>
+                  <input
+                    value={newProdPieces}
+                    onChange={(e) => setNewProdPieces(e.target.value)}
+                    placeholder="যেমন: ৪টি প্লাস্টার শেপ + ৪টি রঙ + ১টি ব্রাশ"
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Product Badge:</label>
+                  <input
+                    value={newProdBadge}
+                    onChange={(e) => setNewProdBadge(e.target.value)}
+                    placeholder="যেমন: সেরা অফার / নতুন"
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="font-bold block mb-1 text-[#2B2B2B]">Description (Bangla):</label>
+                <textarea
+                  rows={2}
+                  value={newProdDescription}
+                  onChange={(e) => setNewProdDescription(e.target.value)}
+                  placeholder="পণ্যের বিস্তারিত বিবরণ ও বিশেষ সুবিধাসমূহ লিখুন..."
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-[#EFEAE2]">
                 <button
                   type="button"
                   onClick={() => setShowAddProductModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[#FAF7F2] text-[#6B6B6B] font-bold"
+                  className="px-4 py-2 rounded-xl bg-[#FAF7F2] text-[#6B6B6B] font-bold hover:bg-[#EFEAE2]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#D32F2F] text-white font-bold"
+                  disabled={isUploadingImage}
+                  className="px-5 py-2.5 rounded-xl bg-[#D32F2F] text-white font-bold hover:bg-[#b71c1c] shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
-                  Save Product
+                  <Plus className="w-4 h-4" /> Save to MongoDB Atlas
                 </button>
               </div>
             </form>

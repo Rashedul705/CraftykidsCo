@@ -23,17 +23,18 @@ if (!global.mongooseCache) {
 }
 
 export async function connectToDatabase(): Promise<typeof mongoose> {
-  if (cached.conn) {
+  if (cached.conn && cached.conn.connection.readyState === 1) {
     return cached.conn;
   }
 
   if (!cached.promise) {
     const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
-      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 8000,
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
+      console.log('✅ Connected to MongoDB Atlas from Next.js App');
       return mongooseInstance;
     });
   }

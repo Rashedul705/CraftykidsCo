@@ -28,101 +28,98 @@ export interface IProductImage {
 }
 
 export interface IProduct extends Document {
+  id?: string;
+  title?: string;
   titleBn: string;
   titleEn: string;
   slug: string;
+  price?: number;
+  basePrice: number; // Integer BDT
+  salePrice?: number | null; // Integer BDT
+  baseSalePrice?: number | null; // Integer BDT
+  category?: string;
+  categorySlug?: string;
+  primaryCategorySlug?: string;
+  description?: string;
   descriptionBn?: string;
   descriptionEn?: string;
-  categoryIds: mongoose.Types.ObjectId[];
-  primaryCategorySlug: string;
-  basePrice: number; // Integer BDT
-  baseSalePrice?: number | null; // Integer BDT
-  isVariable: boolean;
-  isFeatured: boolean;
-  isBestSeller: boolean;
-  isNewArrival: boolean;
+  pieces?: string;
+  badge?: string;
+  rating?: number;
+  reviewsCount?: number;
+  reviewCount?: number;
+  image?: string;
+  imageUrl?: string;
+  galleryImages?: string[];
+  accentColor?: string;
+  tagColor?: string;
+  isVariable?: boolean;
+  isFeatured?: boolean;
+  isBestSeller?: boolean;
+  isNewArrival?: boolean;
   targetAgeMin?: number;
   targetAgeMax?: number;
-  lowStockThreshold: number;
-  safetyBadges: ISafetyBadge[];
-  images: IProductImage[];
-  variations: IProductVariation[];
-  seoTitle?: string;
-  seoDescription?: string;
-  isActive: boolean;
+  safetyBadges?: any[];
+  specifications?: any[];
+  careInstructions?: string;
+  faqs?: any[];
+  reviews?: any[];
+  variations?: any[];
+  stock?: number;
+  isActive?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const SafetyBadgeSchema = new Schema<ISafetyBadge>(
-  {
-    code: { type: String, required: true },
-    nameBn: { type: String, required: true },
-    nameEn: { type: String, required: true },
-    color: { type: String, default: '#7BD389' },
-    description: { type: String },
-  },
-  { _id: false }
-);
-
-const ProductImageSchema = new Schema<IProductImage>(
-  {
-    url: { type: String, required: true },
-    altText: { type: String },
-    isPrimary: { type: Boolean, default: false },
-    displayOrder: { type: Number, default: 0 },
-  },
-  { _id: false }
-);
-
-const ProductVariationSchema = new Schema<IProductVariation>(
-  {
-    sku: { type: String, required: true },
-    titleBn: { type: String },
-    titleEn: { type: String },
-    attributes: { type: Schema.Types.Mixed, default: {} },
-    price: { type: Number, required: true }, // Integer BDT
-    salePrice: { type: Number, default: null }, // Integer BDT
-    stockQuantity: { type: Number, default: 0, min: 0 },
-    imageUrl: { type: String },
-    isActive: { type: Boolean, default: true },
-  },
-  { _id: true }
-);
-
 const ProductSchema = new Schema<IProduct>(
   {
+    id: { type: String },
+    title: { type: String },
     titleBn: { type: String, required: true },
     titleEn: { type: String, required: true },
     slug: { type: String, required: true, unique: true, index: true },
+    price: { type: Number },
+    basePrice: { type: Number, required: true },
+    salePrice: { type: Number },
+    baseSalePrice: { type: Number },
+    category: { type: String },
+    categorySlug: { type: String, index: true },
+    primaryCategorySlug: { type: String, index: true },
+    description: { type: String },
     descriptionBn: { type: String },
     descriptionEn: { type: String },
-    categoryIds: [{ type: Schema.Types.ObjectId, ref: 'Category', index: true }],
-    primaryCategorySlug: { type: String, required: true, index: true },
-    basePrice: { type: Number, required: true }, // Integer BDT
-    baseSalePrice: { type: Number, default: null }, // Integer BDT
+    pieces: { type: String },
+    badge: { type: String },
+    rating: { type: Number, default: 4.9 },
+    reviewsCount: { type: Number, default: 0 },
+    reviewCount: { type: Number, default: 0 },
+    image: { type: String },
+    imageUrl: { type: String },
+    galleryImages: [{ type: String }],
+    accentColor: { type: String },
+    tagColor: { type: String },
     isVariable: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false, index: true },
     isBestSeller: { type: Boolean, default: false, index: true },
     isNewArrival: { type: Boolean, default: false, index: true },
     targetAgeMin: { type: Number, index: true },
     targetAgeMax: { type: Number, index: true },
-    lowStockThreshold: { type: Number, default: 5 },
-    safetyBadges: [SafetyBadgeSchema],
-    images: [ProductImageSchema],
-    variations: [ProductVariationSchema],
-    seoTitle: { type: String },
-    seoDescription: { type: String },
+    safetyBadges: { type: Schema.Types.Mixed, default: [] },
+    specifications: { type: Schema.Types.Mixed, default: [] },
+    careInstructions: { type: String },
+    faqs: { type: Schema.Types.Mixed, default: [] },
+    reviews: { type: Schema.Types.Mixed, default: [] },
+    variations: { type: Schema.Types.Mixed, default: [] },
+    stock: { type: Number, default: 100 },
     isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true }
 );
 
 // Indexes
-ProductSchema.index({ 'variations.sku': 1 });
-ProductSchema.index({ primaryCategorySlug: 1, isActive: 1 });
-ProductSchema.index({ targetAgeMin: 1, targetAgeMax: 1 });
-ProductSchema.index({ basePrice: 1, isActive: 1 });
+ProductSchema.index({ slug: 1 });
+ProductSchema.index({ categorySlug: 1, isActive: 1 });
+ProductSchema.index({ isBestSeller: 1, isNewArrival: 1 });
 
 export const Product: Model<IProduct> =
   mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);

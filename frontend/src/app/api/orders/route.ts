@@ -6,12 +6,13 @@ import {
   deductInventoryStock,
 } from '@/lib/order-service';
 import {
-  createOrder,
-  getAllOrders,
-  getOrdersByPhone,
-  getOrderByIdOrNumber,
+  createOrder as createMemoryOrder,
+  getAllOrders as getMemoryOrders,
+  getOrdersByPhone as getMemoryOrdersByPhone,
   OrderRecord,
 } from '@/lib/store';
+import { connectToDatabase } from '@/lib/mongodb';
+import { Order } from '@/models/Order';
 import { getNotificationProvider } from '@/core/notification';
 
 export async function GET(req: NextRequest) {
@@ -21,16 +22,48 @@ export async function GET(req: NextRequest) {
     const phone = searchParams.get('phone');
     const query = searchParams.get('query');
 
-    let orders = getAllOrders();
+    // 1. Try querying MongoDB Atlas
+    try {
+      await connectToDatabase();
+      const mongoQuery: any = {};
 
-    if (phone) {
-      orders = getOrdersByPhone(phone);
+      if (phone) {
+        mongoQuery.customerPhone = phone;
+      }
+      if (status && status !== 'ALL') {
+        mongoQuery.status = status;
+      }
+      if (query) {
+        const regex = new RegExp(query, 'i');
+        mongoQuery.$or = [
+          { orderNumber: regex },
+          { customerPhone: regex },
+          { customerName: regex },
+        ];
+      }
+
+      const dbOrders = await Order.find(mongoQuery).sort({ createdAt: -1 }).lean();
+      if (dbOrders && dbOrders.length > 0) {
+        return NextResponse.json({
+          success: true,
+          count: dbOrders.length,
+          orders: dbOrders,
+          source: 'mongodb',
+        });
+      }
+    } catch (dbErr) {
+      console.warn('MongoDB query warning in /api/orders (falling back to memory):', dbErr);
     }
 
+    // 2. Fallback to in-memory store
+    let orders = getMemoryOrders();
+
+    if (phone) {
+      orders = getMemoryOrdersByPhone(phone);
+    }
     if (status && status !== 'ALL') {
       orders = orders.filter((o) => o.status === status);
     }
-
     if (query) {
       const q = query.toLowerCase();
       orders = orders.filter(
@@ -41,7 +74,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, count: orders.length, orders });
+    return NextResponse.json({ success: true, count: orders.length, orders, source: 'memory' });
   } catch (error) {
     return NextResponse.json(
       { success: false, message: 'অর্ডার তালিকা লোড করতে ত্রুটি হয়েছে' },
@@ -96,8 +129,72 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Create order with immutable snapshots
-    const newOrder = createOrder({
+    // 6. Generate Order ID
+    const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderNumber = `CKC-${todayStr}-${randomSuffix}`;
+    const orderId = `ord-${Date.now()}`;
+
+    const orderPayload = {
+      id: orderId,
+      orderNumber,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      district: data.district,
+      fullAddress: data.fullAddress,
+      customerNote: data.customerNote,
+      subtotal,
+      deliveryCharge,
+      discountAmount,
+      totalAmount,
+      couponCode: data.couponCode,
+      status: 'PENDING' as const,
+      paymentStatus: 'UNPAID' as const,
+      paymentMethod: data.paymentMethod,
+      items: data.items.map((it, idx) => ({
+        id: `item-${Date.now()}-${idx}`,
+        productId: it.productId,
+        title: it.title,
+        titleBn: it.title,
+        titleEn: it.title,
+        variationTitle: it.variationTitle,
+        price: it.price,
+        unitPrice: it.price,
+        quantity: it.quantity,
+        total: it.price * it.quantity,
+        totalPrice: it.price * it.quantity,
+      })),
+      timeline: [
+        {
+          status: 'PENDING',
+          timestamp: new Date().toISOString(),
+          note: 'অর্ডার সফলভাবে গ্রহণ করা হয়েছে (Pending Confirmation)',
+        },
+      ],
+      statusHistory: [
+        {
+          status: 'PENDING',
+          note: 'অর্ডার সফলভাবে গ্রহণ করা হয়েছে',
+          changedBy: 'CUSTOMER',
+          timestamp: new Date(),
+        },
+      ],
+    };
+
+    let savedOrder: any = null;
+
+    // 7. Persist to MongoDB Atlas
+    try {
+      await connectToDatabase();
+      const mongoOrder = await Order.create(orderPayload);
+      savedOrder = mongoOrder.toObject ? mongoOrder.toObject() : mongoOrder;
+      console.log(`✅ Order ${orderNumber} persisted to MongoDB Atlas!`);
+    } catch (dbErr: any) {
+      console.error('Failed to save order to MongoDB Atlas:', dbErr.message);
+    }
+
+    // Also update in-memory store as fallback
+    const memoryOrder = createMemoryOrder({
       customerName: data.customerName,
       customerPhone: data.customerPhone,
       district: data.district,
@@ -111,23 +208,17 @@ export async function POST(req: NextRequest) {
       status: 'PENDING',
       paymentStatus: 'UNPAID',
       paymentMethod: data.paymentMethod,
-      items: data.items.map((it, idx) => ({
-        id: `item-${Date.now()}-${idx}`,
-        productId: it.productId,
-        title: it.title,
-        variationTitle: it.variationTitle,
-        price: it.price,
-        quantity: it.quantity,
-        total: it.price * it.quantity,
-      })),
+      items: orderPayload.items,
     });
 
-    // 7. Mock SMS Notification
+    const finalOrder = savedOrder || memoryOrder;
+
+    // 8. SMS Notification Mock
     try {
       const notification = getNotificationProvider();
       await notification.sendSms({
-        toPhone: newOrder.customerPhone,
-        message: `CraftyKidsCo: প্রিয় গ্রাহক, আপনার অর্ডার #${newOrder.orderNumber} সফলভাবে গৃহীত হয়েছে। মোট বিল: ৳${newOrder.totalAmount}। ধন্যবাদ!`,
+        toPhone: finalOrder.customerPhone,
+        message: `CraftyKidsCo: প্রিয় গ্রাহক, আপনার অর্ডার #${finalOrder.orderNumber} সফলভাবে গৃহীত হয়েছে। মোট বিল: ৳${finalOrder.totalAmount}। ধন্যবাদ!`,
         templateKey: 'ORDER_PLACED',
       });
     } catch (notifErr) {
@@ -138,7 +229,8 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         message: 'অর্ডার সফলভাবে সম্পন্ন হয়েছে!',
-        order: newOrder,
+        order: finalOrder,
+        orderId: finalOrder.orderNumber,
       },
       { status: 201 }
     );

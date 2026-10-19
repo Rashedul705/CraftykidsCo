@@ -95,18 +95,16 @@ The repository is organized as a clean Monorepo:
 
 [F] Database Persistence & Cloud Image Hosting (MongoDB Atlas + ImgBB CDN):
   [x] Integrated MongoDB Atlas Cluster (`craftykidsco` on `cluster0.bjsv7px.mongodb.net`) via Mongoose:
-      - Connection manager with automatic reconnection & ready-state diagnostics in `backend/db.js`.
-      - Mongoose data models: `Product`, `Category`, `Order` in `backend/models/`.
+      - Express backend (`backend/db.js`, `backend/models/`) and Next.js frontend (`frontend/src/lib/mongodb.ts`, `frontend/src/models/`) connected to MongoDB Atlas.
       - Database seeder (`backend/seed.js`) seeded with 6 categories and all 8 authentic plaster painting kits.
-      - REST endpoints updated to query & persist directly with MongoDB Atlas (`GET /api/products`, `GET /api/products/:id`, `GET /api/categories`, `GET /api/orders`, `POST /api/orders`).
+      - Next.js API endpoints (`/api/products`, `/api/categories`, `/api/orders`, `/api/orders/[id]`) reading & persisting directly to MongoDB Atlas.
+      - Frontend `/checkout` persists real customer orders directly to MongoDB Atlas collection `orders`.
+      - Express Dashboard (`http://localhost:5000`) dynamically tracks MongoDB Atlas connection status and real-time document counts.
   [x] Integrated ImgBB Cloud Storage API (`d110c221cdd13543af463618efa8df04`):
       - Uploaded all 8 plaster product photos to ImgBB CDN returning permanent `https://i.ibb.co/...` links.
       - Next.js image optimization configured in `frontend/next.config.ts` for `i.ibb.co`.
-      - Implemented `POST /api/upload-image` endpoint to allow direct file/base64 uploads to ImgBB.
-  [x] Backend Monitoring Dashboard Enhancement:
-      - Live MongoDB Atlas health indicator (glowing emerald dot when connected).
-      - Live collections summary count: Products (8), Orders (0).
-      - Services card reflecting ImgBB API (Hosted CDN) status: Active.
+      - Implemented Next.js endpoints (`/api/upload-image`, `/api/upload`) for file & base64 upload to ImgBB CDN.
+      - Integrated ImgBB upload widget with drag-and-drop & live preview in `/admin` "Add New Product" modal.
   [x] Strict Git & Credential Security:
       - Root `.gitignore` configured to ignore `.env*`, `backend/.env`, `frontend/.env`, `frontend/.env.local`.
       - Verified `.env` files are untracked and never committed to GitHub.
@@ -117,10 +115,10 @@ The repository is organized as a clean Monorepo:
 --------------------------------------------------------------------------------
 - Next.js 16 Frontend: Port 3000 (Development server running with Turbopack)
 - Express.js Backend: Port 5000 (Connected to MongoDB Atlas & ImgBB API)
-- Production Build: Successfully tested (`npm run build` completed with 0 errors)
-- Database: MongoDB Atlas Cloud Cluster (Active & Connected)
+- Production Build: Successfully verified (`npm run build` completed with 0 errors across all 24 routes)
+- Database: MongoDB Atlas Cloud Cluster (Active & Shared between Next.js & Express)
 - Image Hosting: ImgBB Cloud CDN (Active)
-- Git Remote: Synchronized with GitHub repository (`origin/main`)
+- Git Remote: Ready to synchronize with GitHub repository (`origin/main`)
 
 --------------------------------------------------------------------------------
 4. WHAT NEEDS TO BE DONE NEXT (ACTIONABLE ROADMAP)

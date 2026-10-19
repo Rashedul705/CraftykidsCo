@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrderByIdOrNumber, updateOrderStatus, OrderRecord } from '@/lib/store';
+import { connectToDatabase } from '@/lib/mongodb';
+import { Order } from '@/models/Order';
 import { getNotificationProvider } from '@/core/notification';
 
 export async function GET(
@@ -8,8 +10,28 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
-    const order = getOrderByIdOrNumber(id);
 
+    // 1. Try MongoDB
+    try {
+      await connectToDatabase();
+      const isObjectId = id.match(/^[0-9a-fA-F]{24}$/);
+      const dbOrder = await Order.findOne({
+        $or: [
+          { orderNumber: id },
+          { id: id },
+          ...(isObjectId ? [{ _id: id }] : [])
+        ]
+      }).lean();
+
+      if (dbOrder) {
+        return NextResponse.json({ success: true, order: dbOrder, source: 'mongodb' });
+      }
+    } catch (dbErr) {
+      console.warn('MongoDB error in GET /api/orders/[id]:', dbErr);
+    }
+
+    // 2. Fallback to memory
+    const order = getOrderByIdOrNumber(id);
     if (!order) {
       return NextResponse.json(
         { success: false, message: 'অর্ডার পাওয়া যায়নি' },
@@ -17,7 +39,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ success: true, order });
+    return NextResponse.json({ success: true, order, source: 'memory' });
   } catch (error) {
     return NextResponse.json(
       { success: false, message: 'অর্ডার তথ্য লোড করতে ত্রুটি' },
@@ -51,7 +73,54 @@ export async function PATCH(
       );
     }
 
-    const updated = updateOrderStatus(id, status as OrderRecord['status'], note);
+    let updated: any = null;
+
+    // 1. Try updating in MongoDB Atlas
+    try {
+      await connectToDatabase();
+      const isObjectId = id.match(/^[0-9a-fA-F]{24}$/);
+      const query = {
+        $or: [
+          { orderNumber: id },
+          { id: id },
+          ...(isObjectId ? [{ _id: id }] : [])
+        ]
+      };
+
+      const now = new Date();
+      const updatedDoc = await Order.findOneAndUpdate(
+        query,
+        {
+          $set: { status, updatedAt: now },
+          $push: {
+            timeline: {
+              status,
+              timestamp: now.toISOString(),
+              note: note || `স্ট্যাটাস পরিবর্তন: ${status}`
+            },
+            statusHistory: {
+              status,
+              note: note || `Status updated to ${status}`,
+              changedBy: 'ADMIN',
+              timestamp: now
+            }
+          }
+        },
+        { new: true }
+      ).lean();
+
+      if (updatedDoc) {
+        updated = updatedDoc;
+      }
+    } catch (dbErr) {
+      console.error('MongoDB status update error:', dbErr);
+    }
+
+    // 2. Update memory store as sync/fallback
+    const memUpdated = updateOrderStatus(id, status as OrderRecord['status'], note);
+    if (!updated && memUpdated) {
+      updated = memUpdated;
+    }
 
     if (!updated) {
       return NextResponse.json(
