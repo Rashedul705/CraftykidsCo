@@ -345,7 +345,7 @@ function ProductContent() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 space-y-6">
         {/* Breadcrumb Navigation */}
         <div className="text-xs text-[#6B6B6B] flex items-center gap-1.5 overflow-x-auto whitespace-nowrap">
           <Link href="/" className="hover:text-[#E53935] flex items-center gap-1 font-medium">
@@ -370,12 +370,12 @@ function ProductContent() {
         {/* =====================================================================
             1 & 2: REDESIGNED MEDIA GALLERY + CORE BUY BOX
            ===================================================================== */}
-        <div className="bg-white rounded-3xl sm:rounded-[32px] border border-[#EFEAE2] p-4 sm:p-7 lg:p-9 shadow-[0_4px_25px_rgba(43,43,43,0.04)] grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+        <div className="bg-white rounded-3xl sm:rounded-[32px] border border-[#EFEAE2] p-4 sm:p-6 lg:p-7 shadow-[0_4px_25px_rgba(43,43,43,0.04)] grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           
           {/* ================================================================
-              LEFT: REDESIGNED MULTI-IMAGE & SHORT VIDEO GALLERY (col-span-7)
+              LEFT: REDESIGNED MULTI-IMAGE & SHORT VIDEO GALLERY (col-span-5)
              ================================================================ */}
-          <div className="lg:col-span-7 space-y-4">
+          <div className="lg:col-span-5 space-y-3.5">
             {/* Top Media Filters Strip */}
             <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5">
@@ -442,7 +442,7 @@ function ProductContent() {
             </div>
 
             {/* Main Stage Display (Image or Video) */}
-            <div className="relative aspect-square sm:aspect-[4/3] lg:aspect-square w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shadow-inner group flex items-center justify-center">
+            <div className="relative aspect-square w-full max-w-[390px] sm:max-w-[410px] mx-auto rounded-2xl sm:rounded-3xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shadow-inner group flex items-center justify-center">
               {activeMedia.type === 'video' && activeVideo ? (
                 /* --- INLINE VIDEO PLAYER --- */
                 <div className="relative w-full h-full bg-black flex items-center justify-center">
@@ -567,7 +567,7 @@ function ProductContent() {
                   <button
                     key={`img-${idx}`}
                     onClick={() => setActiveMedia({ type: 'image', index: idx })}
-                    className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-[#FAF7F2] border-2 transition-all cursor-pointer flex-shrink-0 group ${
+                    className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl overflow-hidden bg-[#FAF7F2] border-2 transition-all cursor-pointer flex-shrink-0 group ${
                       isActive
                         ? 'border-[#E53935] shadow-md ring-2 ring-[#E53935]/20 scale-95'
                         : 'border-[#EFEAE2] hover:border-[#E53935]/60 opacity-80 hover:opacity-100'
@@ -591,7 +591,7 @@ function ProductContent() {
                   <button
                     key={vid.id || `vid-${vIdx}`}
                     onClick={() => setActiveMedia({ type: 'video', index: vIdx })}
-                    className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-black border-2 transition-all cursor-pointer flex-shrink-0 group ${
+                    className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl overflow-hidden bg-black border-2 transition-all cursor-pointer flex-shrink-0 group ${
                       isActive
                         ? 'border-[#E53935] shadow-md ring-2 ring-[#E53935]/20 scale-95'
                         : 'border-[#FFC93C] hover:border-[#E53935]'
@@ -661,9 +661,9 @@ function ProductContent() {
           </div>
 
           {/* ================================================================
-              RIGHT: REDESIGNED BUY BOX & HIGH-CONVERSION ACTIONS (col-span-5)
+              RIGHT: REDESIGNED BUY BOX & HIGH-CONVERSION ACTIONS (col-span-7)
              ================================================================ */}
-          <div className="lg:col-span-5 space-y-5">
+          <div className="lg:col-span-7 space-y-5">
             {/* Scarcity & Stock Badges */}
             <div className="flex items-center justify-between gap-2 text-xs">
               {isOutOfStock ? (
