@@ -36,12 +36,16 @@ export default function ShopPage() {
 
         // Category filter
         if (selectedCategory !== 'all') {
-          if (selectedCategory === 'wax-crayons') {
-            if (!product.slug.includes('crayon') && !product.slug.includes('washable')) return false;
+          if (selectedCategory === 'art-kits') {
+            if (product.categorySlug !== 'art-kits' && !product.slug.includes('paint') && !product.slug.includes('kit')) return false;
+          } else if (selectedCategory === 'wax-crayons') {
+            if (!product.slug.includes('crayon') && !product.slug.includes('washable') && product.categorySlug !== 'wax-crayons') return false;
           } else if (selectedCategory === 'educational-toys') {
-            if (!product.slug.includes('puzzle') && !product.slug.includes('blocks')) return false;
+            if (!product.slug.includes('puzzle') && !product.slug.includes('blocks') && product.categorySlug !== 'educational-toys') return false;
           } else if (selectedCategory === 'play-dough-clay') {
-            if (!product.slug.includes('dough')) return false;
+            if (!product.slug.includes('dough') && product.categorySlug !== 'play-dough-clay') return false;
+          } else if (product.categorySlug !== selectedCategory) {
+            return false;
           }
         }
 

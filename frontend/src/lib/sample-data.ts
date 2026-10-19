@@ -111,7 +111,7 @@ export const sampleCategories: SampleCategory[] = [
     nameBn: 'আর্ট কিট',
     nameEn: 'Art Kits',
     description: 'রঙ, ব্রাশ ও ক্রাফট টুলের কমপ্লিট ক্রিয়েটিভ বক্স',
-    imageUrl: 'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=400&q=80',
+    imageUrl: '/images/products/little-bug-adventure.jpg',
     badgeColor: '#E0F7FA',
     children: [],
   },
@@ -136,6 +136,329 @@ export const sampleCategories: SampleCategory[] = [
 ];
 
 export const sampleProducts: SampleProduct[] = [
+  // --- REAL CRAFTYKIDSCO PLASTER PAINTING KITS ---
+  {
+    id: 'prod-plaster-sweet-fruit',
+    titleBn: 'সুইট ফ্রুট প্লাস্টার পেইন্টিং কিট (৬টি ফল + ৪টি রঙ + ১টি ব্রাশ)',
+    titleEn: 'Sweet Fruit Plaster Painting Kit',
+    slug: 'sweet-fruit-painting-kit',
+    categorySlug: 'art-kits',
+    basePrice: 1200,
+    baseSalePrice: 990,
+    rating: 4.9,
+    reviewCount: 42,
+    isVariable: false,
+    isBestSeller: false,
+    isNewArrival: true,
+    targetAgeMin: 2,
+    targetAgeMax: 8,
+    imageUrl: '/images/products/sweet-fruit.jpg',
+    galleryImages: [
+      '/images/products/sweet-fruit.jpg',
+      '/images/products/little-bug-adventure.jpg',
+      '/images/products/mixed-kit-1.jpg'
+    ],
+    badge: 'সেরা উপহার',
+    safetyBadges: ['১০০% ফুড-গ্রেড ন্যাচারাল জিপসাম', 'ওয়াশেবল ও নন-টক্সিক কালার', 'স্মুথ ও নিরাপদ এজ', 'স্ক্রিন-ফ্রি ক্রিয়েটিভ প্লে'],
+    description: 'রসালো ও রঙিন ফলের আনন্দময় ভুবন! এই কিটে রয়েছে ৬টি সুদৃশ্য সাদা প্লাস্টার ফলের আকৃতি—আনারস (Pineapple), নাশপাতি (Pear), আঙ্গুর (Grapes), মিষ্টি লাল স্ট্রবেরি (Strawberry), রসালো তরমুজের টুকরো (Watermelon Slice) এবং মিষ্টি এক কাঁদি কলা (Bananas)। সাথে থাকছে ৪টি ব্রাইট পেইন্ট পট (লাল, হলুদ, নীল, সবুজ) এবং ১টি স্মুথ পেইন্টিং ব্রাশ। শিশুরা নিজে নিজে পছন্দমতো রঙ করে বিভিন্ন ফল চিনবে, রঙ মেলানো শিখবে এবং তাদের কল্পনাশক্তির বাস্তব রূপ দেবে। পেইন্ট করা শেষে এগুলোকে ফ্রিজ ম্যাগনেট বা পড়ার টেবিলের সুন্দর শোপিস হিসেবে সাজিয়ে রাখা যায়!',
+    specifications: [
+      { label: 'প্লাস্টার শেপ সংখ্যা', value: '৬টি (আনারস, নাশপাতি, আঙ্গুর, স্ট্রবেরি, তরমুজ, কলা)' },
+      { label: 'রঙের সংখ্যা', value: '৪টি প্রাইমারি কালার পট (Red, Yellow, Blue, Green)' },
+      { label: 'কালার মিক্সিং সুবিধা', value: 'রঙ মিশিয়ে কমলা, বেগুনি ইত্যাদি নতুন রঙ তৈরির সুযোগ' },
+      { label: 'উপাদান', value: '১০০% ইকো-ফ্রেন্ডলি স্মুথ জিপসাম প্লাস্টার' },
+      { label: 'উপযুক্ত বয়স', value: '২ বছর থেকে ৮ বছর' },
+      { label: 'ওয়াশেবল সুবিধা', value: 'হাতে বা কাপড়ে লাগলে সাধারণ সাবান পানিতেই উঠে যায়' }
+    ],
+    careInstructions: 'পেইন্টিং শেষ করার পর ফ্যানের বাতাসে ১৫-২০ মিনিট রেখে দিন যাতে রঙ শুকিয়ে মসৃণ হয়ে যায়। রঙের পাত্রের মুখ ব্যবহারের পর ভালো করে আটকে রাখুন।',
+    faqs: [
+      {
+        question: 'বাচ্চা কি নিজে নিজে রঙ করতে পারবে?',
+        answer: 'হ্যাঁ, প্রতিটি ফলের আউটলাইন ও টেক্সচার খুব মসৃণ ও স্পষ্ট হওয়ায় বাচ্চারা খুব সহজেই ব্রাশ দিয়ে রঙ ভরাট করতে পারে।'
+      },
+      {
+        question: 'রঙ কি কাপড়ে লাগলে উঠে যাবে?',
+        answer: 'জি, এটি সম্পূর্ণ ওয়াশেবল ওয়াটার-বেসড পেইন্ট, সাধারণ পানিতে সাবান দিয়ে ধুয়ে নিলেই অনায়াসে উঠে যায়।'
+      },
+      {
+        question: 'ফলগুলো কি ফ্রিজ ম্যাগনেট হিসেবে লাগানো যাবে?',
+        answer: 'হ্যাঁ, পেছনে ছোট ম্যাগনেট স্টিকার লাগিয়ে অনায়াসেই ফ্রিজ বা হোয়াইটবোর্ডে লাগানো যায়।'
+      }
+    ],
+    reviews: [
+      {
+        id: 'rev-sf-1',
+        author: 'ফারহানা করিম',
+        location: 'ঢাকা',
+        rating: 5,
+        date: '২০২৬-১০-১৫',
+        comment: 'আমার ৪ বছরের মেয়ে তরমুজ আর স্ট্রবেরি নিজে রঙ করেছে! রঙ খুবই ব্রাইট আর কাপড় থেকে সহজেই উঠে গেছে। প্যাকেজিং অনেক সুন্দর ছিল।',
+        isVerified: true
+      },
+      {
+        id: 'rev-sf-2',
+        author: 'আহমেদ জুবায়ের',
+        location: 'চট্টগ্রাম',
+        rating: 5,
+        date: '২০২৬-১০-১২',
+        comment: 'প্লাস্টার শেপগুলোর কোয়ালিটি অসাধারণ, কোনো ধারালো কোণা নেই। বাচ্চাদের উপহার দেওয়ার জন্য দারুণ একটি আইটেম।',
+        isVerified: true
+      }
+    ]
+  },
+  {
+    id: 'prod-plaster-little-bug',
+    titleBn: 'লিটল বাগ অ্যাডভেঞ্চার প্লাস্টার পেইন্টিং কিট (৪টি কিউট পোকা + ৪টি রঙ + ব্রাশ)',
+    titleEn: 'Little Bug Adventure Plaster Painting Kit',
+    slug: 'little-bug-adventure',
+    categorySlug: 'art-kits',
+    basePrice: 1100,
+    baseSalePrice: 890,
+    rating: 4.9,
+    reviewCount: 56,
+    isVariable: false,
+    isBestSeller: false,
+    isNewArrival: true,
+    targetAgeMin: 2,
+    targetAgeMax: 8,
+    imageUrl: '/images/products/little-bug-adventure.jpg',
+    galleryImages: [
+      '/images/products/little-bug-adventure.jpg',
+      '/images/products/sweet-fruit.jpg',
+      '/images/products/autumn-nature.jpg'
+    ],
+    badge: 'টপ সেলার',
+    safetyBadges: ['১০০% নন-টক্সিক ও নিরাপদ', '৪টি কিউট বাগ মডেল', 'মিনি ইজেল আর্ট বোর্ড অন্তর্ভুক্ত', 'সহজে ওয়াশেবল'],
+    description: 'প্রকৃতির মিষ্টি মিষ্টি পতঙ্গদের নিয়ে গড়ে তুলুন আপনার শিশুর নিজস্ব জাদুকরী পৃথিবী! Little Bug Adventure কিটে রয়েছে ৪টি থ্রিডি প্লাস্টার শেপ—ডানামেলা কিউট প্রজাপতি (Butterfly), গোলগাল মিষ্টি লেডিবাগ (Ladybug), চটপটে ড্রাগনফ্লাই/ঘাসফড়িং (Dragonfly) এবং পরিশ্রমী মৌমাছি (Honeybee)। সাথে থাকছে ৪টি আকর্ষণীয় রঙ (গোলাপি, হলুদ, সবুজ, নীল), ব্রাশ এবং একটি মিনি ডিসপ্লে ইজেল। শিশুরা নিজ হাতে রঙ করে সৃষ্টি করবে রঙিন জীববৈচিত্র্য, যা তাদের হ্যান্ড-আই কোঅর্ডিনেশন ও একাগ্রতা বৃদ্ধিতে দারুণ কার্যকর।',
+    specifications: [
+      { label: 'প্লাস্টার শেপ সংখ্যা', value: '৪টি (প্রজাপতি, লেডিবাগ, ঘাসফড়িং, মৌমাছি)' },
+      { label: 'রঙের সংখ্যা', value: '৪ রঙের ওয়াশেবল পেইন্ট পট (Pink, Yellow, Green, Blue)' },
+      { label: 'ব্রাশ অন্তর্ভুক্ত', value: '১টি ফাইন টিপ আর্টিস্ট ব্রাশ' },
+      { label: 'মিনি ইজেল', value: 'কাঠের মিনি আর্ট ডিসপ্লে স্ট্যান্ড' },
+      { label: 'উপাদান', value: '১০০% ইকো-ফ্রেন্ডলি জিপসাম প্লাস্টার ও নন-টক্সিক ওয়াটারবেসড পেইন্ট' },
+      { label: 'উপযুক্ত বয়স', value: '২ থেকে ৮ বছর' }
+    ],
+    careInstructions: 'পেইন্টিং করার পর ১০-১৫ মিনিট ফ্যানের বাতাসে শুকিয়ে নিন। শুকিয়ে গেলে এটি টেকসই শো-পিস হিসেবে ঘরে সাজিয়ে রাখা যাবে।',
+    faqs: [
+      {
+        question: 'রঙ কি শিশুর ত্বকের জন্য ক্ষতিকর?',
+        answer: 'একেবারেই না। CraftyKidsCo এর প্রতিটি রঙ ১০০% চাইল্ড-সেফ ও ওয়াটারবেসড ওয়াশেবল পেইন্ট দিয়ে তৈরি। এটি সম্পূর্ণ নন-টক্সিক।'
+      },
+      {
+        question: 'বাচ্চারা কি নিজে নিজে রঙ করতে পারবে?',
+        answer: 'হ্যাঁ, শেপগুলোর আউটলাইন খুব মসৃণ ও স্পষ্ট হওয়ায় বাচ্চারা খুব সহজেই ব্রাশ দিয়ে রঙ ভরাট করতে পারে।'
+      }
+    ],
+    reviews: [
+      {
+        id: 'rev-lb-1',
+        author: 'নাদিয়া সুলতানা',
+        location: 'উত্তরা, ঢাকা',
+        rating: 5,
+        date: '২০২৬-১০-১৪',
+        comment: 'লেডিবাগ আর বাটারফ্লাই রঙ করতে আমার ছেলে এত আনন্দ পেয়েছে যে ফোনে তাকানোর কথাই ভুলে গেছে! Truly screen-free fun.',
+        isVerified: true
+      }
+    ]
+  },
+  {
+    id: 'prod-plaster-car-kit',
+    titleBn: 'কার পেইন্টিং কিট - ট্রান্সপোর্ট ও যানবাহন প্লাস্টার সেট (৬টি গাড়ি + ৫টি রঙ + কালার গাইড)',
+    titleEn: 'Car & Vehicles Plaster Painting Kit',
+    slug: 'car-painting-kit',
+    categorySlug: 'art-kits',
+    basePrice: 1350,
+    baseSalePrice: 1050,
+    rating: 4.8,
+    reviewCount: 64,
+    isVariable: false,
+    isBestSeller: false,
+    isNewArrival: true,
+    targetAgeMin: 3,
+    targetAgeMax: 9,
+    imageUrl: '/images/products/car-painting-kit.jpg',
+    galleryImages: [
+      '/images/products/car-painting-kit.jpg',
+      '/images/products/tool-set.jpg',
+      '/images/products/sunny-shores.jpg'
+    ],
+    badge: 'জনপ্রিয়',
+    safetyBadges: ['৬টি ভিন্ন যানবাহন মডেল', 'কালার গাইড কার্ড অন্তর্ভুক্ত', '৫টি শেডের কালার পট', 'স্মুথ সারফেস'],
+    description: 'ছোট স্পিড ও গাড়িপ্রেমী শিশুদের জন্য স্বপ্নের আর্ট কিট! এই সেটে রয়েছে ৬টি আকর্ষণীয় যানবাহনের প্লাস্টার মডেল—মোটরসাইকেল, স্কুল বাস, ফার্ম ট্রাক্টর, ক্লাসিক প্রাইভেট কার, ডেলিভারি ভ্যান এবং রেসকিউ হেলিকপ্টার। সাথে রয়েছে ৫টি উজ্জ্বল রঙ (লাল, হলুদ, নীল, সবুজ, কালো), কালার গাইড কার্ড এবং ১টি ব্রাশ। শিশুরা পছন্দের কালার কম্বিনেশনে তৈরি করবে তাদের স্বপ্নের স্পিড ভেহিকল!',
+    specifications: [
+      { label: 'যানবাহনের ধরন', value: 'বাইক, বাস, ট্রাক্টর, প্রাইভেট কার, ভ্যান ও হেলিকপ্টার' },
+      { label: 'রঙের সংখ্যা', value: '৫টি রঙ (Red, Yellow, Blue, Green, Black)' },
+      { label: 'কালার গাইড', value: 'প্রিন্টেড ফুল কালার রেফারেন্স গাইড রয়েছে' },
+      { label: 'বয়সোপযোগী', value: '৩ থেকে ৯ বছর' }
+    ],
+    careInstructions: 'পেইন্টিং শেষ করার পর ফ্যানের বাতাসে শুকিয়ে নিন।',
+    faqs: [
+      {
+        question: 'গাড়িগুলো কি খেলার সময় ভেঙে যাওয়ার ভয় আছে?',
+        answer: 'উচ্চমানের ডেনসিটি জিপসাম প্লাস্টার দিয়ে তৈরি হওয়ায় এটি মজবুত, তবে হাত থেকে মেঝেতে জোরে আছাড় না দেওয়ার নির্দেশনা দেওয়া ভালো।'
+      }
+    ],
+    reviews: [
+      {
+        id: 'rev-car-1',
+        author: 'তানভীর হাসান',
+        location: 'মিরপুর, ঢাকা',
+        rating: 5,
+        date: '২০২৬-১০-১৬',
+        comment: 'আমার ছেলে গাড়ির ভক্ত! ট্রাক্টর ও হেলিকপ্টার রঙ করে এখন ড্রয়িং টেবিলে সাজিয়ে রেখেছে। দারুণ প্রোডাক্টিভ অ্যাক্টিভিটি।',
+        isVerified: true
+      }
+    ]
+  },
+  {
+    id: 'prod-plaster-tool-set',
+    titleBn: 'টুল সেট প্লাস্টার পেইন্টিং কিট - হ্যান্ডি বিল্ডার (৮টি টুলস + ৪টি রঙ + ১টি ব্রাশ)',
+    titleEn: 'Tool Set Plaster Painting Kit - Handy Builder',
+    slug: 'tool-set-painting-kit',
+    categorySlug: 'art-kits',
+    basePrice: 1250,
+    baseSalePrice: 999,
+    rating: 4.9,
+    reviewCount: 35,
+    isVariable: false,
+    isBestSeller: false,
+    isNewArrival: true,
+    targetAgeMin: 3,
+    targetAgeMax: 10,
+    imageUrl: '/images/products/tool-set.jpg',
+    galleryImages: [
+      '/images/products/tool-set.jpg',
+      '/images/products/car-painting-kit.jpg'
+    ],
+    badge: 'নতুন',
+    safetyBadges: ['৮টি মেকানিকাল টুলস প্লাস্টার', 'বাস্তব জীবনের শিক্ষামূলক খেলনা', 'নন-টক্সিক ও মসৃণ', 'স্ক্রিন-ফ্রি অ্যাক্টিভিটি'],
+    description: 'খেলতে খেলতে মেকানিকাল আইডিয়া ও বাস্তব জিনিষের পরিচয়! ৮টি আকর্ষণীয় বিল্ডার টুলসের প্লাস্টার শেপ—স্ক্রু-ড্রাইভার, অ্যাডজাস্টেবল রেঞ্জ, পাওয়ার ড্রিল, করাত, হাতুড়ি, পাইপ রেঞ্জ, প্লায়ার্স এবং ডাবল ওপেন স্প্যানার। সাথে ৪টি ব্রাইট কালার ও ব্রাশ। ছোট কারিগরদের হ্যান্ড-আই কোঅর্ডিনেশন ও একাগ্রতা বাড়ানোর চমৎকার উপহার।',
+    specifications: [
+      { label: 'টুলসের সংখ্যা', value: '৮টি বিভিন্ন মেকানিক টুলস' },
+      { label: 'রঙের সংখ্যা', value: '৪টি পেইন্ট পট (লাল, হলুদ, নীল, সবুজ)' },
+      { label: 'ব্রাশ', value: '১টি অন্তর্ভুক্ত' }
+    ],
+    careInstructions: 'সাধারণ তাপমাত্রায় শুকিয়ে নিন।',
+    faqs: [
+      {
+        question: 'টুলসগুলো কি আসল টুলের মতো ধারালো?',
+        answer: 'একেবারেই না! শিশুদের নিরাপত্তার স্বার্থে প্রতিটি প্লাস্টার টুলের এজ গোলাকার ও মসৃণ রাখা হয়েছে।'
+      }
+    ]
+  },
+  {
+    id: 'prod-plaster-sunny-shores',
+    titleBn: 'সানি শোরস সমুদ্র ও সৈকত মেগা প্লাস্টার পেইন্টিং কিট (১৬টি শেপ)',
+    titleEn: 'Sunny Shores Beach & Ocean Mega Plaster Kit',
+    slug: 'sunny-shores',
+    categorySlug: 'art-kits',
+    basePrice: 1400,
+    baseSalePrice: 1100,
+    rating: 5.0,
+    reviewCount: 48,
+    isVariable: false,
+    isBestSeller: true,
+    isNewArrival: false,
+    targetAgeMin: 3,
+    targetAgeMax: 10,
+    imageUrl: '/images/products/sunny-shores.jpg',
+    galleryImages: [
+      '/images/products/sunny-shores.jpg',
+      '/images/products/ocean-world.jpg'
+    ],
+    badge: 'মেগা প্যাক',
+    safetyBadges: ['১৬টি মেগা প্লাস্টার শেপস', 'সাদা রঙ দিয়ে শেডিং সুবিধা', 'পুরো ফ্যামিলি অ্যাক্টিভিটি'],
+    description: 'সমুদ্রের ঢেউ আর বালুকাময় সৈকতের পুরো একটা গল্প ঘরে বসেই! কিটটিতে রয়েছে মোট ১৬টি বৈচিত্র্যময় প্লাস্টার শেপ—হাস্যোজ্জ্বল সূর্য, পাম গাছ, বিচ আমব্রেলা, স্টারফিশ, বাতিঘর (Lighthouse), রাজকীয় স্যান্ডক্যাসেল, বিচ বল, স্যান্ডেল, সানগ্লাস, ঝিনুক ও ক্লাউড। সাথে ৫টি পেইন্ট (গোলাপি, হলুদ, সবুজ, নীল, সাদা) এবং ব্রাশ। বিশাল কালেকশন পরিবারের একাধিক শিশু একসাথে ভাগ করে পেইন্ট করতে পারে!',
+    specifications: [
+      { label: 'শেপ সংখ্যা', value: '১৬টি অনন্য বিচ ও সামুদ্রিক উপাদান' },
+      { label: 'রঙের সংখ্যা', value: '৫টি রঙ (Pink, Yellow, Green, Blue, White)' }
+    ]
+  },
+  {
+    id: 'prod-plaster-ocean-world',
+    titleBn: 'ওশান ওয়ার্ল্ড সমুদ্রের জলচর প্রাণী প্লাস্টার পেইন্টিং কিট (৮টি মাছ)',
+    titleEn: 'Ocean World Sea Life Plaster Painting Kit',
+    slug: 'ocean-world-painting-kit',
+    categorySlug: 'art-kits',
+    basePrice: 1300,
+    baseSalePrice: 1050,
+    rating: 4.9,
+    reviewCount: 52,
+    isVariable: false,
+    isBestSeller: true,
+    isNewArrival: false,
+    targetAgeMin: 3,
+    targetAgeMax: 9,
+    imageUrl: '/images/products/ocean-world.jpg',
+    galleryImages: [
+      '/images/products/ocean-world.jpg',
+      '/images/products/sunny-shores.jpg'
+    ],
+    badge: 'সেরা রেটিং',
+    safetyBadges: ['৮টি বিভিন্ন মাছ ও জলচর প্রাণী', 'বাস্তবধর্মী থ্রিডি খোদাই', 'নন-টক্সিক ও টেকসই'],
+    description: 'গভীর সমুদ্রের রহস্যময় ও রঙিন মাছদের নিয়ে দারুণ এক শিল্পযাত্রা! ৮টি সামুদ্রিক মাছের প্লাস্টার শেপ—অরেঞ্জ ক্লাউনফিশ, গোল্ডফিশ, ফোলানো পাফারফিশ, ফ্লাইং ফিশ, গ্রেট হোয়াইট শার্ক, মিষ্টি সিন্ধুঘোটক (Seahorse) ও টুনা মাছ। সাথে ৫টি পেইন্ট (লাল, হলুদ, সবুজ, নীল, কালো) এবং ফাইন ব্রাশ। সমুদ্রবিজ্ঞান ও কালার মিক্সিংয়ের সেরা মেলবন্ধন!',
+    specifications: [
+      { label: 'প্রাণীর সংখ্যা', value: '৮টি থ্রিডি সি-লাইফ ফিশ' },
+      { label: 'রঙের সংখ্যা', value: '৫টি রঙ (Red, Yellow, Green, Blue, Black)' }
+    ]
+  },
+  {
+    id: 'prod-plaster-mixed-kit-1',
+    titleBn: 'মিক্সড কিট ১ - সুইট ট্রিটস ও স্কুল অ্যাডভেঞ্চার প্লাস্টার প্যাক (৬টি শেপ)',
+    titleEn: 'Mixed Kit 1 - Sweet Treats & Adventure Plaster Set',
+    slug: 'mixed-kit-1',
+    categorySlug: 'art-kits',
+    basePrice: 1200,
+    baseSalePrice: 990,
+    rating: 4.9,
+    reviewCount: 73,
+    isVariable: false,
+    isBestSeller: true,
+    isNewArrival: false,
+    targetAgeMin: 2,
+    targetAgeMax: 8,
+    imageUrl: '/images/products/mixed-kit-1.jpg',
+    galleryImages: [
+      '/images/products/mixed-kit-1.jpg',
+      '/images/products/sweet-fruit.jpg',
+      '/images/products/little-bug-adventure.jpg'
+    ],
+    badge: 'টপ সেলার',
+    safetyBadges: ['ভ্যারাইটি কম্বো প্যাক', 'ছোট্ট হাতের উপযোগী সাইজ', '১০০% ফুড-গ্রেড ন্যাচারাল জিপসাম'],
+    description: 'বাচ্চাদের সব প্রিয় জিনিস এক বক্সে! কিটটিতে রয়েছে ৬টি বৈচিত্র্যময় প্লাস্টার শেপ—রঙিন ডানাওয়ালা প্রজাপতি, মিষ্টি পাকা কলা, স্কুল ব্যাকপ্যাক, চকলেট ডোনাট, সুস্বাদু আইসক্রিম কোন এবং রেইনবো আইস ললি। সাথে ৪টি উজ্জ্বল রঙ ও ব্রাশ। ড্রয়িং ও পেইন্টিং শেখার জন্য দারুণ এক অল-ইন-ওয়ান স্টার্টার সেট।',
+    specifications: [
+      { label: 'শেপের সংখ্যা', value: '৬টি প্লাস্টার শেপ' },
+      { label: 'রঙের সংখ্যা', value: '৪টি রঙ' }
+    ]
+  },
+  {
+    id: 'prod-plaster-autumn-nature',
+    titleBn: 'অটাম উডল্যান্ড ও ন্যাচার প্লাস্টার পেইন্টিং কিট (৭টি শেপ + উডেন প্যালেট)',
+    titleEn: 'Autumn Woodland & Nature Plaster Kit',
+    slug: 'autumn-nature-plaster-kit',
+    categorySlug: 'art-kits',
+    basePrice: 1350,
+    baseSalePrice: 1080,
+    rating: 5.0,
+    reviewCount: 39,
+    isVariable: false,
+    isBestSeller: true,
+    isNewArrival: false,
+    targetAgeMin: 3,
+    targetAgeMax: 12,
+    imageUrl: '/images/products/autumn-nature.jpg',
+    galleryImages: [
+      '/images/products/autumn-nature.jpg',
+      '/images/products/little-bug-adventure.jpg'
+    ],
+    badge: 'কালেক্টরস কিট',
+    safetyBadges: ['উডেন প্যালেট অন্তর্ভুক্ত', 'উষ্ণ ও প্রাকৃতিক রঙসমূহ', 'নান্দনিক ড্রয়িং অ্যাক্টিভিটি'],
+    description: 'প্রকৃতির শান্ত ও স্নিগ্ধ রূপ নিয়ে বিশেষ অটাম উডল্যান্ড কিট! ৭টি শৈল্পিক প্লাস্টার শেপ—ফ্লাওয়ার পাম্পকিন, ম্যাপল লিফ, তুষার কণা (Snowflake), ক্লাসিক মিষ্টি কুমড়া, কাঠবিড়ালি (Squirrel), বুনো একর্ন (Acorn) এবং ওক পাতা। সাথে উডেন পেইন্ট ট্রে সম্বলিত ৫টি স্পেশাল শেডের রঙ (চকলেট ব্রাউন, অরেঞ্জ, পিংক, পার্পল, গ্রিন) ও ব্রাশ। নান্দনিক রুচির অনন্য স্মারক!',
+    specifications: [
+      { label: 'শেপ সংখ্যা', value: '৭টি ন্যাচারাল প্লাস্টার শেপ' },
+      { label: 'প্যালেট ও রঙ', value: 'কাঠের ট্রের সাথে ৫টি পেইন্ট পট (Chocolate, Orange, Pink, Purple, Green)' }
+    ]
+  },
+
   // 1. New Arrivals
   {
     id: 'prod-crayons-24',

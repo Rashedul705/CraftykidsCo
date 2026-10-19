@@ -186,16 +186,20 @@ export function getProductBySlug(slug: string): SampleProduct | undefined {
 }
 
 export function getProductsByCategory(categorySlug: string): SampleProduct[] {
+  if (categorySlug === 'art-kits') {
+    return globalProducts.filter((p) => p.categorySlug === 'art-kits' || p.slug.includes('paint') || p.slug.includes('kit'));
+  }
   if (categorySlug === 'wax-crayons') {
-    return globalProducts.filter((p) => p.slug.includes('crayon') || p.slug.includes('washable'));
+    return globalProducts.filter((p) => p.slug.includes('crayon') || p.slug.includes('washable') || p.categorySlug === 'wax-crayons');
   }
   if (categorySlug === 'educational-toys') {
-    return globalProducts.filter((p) => p.slug.includes('puzzle') || p.slug.includes('blocks'));
+    return globalProducts.filter((p) => p.slug.includes('puzzle') || p.slug.includes('blocks') || p.categorySlug === 'educational-toys');
   }
   if (categorySlug === 'play-dough-clay') {
-    return globalProducts.filter((p) => p.slug.includes('dough'));
+    return globalProducts.filter((p) => p.slug.includes('dough') || p.categorySlug === 'play-dough-clay');
   }
-  return globalProducts;
+  const filtered = globalProducts.filter((p) => p.categorySlug === categorySlug);
+  return filtered.length > 0 ? filtered : globalProducts;
 }
 
 export function getAllOrders(): OrderRecord[] {

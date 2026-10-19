@@ -72,6 +72,10 @@ export default function HomePage() {
   const newArrivalProducts = products.filter((p) => p.isNewArrival).slice(0, 4);
   const bestSellerProducts = products.filter((p) => p.isBestSeller).slice(0, 4);
 
+  const artKitShowcaseProducts = products
+    .filter((p) => p.categorySlug === 'art-kits' || (p.slug && (p.slug.includes('paint') || p.slug.includes('kit'))))
+    .slice(0, 4);
+
   const crayonShowcaseProducts = products
     .filter((p) => p.categorySlug === 'wax-crayons')
     .slice(0, 4);
@@ -287,7 +291,81 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
-        {/* 6. Category Showcase 1: "মোমের রঙ" (Wax Crayons Category)                  */}
+        {/* 6. Category Showcase: "প্লাস্টার আর্ট কিট" (Plaster Painting Kits)          */}
+        {/* ========================================================================= */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+                {locale === 'bn' ? 'প্লাস্টার আর্ট ও পেইন্টিং কিট' : 'Plaster Painting Kits'}
+              </h2>
+              <p className="text-xs sm:text-sm text-[#777777]">
+                {locale === 'bn' ? 'ক্রিয়েট • পেইন্ট • প্লে - শিশুদের স্ক্রিন-ফ্রি ক্রিয়েটিভ আর্ট বক্স' : 'Create • Paint • Play - Screen-free creative activity for kids'}
+              </p>
+            </div>
+            <Link
+              href="/category/art-kits"
+              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
+            >
+              <span>{locale === 'bn' ? 'সব দেখুন' : 'View All'}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
+            {/* Left Category Highlight Card */}
+            <div className="lg:col-span-1 rounded-2xl bg-[#FFF3E0] border border-[#FFE0B2] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
+              <div className="space-y-3 z-10">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#E65100] bg-white/80 px-2.5 py-0.5 rounded-full inline-block">
+                  Paint & Play
+                </span>
+                <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222] leading-snug">
+                  {locale === 'bn' ? 'প্লাস্টার পেইন্টিং' : 'Plaster Kits'}
+                </h3>
+                <p className="text-xs text-[#666666] leading-relaxed">
+                  {locale === 'bn' ? 'রঙ, ব্রাশ ও থ্রিডি প্লাস্টার শেপ নিয়ে সম্পূর্ণ ক্রাফট বক্স' : 'Complete 3D plaster shapes, non-toxic colors & brush set'}
+                </p>
+              </div>
+
+              <div className="relative w-full h-44 sm:h-52 lg:h-auto lg:aspect-square my-3 sm:my-4 rounded-xl overflow-hidden shadow-xs">
+                <Image
+                  src="/images/products/little-bug-adventure.jpg"
+                  alt="Plaster Painting Kits Collection"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+
+              <Link
+                href="/category/art-kits"
+                className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
+              >
+                {locale === 'bn' ? 'সব পণ্য দেখুন' : 'Shop All'}
+              </Link>
+            </div>
+
+            {/* Right 4 Products */}
+            <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {artKitShowcaseProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  slug={product.slug || product.id}
+                  title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
+                  price={product.basePrice ?? product.price}
+                  salePrice={product.baseSalePrice ?? product.salePrice}
+                  badge={product.badge}
+                  rating={product.rating}
+                  imageUrl={product.imageUrl || product.image}
+                  locale={locale}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 7. Category Showcase 1: "মোমের রঙ" (Wax Crayons Category)                  */}
         {/* ========================================================================= */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
