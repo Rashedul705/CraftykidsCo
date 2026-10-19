@@ -1,0 +1,164 @@
+================================================================================
+CRAFTYKIDSCO - PROJECT STATUS REPORT & ROADMAP (PLAN.TXT)
+================================================================================
+Last Updated: October 19, 2026
+Brand: Crafty Kids Co. ("Create | Paint | Play")
+Platform: Full-Stack E-Commerce Web Application (Next.js 16 + Express API)
+Repository: https://github.com/Rashedul705/CraftykidsCo
+
+--------------------------------------------------------------------------------
+1. PROJECT OVERVIEW & ARCHITECTURE
+--------------------------------------------------------------------------------
+Crafty Kids Co. is a specialized e-commerce platform designed for child-safe, 
+non-toxic DIY plaster painting kits, natural wax crayons, and educational 
+Montessori toys for toddlers and young kids in Bangladesh.
+
+The repository is organized as a clean Monorepo:
+├── frontend/             -> Next.js 16 (Turbopack, App Router, React 19, Tailwind CSS)
+│   ├── src/app/          -> Pages & Routes (Storefront, Product, Shop, Cart, Checkout, Admin)
+│   ├── src/components/   -> Reusable UI Components & Layouts (Header, Footer, ProductCard)
+│   ├── src/lib/          -> Data store, sample-data, utilities, state handlers
+│   └── public/images/    -> High-resolution product photos & branding assets
+├── backend/              -> Express.js API Server
+│   ├── server.js         -> REST API endpoints, static asset server & Glassmorphic Dashboard
+│   └── package.json      -> Backend dependencies
+├── .gitignore            -> Strict credential & environment security
+└── README.md             -> Monorepo documentation & setup instructions
+
+--------------------------------------------------------------------------------
+2. WHAT HAS BEEN COMPLETED SO FAR (ACCOMPLISHMENTS)
+--------------------------------------------------------------------------------
+
+[A] Monorepo & Infrastructure:
+  [x] Structured project into isolated `frontend/` and `backend/` directories.
+  [x] Configured concurrent local development:
+      - Frontend running on: http://localhost:3000
+      - Backend API running on: http://localhost:5000
+  [x] Protected environment variables and API keys (.env, .env.local, serviceAccountKey.json) in .gitignore.
+  [x] Cleaned repository and verified clean Git workflow on branch `main`.
+
+[B] Backend API & Monitoring Dashboard:
+  [x] Implemented a premium dark-mode, glassmorphism dashboard at `GET /` on port 5000:
+      - Dynamic system uptime tracker (Xh Ym Zs format)
+      - Active endpoints registry with interactive ping badges
+      - Architecture & health stats cards (port, status, version)
+  [x] Implemented mock REST endpoints:
+      - `GET /api/products` (full catalog with rich schema)
+      - `GET /api/categories` (taxonomies & badges)
+      - `GET /api/orders` & `POST /api/orders` (order creation and status changes)
+      - `POST /api/admin/login` (admin authentication stub)
+  [x] Enabled static image asset hosting from `backend/server.js` matching frontend assets.
+
+[C] Real Product Ingestion & Detailed Descriptions:
+  [x] Processed and integrated 8 authentic DIY Plaster Painting Kits from official product photos:
+      1. Sweet Fruit Plaster Painting Kit (৬টি ফল + ৪টি রঙ + ১টি ব্রাশ) - ৳990
+      2. Little Bug Adventure Plaster Painting Kit (৪টি কিউট পোকা + ৪টি রঙ + ব্রাশ + ইজেল) - ৳890
+      3. Car & Transport Plaster Painting Kit (৬টি গাড়ি + ৫টি রঙ + কালার গাইড) - ৳1,050
+      4. Tool Set Plaster Painting Kit - Handy Builder (৮টি মেকানিক টুলস + ৪টি রঙ + ব্রাশ) - ৳999
+      5. Sunny Shores Beach & Ocean Mega Kit (১৬টি বিচ শেপ + ৫টি রঙ + ব্রাশ) - ৳1,100
+      6. Ocean World Sea Life Plaster Painting Kit (৮টি সামুদ্রিক মাছ + ৫টি রঙ + ব্রাশ) - ৳1,050
+      7. Mixed Kit 1 - Sweet Treats & Adventure (৬টি শেপ + ৪টি রঙ + ব্রাশ) - ৳990
+      8. Autumn Woodland & Nature Plaster Kit (৭টি শেপ + কাঠের ট্রেতে ৫টি রঙ + ব্রাশ) - ৳1,080
+  [x] Crafted comprehensive, bilingual (Bengali & English) product details:
+      - Product descriptions focusing on screen-free play & motor skill benefits
+      - Piece breakdowns (plaster shape counts, color pots, brushes, guides)
+      - Safety certifications (100% Non-Toxic Gypsum Plaster, Washable paints)
+      - Technical specifications tables
+      - Frequently Asked Questions (FAQs) for parent concerns
+      - Customer reviews with 5-star ratings & verified customer feedback
+
+[D] Storefront & User Interface Enhancements:
+  [x] Category Circular Navigation: Updated "আর্ট কিট" category icon with authentic product image.
+  [x] Homepage "নতুন পণ্য" (New Arrivals): Displays the 4 newest plaster kits with badges.
+  [x] Homepage "জনপ্রিয় পণ্য" (Best Sellers): Displays the 4 top-selling plaster kits.
+  [x] Dedicated Showcase Section: Added "প্লাস্টার আর্ট ও পেইন্টিং কিট (Create | Paint | Play)" 
+      with a hero collection highlight card and quick add-to-cart buttons.
+  [x] Category & Shop Filter: Updated `/shop` and `/category/[slug]` to seamlessly filter by `art-kits`.
+  [x] Dynamic Product Detail Page (`/product/[slug]`):
+      - Interactive image gallery
+      - Bengali & English toggle support
+      - In-stock indicator & quantity adjuster
+      - Add to Cart with live toast feedback
+      - Direct "অর্ডার করুন" (Buy Now) button straight to checkout
+      - Upsell combo bundles
+
+[E] Cart, Checkout & Order Flow:
+  [x] Global CartContext with persistent cart state in local storage.
+  [x] Slide-out Mini Cart drawer & full cart page (`/cart`).
+  [x] Streamlined single-page checkout (`/checkout`):
+      - Automatic delivery charge calculation (Inside Dhaka ৳60, Outside Dhaka ৳120)
+      - Free delivery bar when cart total >= ৳1,000
+      - Discount coupon code support (e.g. FREE60)
+      - Cash on Delivery (COD), bKash, and Nagad payment options
+  [x] Order confirmation screen (`/order/confirmation/[id]`) with instant order ID.
+  [x] Live order tracking page (`/track`) by phone number or order ID.
+
+--------------------------------------------------------------------------------
+3. WHAT IS RUNNING CURRENTLY
+--------------------------------------------------------------------------------
+- Next.js 16 Frontend: Port 3000 (Development server running with Turbopack)
+- Express.js Backend: Port 5000 (Dashboard & REST API running via Node)
+- Production Build: Successfully tested (`npm run build` completed with 0 errors)
+- Git Remote: Synchronized with GitHub repository (`origin/main`)
+
+--------------------------------------------------------------------------------
+4. WHAT NEEDS TO BE DONE NEXT (ACTIONABLE ROADMAP)
+--------------------------------------------------------------------------------
+
+PHASE 1: REAL DATABASE & PERSISTENT DATA LAYER (High Priority)
+  [ ] Connect database persistence so orders and newly added products persist across server restarts:
+      Option A: Prisma ORM with PostgreSQL (Supabase / Neon / Render)
+      Option B: MongoDB (Mongoose / MongoDB Atlas)
+      Option C: Cloud Firestore (Firebase Admin SDK)
+  [ ] Unify product reading so the Admin panel, API, and storefront read from the same live database.
+
+PHASE 2: LIVE PAYMENT GATEWAY INTEGRATION (High Priority)
+  [ ] bKash Merchant Payment Gateway (PGW / Checkout URL API):
+      - Create payment URL, callback execution, and instant payment status verification.
+  [ ] Nagad / SSLCommerz / Aamarpay integration as alternative options.
+  [ ] Automated COD fraud/risk check (e.g. invalid phone number detection, past cancellation history).
+
+PHASE 3: AUTOMATED COURIER INTEGRATION (Medium Priority)
+  [ ] Steadfast Courier Live API integration:
+      - Automatically create consignment when order status changes to "CONFIRMED".
+      - Generate tracking code and Steadfast consignment ID.
+      - Periodic webhook or polling to sync delivery status ("SHIPPED" -> "DELIVERED").
+
+PHASE 4: SMS NOTIFICATION GATEWAY (Medium Priority)
+  [ ] Integrate Bangladeshi SMS gateway (Greenweb / ElitBuzz / Reve SMS):
+      - OTP verification for new customer orders (preventing fake spam orders).
+      - Order Confirmation SMS with Order ID and tracking link.
+      - Dispatch SMS alert with courier tracking code.
+
+PHASE 5: MARKETING, PIXEL & ANALYTICS (Medium Priority)
+  [ ] Meta Pixel & Facebook Conversion API (CAPI):
+      - Add live Pixel ID and server-side event tracking for:
+        * ViewContent (Product page view)
+        * AddToCart (Cart addition)
+        * InitiateCheckout (Checkout page visit)
+        * Purchase (Completed order with BDT revenue)
+  [ ] Google Tag Manager (GTM) & Google Analytics 4 (GA4).
+  [ ] TikTok Pixel for promotional ads.
+
+PHASE 6: ADMIN PANEL UPGRADES & INVENTORY MANAGEMENT (Medium Priority)
+  [ ] Dynamic product management in `/admin`:
+      - Upload new products directly via UI (image upload, price, specs, stock).
+      - Edit existing products without touching source code.
+  [ ] Inventory tracking with low-stock alerts.
+  [ ] CSV/Excel export for accountant & shipping label printing.
+
+PHASE 7: PRODUCTION DEPLOYMENT & DEVOPS (Launch Phase)
+  [ ] Deploy Frontend to Vercel (zero-config Next.js hosting with global CDN).
+  [ ] Deploy Backend to Render / Railway / DigitalOcean VPS.
+  [ ] Setup Custom Domain (e.g. craftykidsco.com or craftykidsco.com.bd).
+  [ ] Setup SSL certificate, robots.txt, dynamic sitemap.xml, and SEO meta tags.
+
+--------------------------------------------------------------------------------
+5. RECOMMENDED IMMEDIATE NEXT STEPS
+--------------------------------------------------------------------------------
+1. Decide on database choice (MongoDB vs Supabase/PostgreSQL vs Firebase) to 
+   make orders and admin edits permanently persistent.
+2. Integrate real bKash Checkout URL API credentials or refine COD order workflow.
+3. Add Steadfast Courier API keys to enable 1-click consignment creation.
+4. Setup Meta Pixel / TikTok Pixel ID for social media marketing campaigns.
+================================================================================
