@@ -103,7 +103,7 @@ function ProductContent() {
   const [addedToast, setAddedToast] = useState<boolean>(false);
 
   // Tabs state
-  const [activeTab, setActiveTab] = useState<'desc' | 'videos' | 'specs' | 'care' | 'delivery' | 'faq'>('desc');
+  const [activeTab, setActiveTab] = useState<'desc' | 'videos' | 'specs' | 'care' | 'faq'>('desc');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   // Recently Viewed state
@@ -368,14 +368,14 @@ function ProductContent() {
         </div>
 
         {/* =====================================================================
-            1 & 2: REDESIGNED MEDIA GALLERY + CORE BUY BOX
+            1 & 2: 50% / 50% SPLIT: MEDIA GALLERY (50%) + CORE BUY BOX (50%)
            ===================================================================== */}
-        <div className="bg-white rounded-3xl sm:rounded-[32px] border border-[#EFEAE2] p-4 sm:p-6 lg:p-7 shadow-[0_4px_25px_rgba(43,43,43,0.04)] grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        <div className="bg-white rounded-3xl sm:rounded-[32px] border border-[#EFEAE2] p-4 sm:p-7 lg:p-8 shadow-[0_4px_25px_rgba(43,43,43,0.04)] grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-start">
           
           {/* ================================================================
-              LEFT: REDESIGNED MULTI-IMAGE & SHORT VIDEO GALLERY (col-span-5)
+              LEFT: 50% MULTI-IMAGE & SHORT VIDEO GALLERY
              ================================================================ */}
-          <div className="lg:col-span-5 space-y-3.5">
+          <div className="space-y-4">
             {/* Top Media Filters Strip */}
             <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5">
@@ -442,7 +442,7 @@ function ProductContent() {
             </div>
 
             {/* Main Stage Display (Image or Video) */}
-            <div className="relative aspect-square w-full max-w-[390px] sm:max-w-[410px] mx-auto rounded-2xl sm:rounded-3xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shadow-inner group flex items-center justify-center">
+            <div className="relative aspect-square w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shadow-inner group flex items-center justify-center">
               {activeMedia.type === 'video' && activeVideo ? (
                 /* --- INLINE VIDEO PLAYER --- */
                 <div className="relative w-full h-full bg-black flex items-center justify-center">
@@ -500,21 +500,11 @@ function ProductContent() {
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
 
-                  {/* Overlays: Safety & Age Badges */}
-                  <div className="absolute top-3.5 left-3.5 flex flex-col gap-1.5 z-10 pointer-events-none">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-[#E8F5E9]/95 backdrop-blur-xs text-[#2E7D32] border border-[#C8E6C9] shadow-xs">
-                      <Sparkles className="w-3.5 h-3.5" /> ১০০% নন-টক্সিক ও নিরাপদ
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-[#E0F2FE]/95 backdrop-blur-xs text-[#0369A1] border border-[#BAE6FD] shadow-xs">
-                      {product.targetAgeMin}+ বছর বয়সীদের জন্য
-                    </span>
-                  </div>
-
                   {/* Discount Badge */}
                   {discountPercent > 0 && (
                     <div className="absolute top-3.5 right-3.5 z-10">
                       <span className="px-3 py-1 rounded-full text-xs font-black bg-[#E53935] text-white shadow-md">
-                        -{discountPercent}% ছাড়
+                        -{discountPercent}% OFF
                       </span>
                     </div>
                   )}
@@ -661,22 +651,22 @@ function ProductContent() {
           </div>
 
           {/* ================================================================
-              RIGHT: REDESIGNED BUY BOX & HIGH-CONVERSION ACTIONS (col-span-7)
+              RIGHT: 50% BUY BOX & HIGH-CONVERSION ACTIONS
              ================================================================ */}
-          <div className="lg:col-span-7 space-y-5">
+          <div className="space-y-5">
             {/* Scarcity & Stock Badges */}
             <div className="flex items-center justify-between gap-2 text-xs">
               {isOutOfStock ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold bg-[#FEE2E2] text-[#DC2626] border border-[#FECACA]">
-                  <AlertCircle className="w-3.5 h-3.5" /> স্টক শেষ (শীঘ্রই আসছে)
+                  <AlertCircle className="w-3.5 h-3.5" /> Out of Stock
                 </span>
               ) : isLowStock ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A] animate-pulse">
-                  <Clock className="w-3.5 h-3.5" /> মাত্র {currentStock}টি স্টকে বাকি - দ্রুত অর্ডার করুন!
+                  <Clock className="w-3.5 h-3.5" /> Only {currentStock} left in stock - Order Fast!
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold bg-[#E8F5E9] text-[#2E7D32] border border-[#C8E6C9]">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> ইন স্টক (রেডি টু শিপ)
+                  <CheckCircle2 className="w-3.5 h-3.5" /> In Stock (Ready to Ship)
                 </span>
               )}
 
@@ -703,11 +693,11 @@ function ProductContent() {
                 </div>
                 <span className="font-bold text-[#1A1A1A]">{product.rating || 4.9}</span>
                 <span className="text-[#888]">
-                  ({product.reviewCount || 48} জন অভিভাবকের রেটিং)
+                  ({product.reviewCount || 48} Customer Reviews)
                 </span>
                 <span className="text-[#CCC]">•</span>
                 <span className="text-[#2E7D32] font-semibold bg-[#E8F5E9] px-2 py-0.5 rounded-full text-[11px]">
-                  ✓ ৯৮% পজিটিভ মতামত
+                  ✓ 98% Positive Feedback
                 </span>
               </div>
             </div>
@@ -716,18 +706,18 @@ function ProductContent() {
             <div className="p-4 rounded-2xl bg-[#FFF8F6] border border-[#FADCD5] flex items-baseline justify-between gap-3 flex-wrap">
               <div className="flex items-baseline gap-2.5">
                 <span className="text-3xl sm:text-4xl font-black text-[#E53935]">
-                  {formatBDT(currentPrice)}
+                  {formatBDT(currentPrice, { locale: 'en' })}
                 </span>
                 {currentOriginalPrice > currentPrice && (
                   <span className="text-base text-[#888] line-through font-semibold">
-                    {formatBDT(currentOriginalPrice)}
+                    {formatBDT(currentOriginalPrice, { locale: 'en' })}
                   </span>
                 )}
               </div>
 
               {currentOriginalPrice > currentPrice && (
                 <span className="px-3 py-1 rounded-full text-xs font-black bg-[#E53935] text-white shadow-xs">
-                  সাশ্রয় ৳{currentOriginalPrice - currentPrice} (-{discountPercent}%)
+                  Save {formatBDT(currentOriginalPrice - currentPrice, { locale: 'en' })} (-{discountPercent}%)
                 </span>
               )}
             </div>
@@ -928,7 +918,6 @@ function ProductContent() {
               { id: 'videos', label: `ভিডিও ও ডেমো (${productVideos.length})` },
               { id: 'specs', label: 'স্পেসিফিকেশন' },
               { id: 'care', label: 'ব্যবহার ও যত্নের নিয়ম' },
-              { id: 'delivery', label: 'ডেলিভারি ও রিটার্ন' },
               { id: 'faq', label: 'সাধারণ প্রশ্নোত্তর (FAQ)' },
             ].map((tab) => (
               <button
@@ -1073,30 +1062,7 @@ function ProductContent() {
             </div>
           )}
 
-          {/* TAB 5: DELIVERY & RETURNS */}
-          {activeTab === 'delivery' && (
-            <div className="space-y-4 text-xs sm:text-sm text-[#4A4A4A] leading-relaxed">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFEAE2] space-y-1.5">
-                  <strong className="font-bold text-[#1A1A1A] block">🚚 ডেলিভারি সময় ও চার্জ:</strong>
-                  <ul className="space-y-1 text-xs list-disc pl-4 text-[#6B6B6B]">
-                    <li>ঢাকা সিটির ভেতর: <strong>৳৬০</strong> (২৪ থেকে ৪৮ ঘণ্টা)</li>
-                    <li>ঢাকার বাইরে সারা বাংলাদেশ: <strong>৳১২০</strong> (২ থেকে ৩ দিন)</li>
-                    <li><strong>৳১,০০০ বা তার বেশি</strong> অর্ডারে ডেলিভারি চার্জ সম্পূর্ণ ফ্রি!</li>
-                  </ul>
-                </div>
 
-                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFEAE2] space-y-1.5">
-                  <strong className="font-bold text-[#1A1A1A] block">🔄 রিটার্ন ও রিপ্লেসমেন্ট শর্ত:</strong>
-                  <ul className="space-y-1 text-xs list-disc pl-4 text-[#6B6B6B]">
-                    <li>পণ্য হাতে পাওয়ার পর ৭ দিনের মধ্যে যেকোনো সমস্যায় বিনামূল্যে রিটার্ন।</li>
-                    <li>ভাঙা বা নষ্ট পণ্য পেলে সাথে সাথে নতুন পণ্য পাঠিয়ে দেওয়া হবে।</li>
-                    <li>কুরিয়ার বয় থাকাকালীন পার্সেল খুলে চেক করতে পারবেন।</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* TAB 6: FAQ */}
           {activeTab === 'faq' && (
@@ -1145,10 +1111,10 @@ function ProductContent() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#EFEAE2]">
               <div>
                 <h3 className="font-heading font-black text-xl text-[#1A1A1A]">
-                  অভিভাবকদের বাস্তব অভিজ্ঞতা ও রিভিউ ({product.reviews.length})
+                  Customer Reviews & Ratings ({product.reviews.length})
                 </h3>
                 <p className="text-xs text-[#6B6B6B]">
-                  সবগুলো রিভিউ আমাদের আসল ক্রেতাদের পাঠানো ছবি ও মতামত থেকে সংগৃহীত
+                  Real photos and verified experiences from our buyers
                 </p>
               </div>
 
@@ -1159,7 +1125,7 @@ function ProductContent() {
                   ))}
                 </div>
                 <span className="font-black text-base text-[#1A1A1A]">
-                  {product.rating || 4.9} / ৫.০
+                  {product.rating || 4.9} / 5.0
                 </span>
               </div>
             </div>
@@ -1206,7 +1172,7 @@ function ProductContent() {
                     </div>
                     {rev.isVerified && (
                       <span className="px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#2E7D32] font-bold text-[10px]">
-                        ✓ ভেরিফাইড ক্রেতা
+                        ✓ Verified Buyer
                       </span>
                     )}
                   </div>
@@ -1248,12 +1214,12 @@ function ProductContent() {
         </div>
 
         {/* =====================================================================
-            6: RELATED PRODUCTS GRID
+            6: RELEVANT PRODUCTS GRID
            ===================================================================== */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-heading font-black text-xl text-[#1A1A1A]">
-              সম্পর্কিত অন্যান্য পণ্যসমূহ
+              Relevant Products
             </h3>
             <Link href="/shop" className="text-xs font-bold text-[#E53935] hover:underline flex items-center gap-1">
               View All Products <ArrowRight className="w-3.5 h-3.5" />
@@ -1270,8 +1236,9 @@ function ProductContent() {
                 price={p.basePrice}
                 salePrice={p.baseSalePrice}
                 imageUrl={p.imageUrl}
-                ageBadgeText={`${p.targetAgeMin}+ বছর`}
-                safetyBadgeText="১০০% নিরাপদ"
+                ageBadgeText={`${p.targetAgeMin}+ Years`}
+                safetyBadgeText="100% Safe"
+                locale="en"
               />
             ))}
           </div>
@@ -1283,7 +1250,7 @@ function ProductContent() {
         {recentlyViewed.length > 0 && (
           <div className="space-y-4 pt-4 border-t border-[#EFEAE2]">
             <h3 className="font-heading font-black text-lg text-[#1A1A1A]">
-              সম্প্রতি দেখা পণ্যসমূহ
+              Recently Viewed Products
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {recentlyViewed.map((p) => (
@@ -1295,6 +1262,7 @@ function ProductContent() {
                   price={p.basePrice}
                   salePrice={p.baseSalePrice}
                   imageUrl={p.imageUrl}
+                  locale="en"
                 />
               ))}
             </div>
@@ -1364,7 +1332,7 @@ function ProductContent() {
               {product.titleBn}
             </span>
             <span className="text-xs font-black text-[#E53935]">
-              {formatBDT(currentPrice)}
+              {formatBDT(currentPrice, { locale: 'en' })}
             </span>
           </div>
         </div>
