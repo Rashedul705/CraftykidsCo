@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -44,19 +44,43 @@ export default function HomePage() {
     }
   };
 
-  // Filter products for various sections (Max 4 products in a row)
-  const newArrivalProducts = sampleProducts.filter((p) => p.isNewArrival).slice(0, 4);
-  const bestSellerProducts = sampleProducts.filter((p) => p.isBestSeller).slice(0, 4);
+  const [products, setProducts] = useState<any[]>(sampleProducts);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const crayonShowcaseProducts = sampleProducts
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/products');
+        if (res.ok) {
+          const data = await res.json();
+          const items = Array.isArray(data) ? data : (data.data || []);
+          if (items.length > 0) {
+            setProducts(items);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch products from mock API, using fallback data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Filter products for various sections (Max 4 products in a row)
+  const newArrivalProducts = products.filter((p) => p.isNewArrival).slice(0, 4);
+  const bestSellerProducts = products.filter((p) => p.isBestSeller).slice(0, 4);
+
+  const crayonShowcaseProducts = products
     .filter((p) => p.categorySlug === 'wax-crayons')
     .slice(0, 4);
 
-  const clayShowcaseProducts = sampleProducts
+  const clayShowcaseProducts = products
     .filter((p) => p.categorySlug === 'play-dough-clay')
     .slice(0, 4);
 
-  const educationalShowcaseProducts = sampleProducts
+  const educationalShowcaseProducts = products
     .filter((p) => p.categorySlug === 'educational-toys' || p.categorySlug === 'wooden-toys')
     .slice(0, 4);
 
@@ -210,13 +234,13 @@ export default function HomePage() {
               <ProductCard
                 key={product.id}
                 id={product.id}
-                slug={product.slug}
-                title={product.titleBn}
-                price={product.basePrice}
-                salePrice={product.baseSalePrice}
+                slug={product.slug || product.id}
+                title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
+                price={product.basePrice ?? product.price}
+                salePrice={product.baseSalePrice ?? product.salePrice}
                 badge={product.badge}
                 rating={product.rating}
-                imageUrl={product.imageUrl}
+                imageUrl={product.imageUrl || product.image}
                 locale={locale}
               />
             ))}
@@ -249,13 +273,13 @@ export default function HomePage() {
               <ProductCard
                 key={product.id}
                 id={product.id}
-                slug={product.slug}
-                title={product.titleBn}
-                price={product.basePrice}
-                salePrice={product.baseSalePrice}
+                slug={product.slug || product.id}
+                title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
+                price={product.basePrice ?? product.price}
+                salePrice={product.baseSalePrice ?? product.salePrice}
                 badge={product.badge}
                 rating={product.rating}
-                imageUrl={product.imageUrl}
+                imageUrl={product.imageUrl || product.image}
                 locale={locale}
               />
             ))}
@@ -320,13 +344,13 @@ export default function HomePage() {
                 <ProductCard
                   key={product.id}
                   id={product.id}
-                  slug={product.slug}
-                  title={product.titleBn}
-                  price={product.basePrice}
-                  salePrice={product.baseSalePrice}
+                  slug={product.slug || product.id}
+                  title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
+                  price={product.basePrice ?? product.price}
+                  salePrice={product.baseSalePrice ?? product.salePrice}
                   badge={product.badge}
                   rating={product.rating}
-                  imageUrl={product.imageUrl}
+                  imageUrl={product.imageUrl || product.image}
                   locale={locale}
                 />
               ))}
@@ -392,13 +416,13 @@ export default function HomePage() {
                 <ProductCard
                   key={product.id}
                   id={product.id}
-                  slug={product.slug}
-                  title={product.titleBn}
-                  price={product.basePrice}
-                  salePrice={product.baseSalePrice}
+                  slug={product.slug || product.id}
+                  title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
+                  price={product.basePrice ?? product.price}
+                  salePrice={product.baseSalePrice ?? product.salePrice}
                   badge={product.badge}
                   rating={product.rating}
-                  imageUrl={product.imageUrl}
+                  imageUrl={product.imageUrl || product.image}
                   locale={locale}
                 />
               ))}
@@ -464,13 +488,13 @@ export default function HomePage() {
                 <ProductCard
                   key={product.id}
                   id={product.id}
-                  slug={product.slug}
-                  title={product.titleBn}
-                  price={product.basePrice}
-                  salePrice={product.baseSalePrice}
+                  slug={product.slug || product.id}
+                  title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
+                  price={product.basePrice ?? product.price}
+                  salePrice={product.baseSalePrice ?? product.salePrice}
                   badge={product.badge}
                   rating={product.rating}
-                  imageUrl={product.imageUrl}
+                  imageUrl={product.imageUrl || product.image}
                   locale={locale}
                 />
               ))}
