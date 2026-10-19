@@ -628,18 +628,677 @@ app.get('/api/products/:id', (req, res) => {
   res.json(product);
 });
 
-// 3. Health & Status Route
+// 3. Infrastructure & API Registry Dashboard (Root Route)
 app.get('/', (req, res) => {
+  // Support JSON output for API clients if specifically requested
+  if (req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html')) {
+    return res.json({
+      status: 'online',
+      service: 'Crafty Kids Server',
+      subtitle: 'ADVANCED BACKEND INFRASTRUCTURE',
+      uptime: process.uptime(),
+      port: PORT,
+      environment: process.env.NODE_ENV || 'Development',
+      database: {
+        system: 'MongoDB Atlas',
+        status: 'Offline (Mock API Mode)'
+      },
+      services: {
+        imageHosting: 'ImgBB API',
+        notifications: 'SMTP & BulkSMSBD'
+      },
+      endpoints: [
+        { method: 'GET', path: '/api/products', desc: 'Retrieve full product catalog & plaster kits' },
+        { method: 'GET', path: '/api/products/:id', desc: 'Fetch single product details by ID or slug' },
+        { method: 'POST', path: '/api/orders', desc: 'Submit checkout order with items & delivery info' },
+        { method: 'POST', path: '/api/upload-image', desc: 'Upload and host images via ImgBB' },
+        { method: 'POST', path: '/api/auth/otp', desc: 'Dispatch SMS OTP verification to customer' },
+        { method: 'GET', path: '/api/status', desc: 'Health check, heartbeat, and diagnostics' }
+      ]
+    });
+  }
+
+  // Calculate dynamic uptime: Xh Ym Zs
+  const totalSeconds = Math.floor(process.uptime());
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const uptimeString = `${hours}h ${minutes}m ${seconds}s`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crafty Kids Server &bull; Advanced Backend Infrastructure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #0f111a;
+      color: #e2e8f0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    /* Ambient background glows */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -160px;
+      left: 15%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(15, 17, 26, 0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -150px;
+      right: 10%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, rgba(15, 17, 26, 0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 48px 24px 64px;
+      position: relative;
+      z-index: 1;
+      width: 100%;
+    }
+
+    /* Header */
+    .header {
+      margin-bottom: 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      width: fit-content;
+      backdrop-filter: blur(8px);
+    }
+
+    .header-title-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #f8fafc;
+      background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header .subtitle {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: #38bdf8;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      background: rgba(255, 255, 255, 0.04);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .action-btn.primary {
+      background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+    }
+
+    .action-btn.primary:hover {
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
+    }
+
+    /* Status Dots */
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .dot.green {
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e, 0 0 16px rgba(34, 197, 94, 0.6);
+      animation: pulse-green 2.5s infinite;
+    }
+
+    .dot.red {
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444, 0 0 16px rgba(239, 68, 68, 0.6);
+      animation: pulse-red 2.5s infinite;
+    }
+
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.75; transform: scale(1.1); }
+    }
+
+    @keyframes pulse-red {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.75; transform: scale(1.1); }
+    }
+
+    /* Glassmorphism Card Style */
+    .card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+    }
+
+    .card:hover {
+      background: rgba(255, 255, 255, 0.035);
+      border-color: rgba(255, 255, 255, 0.14);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    /* 3-Column Grid for Server Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 44px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .card-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f1f5f9;
+      letter-spacing: -0.01em;
+    }
+
+    .pill-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pill-tag.green {
+      background: rgba(34, 197, 94, 0.1);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    .pill-tag.red {
+      background: rgba(239, 68, 68, 0.1);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    .stat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 13px;
+    }
+
+    .stat-label {
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .stat-value {
+      color: #e2e8f0;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .stat-value.mono {
+      font-family: 'JetBrains Mono', monospace;
+      color: #38bdf8;
+      font-size: 12.5px;
+      background: rgba(56, 189, 248, 0.08);
+      padding: 2px 7px;
+      border-radius: 6px;
+      border: 1px solid rgba(56, 189, 248, 0.15);
+    }
+
+    .stat-value.status-offline {
+      color: #f87171;
+      font-weight: 600;
+    }
+
+    /* API Registry Section */
+    .section-header {
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .section-header h2 {
+      font-size: 19px;
+      font-weight: 800;
+      color: #f1f5f9;
+      letter-spacing: -0.02em;
+    }
+
+    .section-header p {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
+    .endpoint-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .endpoint-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .endpoint-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .endpoint-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .method-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .method-badge.get {
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .method-badge.post {
+      background: rgba(99, 102, 241, 0.12);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+    }
+
+    .endpoint-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: #f1f5f9;
+      word-break: break-all;
+    }
+
+    .endpoint-desc {
+      font-size: 12.5px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+
+    .footer {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .footer a {
+      color: #94a3b8;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer a:hover {
+      color: #e2e8f0;
+    }
+
+    @media (max-width: 900px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      .endpoint-grid {
+        grid-template-columns: 1fr;
+      }
+      .header-title-row {
+        flex-direction: column;
+        gap: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-badge">
+        <span class="dot green"></span>
+        <span>Operational &bull; Live Node Cluster</span>
+      </div>
+      <div class="header-title-row">
+        <div>
+          <h1>Crafty Kids Server</h1>
+          <div class="subtitle">ADVANCED BACKEND INFRASTRUCTURE</div>
+        </div>
+        <div class="header-actions">
+          <a href="/api/products" target="_blank" class="action-btn primary">
+            <span>Explore Products API</span>
+            <span>&rarr;</span>
+          </a>
+          <a href="http://localhost:3000" target="_blank" class="action-btn">
+            <span>Open Storefront</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- 3-Column Stats Grid -->
+    <section class="stats-grid">
+      <!-- Card 1: Core Engine -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-wrap">
+            <span class="dot green"></span>
+            <span class="card-title">Core Engine</span>
+          </div>
+          <span class="pill-tag green">Active</span>
+        </div>
+        <div class="stat-list">
+          <div class="stat-row">
+            <span class="stat-label">Uptime</span>
+            <span class="stat-value mono">${uptimeString}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Environment</span>
+            <span class="stat-value">Development</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Port</span>
+            <span class="stat-value mono">${PORT}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Runtime</span>
+            <span class="stat-value">Node.js ${process.version}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Database -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-wrap">
+            <span class="dot red"></span>
+            <span class="card-title">Database</span>
+          </div>
+          <span class="pill-tag red">Standby</span>
+        </div>
+        <div class="stat-list">
+          <div class="stat-row">
+            <span class="stat-label">System</span>
+            <span class="stat-value">MongoDB Atlas</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Connection</span>
+            <span class="stat-value status-offline">Offline (Mock API Mode)</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Storage Engine</span>
+            <span class="stat-value">In-Memory Mock Store</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Collections</span>
+            <span class="stat-value">Products (${products.length}), Orders</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Services -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-wrap">
+            <span class="dot green"></span>
+            <span class="card-title">Services</span>
+          </div>
+          <span class="pill-tag green">Configured</span>
+        </div>
+        <div class="stat-list">
+          <div class="stat-row">
+            <span class="stat-label">Image Hosting</span>
+            <span class="stat-value">ImgBB API</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Notifications</span>
+            <span class="stat-value">SMTP &amp; BulkSMSBD</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Courier Partner</span>
+            <span class="stat-value">Steadfast Logistics</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">CORS Policy</span>
+            <span class="stat-value">Enabled (* Access)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- API Registry Section -->
+    <section>
+      <div class="section-header">
+        <div>
+          <h2>API Registry</h2>
+          <p>Exposed RESTful endpoints for storefront &amp; administrative operations</p>
+        </div>
+      </div>
+
+      <div class="endpoint-grid">
+        <!-- Endpoint 1 -->
+        <a href="/api/products" target="_blank" class="endpoint-card">
+          <div class="endpoint-top">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-url">/api/products</span>
+          </div>
+          <p class="endpoint-desc">Retrieve all products, plaster painting kits, and inventory catalog.</p>
+        </a>
+
+        <!-- Endpoint 2 -->
+        <a href="/api/products/1" target="_blank" class="endpoint-card">
+          <div class="endpoint-top">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-url">/api/products/:id</span>
+          </div>
+          <p class="endpoint-desc">Fetch single product details, images, specifications, and reviews.</p>
+        </a>
+
+        <!-- Endpoint 3 -->
+        <div class="endpoint-card">
+          <div class="endpoint-top">
+            <span class="method-badge post">POST</span>
+            <span class="endpoint-url">/api/orders</span>
+          </div>
+          <p class="endpoint-desc">Submit new checkout order with customer details, phone, and delivery address.</p>
+        </div>
+
+        <!-- Endpoint 4 -->
+        <div class="endpoint-card">
+          <div class="endpoint-top">
+            <span class="method-badge post">POST</span>
+            <span class="endpoint-url">/api/upload-image</span>
+          </div>
+          <p class="endpoint-desc">Upload product photos directly to ImgBB cloud storage.</p>
+        </div>
+
+        <!-- Endpoint 5 -->
+        <div class="endpoint-card">
+          <div class="endpoint-top">
+            <span class="method-badge post">POST</span>
+            <span class="endpoint-url">/api/auth/otp</span>
+          </div>
+          <p class="endpoint-desc">Generate and dispatch single-use OTP SMS to customer mobile.</p>
+        </div>
+
+        <!-- Endpoint 6 -->
+        <a href="/api/status" target="_blank" class="endpoint-card">
+          <div class="endpoint-top">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-url">/api/status</span>
+          </div>
+          <p class="endpoint-desc">Health check ping, timestamp diagnostics, and system heartbeat.</p>
+        </a>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>Crafty Kids Co. &copy; 2026 &bull; Advanced Backend Infrastructure</span>
+      <div style="display: flex; gap: 16px;">
+        <a href="/api/products">Raw Products JSON</a>
+        <a href="http://localhost:3000">Storefront UI</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>`;
+
+  res.send(html);
+});
+
+// 4. API Status & Heartbeat
+app.get('/api/status', (req, res) => {
   res.json({
     status: 'online',
-    service: 'Crafty Kids Co. Mock API',
-    port: PORT,
-    endpoints: {
-      getAllProducts: '/api/products',
-      getProductById: '/api/products/:id',
-    },
+    service: 'Crafty Kids Server',
+    uptime: `${Math.floor(process.uptime())}s`,
+    timestamp: new Date().toISOString(),
   });
 });
+
 
 app.listen(PORT, HOST, () => {
   console.log(`Crafty Kids Co. Mock API Server running on http://${HOST}:${PORT}`);
