@@ -40,12 +40,15 @@ import { formatBDT } from '@/lib/utils';
 import { getCourierProvider } from '@/core/courier';
 import { HomeSectionsEditor } from '@/components/admin/HomeSectionsEditor';
 import CategoriesAttributesEditor from '@/components/admin/CategoriesAttributesEditor';
+import AddProductForm from '@/components/admin/AddProductForm';
+import OrdersManager from '@/components/admin/OrdersManager';
 
 export default function AdminDashboardPage() {
   // Navigation State
   const [activeNav, setActiveNav] = useState<string>('dashboard');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
+  const [productViewMode, setProductViewMode] = useState<'list' | 'add'>('list');
 
   // Store Data States
   const [orders, setOrders] = useState<OrderRecord[]>([]);
@@ -547,6 +550,9 @@ export default function AdminDashboardPage() {
           key={item.id}
           onClick={() => {
             setActiveNav(item.id);
+            if (item.id === 'products') {
+              setProductViewMode('list');
+            }
             setIsMobileNavOpen(false);
           }}
           className={`w-full text-left px-3.5 py-2 rounded-xl transition-colors cursor-pointer text-[13px] ${
@@ -657,7 +663,10 @@ export default function AdminDashboardPage() {
             Store
           </Link>
           <button
-            onClick={() => setShowAddProductModal(true)}
+            onClick={() => {
+              setActiveNav('products');
+              setProductViewMode('add');
+            }}
             className="px-3 py-1.5 rounded-lg bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] flex items-center gap-1 shadow-xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" /> Product
@@ -696,48 +705,53 @@ export default function AdminDashboardPage() {
          ========================================================================= */}
       <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1280px] w-full min-w-0">
         {/* Top Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="font-heading font-black text-xl sm:text-2xl lg:text-3xl text-[#1F1F1F]">
-            {activeNav === 'dashboard' && 'Dashboard'}
-            {activeNav === 'orders' && 'Orders'}
-            {activeNav === 'products' && 'Products & Inventory'}
-            {activeNav === 'categories' && 'Categories & Attributes'}
-            {activeNav === 'steadfast' && 'Steadfast Courier Dispatch'}
-            {activeNav === 'stock' && 'Stock Inventory'}
-            {activeNav === 'home-sections' && 'Home Sections & Storefront Customizer'}
-            {!['dashboard', 'orders', 'products', 'categories', 'steadfast', 'stock', 'home-sections'].includes(activeNav) &&
-              activeNav.replace('-', ' ').toUpperCase()}
-          </h1>
+        {!(activeNav === 'products' && productViewMode === 'add') && activeNav !== 'orders' && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h1 className="font-heading font-black text-xl sm:text-2xl lg:text-3xl text-[#1F1F1F]">
+              {activeNav === 'dashboard' && 'Dashboard'}
+              {activeNav === 'orders' && 'Orders'}
+              {activeNav === 'products' && 'Products & Inventory'}
+              {activeNav === 'categories' && 'Categories & Attributes'}
+              {activeNav === 'steadfast' && 'Steadfast Courier Dispatch'}
+              {activeNav === 'stock' && 'Stock Inventory'}
+              {activeNav === 'home-sections' && 'Home Sections & Storefront Customizer'}
+              {!['dashboard', 'orders', 'products', 'categories', 'steadfast', 'stock', 'home-sections'].includes(activeNav) &&
+                activeNav.replace('-', ' ').toUpperCase()}
+            </h1>
 
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
-            {/* Search Input Box */}
-            <div className="relative flex-1 sm:w-64 lg:w-80 min-w-[180px]">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search orders, phone, products"
-                className="w-full bg-white border border-[#E5E0D8] rounded-xl px-4 py-2 text-xs text-[#2B2B2B] placeholder:text-[#999999] focus:outline-none focus:border-[#D32F2F] shadow-xs"
-              />
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+              {/* Search Input Box */}
+              <div className="relative flex-1 sm:w-64 lg:w-80 min-w-[180px]">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search orders, phone, products"
+                  className="w-full bg-white border border-[#E5E0D8] rounded-xl px-4 py-2 text-xs text-[#2B2B2B] placeholder:text-[#999999] focus:outline-none focus:border-[#D32F2F] shadow-xs"
+                />
+              </div>
+
+              {/* View Store Button */}
+              <Link
+                href="/"
+                className="hidden sm:inline-flex px-3.5 py-2 rounded-xl bg-white border border-[#E5E0D8] text-xs font-semibold text-[#2B2B2B] hover:bg-[#FAF7F2] transition-colors shadow-xs"
+              >
+                View store
+              </Link>
+
+              {/* Add Product Button */}
+              <button
+                onClick={() => {
+                  setActiveNav('products');
+                  setProductViewMode('add');
+                }}
+                className="hidden sm:inline-flex px-3.5 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] transition-colors shadow-xs cursor-pointer items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add product
+              </button>
             </div>
-
-            {/* View Store Button */}
-            <Link
-              href="/"
-              className="hidden sm:inline-flex px-3.5 py-2 rounded-xl bg-white border border-[#E5E0D8] text-xs font-semibold text-[#2B2B2B] hover:bg-[#FAF7F2] transition-colors shadow-xs"
-            >
-              View store
-            </Link>
-
-            {/* Add Product Button */}
-            <button
-              onClick={() => setShowAddProductModal(true)}
-              className="hidden sm:inline-flex px-3.5 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] transition-colors shadow-xs cursor-pointer items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add product
-            </button>
           </div>
-        </div>
+        )}
 
         {/* Action Feedback Toast */}
         {actionFeedback && (
@@ -968,9 +982,9 @@ export default function AdminDashboardPage() {
                   </thead>
                   <tbody className="divide-y divide-[#EFEAE2]">
                     {/* Render top recent orders */}
-                    {filteredOrders.slice(0, 7).map((ord) => (
+                    {filteredOrders.slice(0, 7).map((ord, idx) => (
                       <tr
-                        key={ord.id}
+                        key={ord.id || ord.orderNumber || `dash-ord-${idx}`}
                         onClick={() => setSelectedOrder(ord)}
                         className="hover:bg-[#FAF7F2] transition-colors cursor-pointer group"
                       >
@@ -999,101 +1013,55 @@ export default function AdminDashboardPage() {
         )}
 
         {/* =====================================================================
-            VIEW 2: ORDERS LIST (FULL TABLE WITH DETAILS)
+            VIEW 2: ORDERS MANAGEMENT & INSPECTOR (SPLIT VIEW)
            ===================================================================== */}
         {activeNav === 'orders' && (
-          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFEAE2]">
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none flex-nowrap max-w-full">
-                {['ALL', 'PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setOrdersStatusFilter(st)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                      ordersStatusFilter === st
-                        ? 'bg-[#1F1F1F] text-white'
-                        : 'bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#1F1F1F]'
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
-              <span className="text-xs text-[#6B6B6B] font-medium shrink-0">
-                Total {filteredOrders.length} orders
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-[#EFEAE2] text-[#6B6B6B]">
-                    <th className="pb-3 font-semibold">Order</th>
-                    <th className="pb-3 font-semibold">Customer & Phone</th>
-                    <th className="pb-3 font-semibold">District & Address</th>
-                    <th className="pb-3 font-semibold">Items</th>
-                    <th className="pb-3 font-semibold">Total</th>
-                    <th className="pb-3 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EFEAE2]">
-                  {filteredOrders.map((ord) => (
-                    <tr
-                      key={ord.id}
-                      onClick={() => setSelectedOrder(ord)}
-                      className="hover:bg-[#FAF7F2] transition-colors cursor-pointer group"
-                    >
-                      <td className="py-3.5 font-bold text-[#D32F2F]">
-                        {ord.orderNumber}
-                      </td>
-                      <td className="py-3.5">
-                        <strong className="text-[#1A1A1A] block">{ord.customerName}</strong>
-                        <span className="text-[#6B6B6B]">{ord.customerPhone}</span>
-                      </td>
-                      <td className="py-3.5 text-[#4A4A4A] max-w-xs truncate">
-                        <span className="font-semibold block">{ord.district}</span>
-                        <span className="text-[#6B6B6B] text-[11px] truncate block">{ord.fullAddress}</span>
-                      </td>
-                      <td className="py-3.5 text-[#6B6B6B]">
-                        {ord.items.map((it) => it.title).join(', ')}
-                      </td>
-                      <td className="py-3.5 font-bold text-[#1A1A1A]">
-                        ৳{ord.totalAmount}
-                      </td>
-                      <td className="py-3.5">
-                        {renderStatusBadge(ord.status)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <OrdersManager
+            orders={orders}
+            onRefresh={refreshData}
+            onStatusChange={handleStatusChange}
+            onSendToSteadfast={handleSendToSteadfast}
+            products={products}
+          />
         )}
 
         {/* =====================================================================
             VIEW 3: PRODUCTS & INVENTORY
            ===================================================================== */}
         {activeNav === 'products' && (
-          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-4 sm:p-6 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFEAE2]">
-              <div>
-                <h3 className="font-heading font-black text-base text-[#1A1A1A]">
-                  Product Catalog & Variations ({filteredProducts.length})
-                </h3>
-                <p className="text-xs text-[#6B6B6B]">
-                  Manage prices, inventory stocks, and catalog items in MongoDB Atlas
-                </p>
+          productViewMode === 'add' ? (
+            <AddProductForm
+              onCancel={() => setProductViewMode('list')}
+              onSuccess={(created) => {
+                refreshData();
+                setProductViewMode('list');
+                setActionFeedback(
+                  `Product "${created?.titleBn || created?.titleEn || 'New Product'}" published successfully!`
+                );
+                setTimeout(() => setActionFeedback(null), 4000);
+              }}
+              categories={categories}
+            />
+          ) : (
+            <div className="bg-white rounded-2xl border border-[#EFEAE2] p-4 sm:p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFEAE2]">
+                <div>
+                  <h3 className="font-heading font-black text-base text-[#1A1A1A]">
+                    Product Catalog & Variations ({filteredProducts.length})
+                  </h3>
+                  <p className="text-xs text-[#6B6B6B]">
+                    Manage prices, inventory stocks, and catalog items in MongoDB Atlas
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setProductViewMode('add')}
+                    className="px-3.5 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <Plus className="w-4 h-4" /> Add Product
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowAddProductModal(true)}
-                  className="px-3.5 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-                >
-                  <Plus className="w-4 h-4" /> Add Product
-                </button>
-              </div>
-            </div>
 
             {/* Product Search & Filter Bar */}
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
@@ -1251,7 +1219,8 @@ export default function AdminDashboardPage() {
               </table>
             </div>
           </div>
-        )}
+        )
+      )}
 
         {/* =====================================================================
             VIEW 4: CATEGORIES & ATTRIBUTES
@@ -1279,8 +1248,8 @@ export default function AdminDashboardPage() {
             </p>
 
             <div className="divide-y divide-[#EFEAE2]">
-              {orders.map((ord) => (
-                <div key={ord.id} className="py-3 flex items-center justify-between text-xs">
+              {orders.map((ord, idx) => (
+                <div key={ord.id || ord.orderNumber || `stf-ord-${idx}`} className="py-3 flex items-center justify-between text-xs">
                   <div>
                     <span className="font-bold text-[#D32F2F] block">{ord.orderNumber} - {ord.customerName}</span>
                     <span className="text-[#6B6B6B]">{ord.district} | COD: ৳{ord.totalAmount}</span>
@@ -1332,9 +1301,9 @@ export default function AdminDashboardPage() {
       </main>
 
       {/* =========================================================================
-          ORDER DETAIL MODAL / DRAWER (WHEN ANY ORDER ROW IS CLICKED)
+          ORDER DETAIL MODAL / DRAWER (WHEN ANY ORDER ROW IS CLICKED FROM OTHER VIEWS)
          ========================================================================= */}
-      {selectedOrder && (
+      {selectedOrder && activeNav !== 'orders' && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-[28px] max-w-lg w-full p-6 space-y-4 shadow-xl border border-[#EFEAE2] max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
@@ -1367,8 +1336,8 @@ export default function AdminDashboardPage() {
             <div className="space-y-1 text-xs">
               <span className="font-bold text-[#6B6B6B] block mb-1">Ordered Items (Snapshot):</span>
               <div className="divide-y divide-[#EFEAE2] border border-[#EFEAE2] rounded-xl overflow-hidden">
-                {selectedOrder.items.map((it) => (
-                  <div key={it.id} className="p-2.5 bg-white flex justify-between items-center">
+                {selectedOrder.items.map((it, idx) => (
+                  <div key={it.id || `${it.productId}-${idx}`} className="p-2.5 bg-white flex justify-between items-center">
                     <div>
                       <span className="font-bold text-[#1A1A1A] block">{it.title}</span>
                       {it.variationTitle && (

@@ -54,6 +54,8 @@ export interface IOrder extends Document {
   courier?: string;
   consignmentId?: string;
   trackingCode?: string;
+  source?: string;
+  internalNote?: string;
   ipAddress?: string;
   items: IOrderItemSnapshot[];
   statusHistory?: IOrderStatusHistory[];
@@ -150,6 +152,8 @@ const OrderSchema = new Schema<IOrder>(
     courier: { type: String },
     consignmentId: { type: String },
     trackingCode: { type: String },
+    source: { type: String, default: 'website' },
+    internalNote: { type: String },
     ipAddress: { type: String, index: true },
     items: [OrderItemSnapshotSchema],
     statusHistory: [OrderStatusHistorySchema],

@@ -42,12 +42,61 @@ export async function GET(req: NextRequest) {
         ];
       }
 
+      const syncErrors: any[] = [];
+      const memoryOrders = getMemoryOrders();
+      for (const mOrd of memoryOrders) {
+        const exists = await Order.findOne({ orderNumber: mOrd.orderNumber });
+        if (!exists) {
+          try {
+            await Order.create({
+              id: mOrd.id,
+              orderNumber: mOrd.orderNumber,
+              customerName: mOrd.customerName,
+              customerPhone: mOrd.customerPhone,
+              district: mOrd.district,
+              fullAddress: mOrd.fullAddress,
+              subtotal: mOrd.subtotal,
+              deliveryCharge: mOrd.deliveryCharge,
+              discountAmount: mOrd.discountAmount || 0,
+              totalAmount: mOrd.totalAmount,
+              status: mOrd.status,
+              paymentStatus: mOrd.paymentStatus,
+              paymentMethod: mOrd.paymentMethod,
+              courier: mOrd.courier,
+              consignmentId: mOrd.consignmentId,
+              trackingCode: mOrd.trackingCode,
+              source: mOrd.source || 'website',
+              internalNote: mOrd.internalNote,
+              timeline: mOrd.timeline,
+              items: mOrd.items.map(it => ({
+                productId: it.productId,
+                id: it.id,
+                title: it.title,
+                titleBn: it.title,
+                titleEn: it.title,
+                price: it.price,
+                unitPrice: it.price,
+                quantity: it.quantity,
+                total: it.total,
+                totalPrice: it.total,
+                imageUrl: it.imageUrl,
+              })),
+            });
+          } catch (e: any) {
+            syncErrors.push({ order: mOrd.orderNumber, msg: e?.message, errs: e?.errors });
+          }
+        }
+      }
+
       const dbOrders = await Order.find(mongoQuery).sort({ createdAt: -1 }).lean();
       if (dbOrders && dbOrders.length > 0) {
         return NextResponse.json({
           success: true,
           count: dbOrders.length,
-          orders: dbOrders,
+          orders: dbOrders.map((o: any) => ({
+            ...o,
+            id: o.id || o._id?.toString() || o.orderNumber,
+          })),
           source: 'mongodb',
         });
       }

@@ -1,4 +1,5 @@
 import { SampleProduct, SampleCategory, sampleCategories, sampleProducts } from './sample-data';
+export type { SampleProduct, SampleCategory };
 import { SiteSettings, defaultSiteSettings } from './site-settings';
 
 export interface CartItemData {
@@ -23,6 +24,7 @@ export interface OrderItemRecord {
   price: number;
   quantity: number;
   total: number;
+  imageUrl?: string;
 }
 
 export interface OrderRecord {
@@ -38,7 +40,7 @@ export interface OrderRecord {
   discountAmount: number;
   totalAmount: number;
   couponCode?: string;
-  status: 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'RETURNED';
   paymentStatus: 'UNPAID' | 'PAID';
   paymentMethod: 'COD' | 'BKASH' | 'NAGAD';
   courier?: 'STEADFAST';
@@ -47,10 +49,165 @@ export interface OrderRecord {
   timeline: { status: string; timestamp: string; note: string }[];
   items: OrderItemRecord[];
   createdAt: string;
+  source?: 'website' | 'facebook' | 'phone' | 'manual';
+  internalNote?: string;
 }
 
 // In-memory persistent state (shared across client sessions and API routes in server environment)
 export let globalOrders: OrderRecord[] = [
+  {
+    id: 'ord-ckc-3751',
+    orderNumber: 'CKC-20261019-3751',
+    customerName: 'রাশেদুল ইসলাম',
+    customerPhone: '01712345678',
+    district: 'Dhaka',
+    fullAddress: 'মিরপুর ১০, ঢাকা',
+    customerNote: 'সন্ধ্যার পর ডেলিভারি দিন',
+    subtotal: 999,
+    deliveryCharge: 60,
+    discountAmount: 0,
+    totalAmount: 1059,
+    status: 'CONFIRMED',
+    paymentStatus: 'UNPAID',
+    paymentMethod: 'COD',
+    source: 'website',
+    internalNote: 'Customer confirmed via WhatsApp call.',
+    timeline: [
+      { status: 'PENDING', timestamp: '10:42 AM', note: 'Placed 12 min ago from website' },
+      { status: 'CONFIRMED', timestamp: '10:51 AM', note: 'Confirmed by [staff name], 10:51 AM' },
+    ],
+    items: [
+      {
+        id: 'item-3751-1',
+        productId: 'prod-little-bug',
+        title: 'Little Bug Adventure',
+        price: 999,
+        quantity: 1,
+        total: 999,
+        imageUrl: 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+      },
+    ],
+    createdAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'ord-ckc-3750',
+    orderNumber: 'CKC-20261019-3750',
+    customerName: 'Farhana Jaman',
+    customerPhone: '01811223344',
+    district: 'Rajshahi',
+    fullAddress: 'বোয়ালিয়া, রাজশাহী',
+    subtotal: 899,
+    deliveryCharge: 120,
+    discountAmount: 120,
+    totalAmount: 899,
+    status: 'PENDING',
+    paymentStatus: 'PAID',
+    paymentMethod: 'BKASH',
+    source: 'website',
+    timeline: [
+      { status: 'PENDING', timestamp: '09:30 AM', note: 'Order placed with bKash pre-payment' },
+    ],
+    items: [
+      {
+        id: 'item-3750-1',
+        productId: 'prod-crayons-24',
+        title: 'Natural Crayons 24 colors',
+        price: 599,
+        quantity: 1,
+        total: 599,
+        imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=600&q=80',
+      },
+      {
+        id: 'item-3750-2',
+        productId: 'prod-play-dough',
+        title: 'Organic Modeling Dough',
+        price: 300,
+        quantity: 1,
+        total: 300,
+        imageUrl: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=600&q=80',
+      },
+    ],
+    createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'ord-ckc-3749',
+    orderNumber: 'CKC-20261018-3749',
+    customerName: 'Rakib Ahmed',
+    customerPhone: '01919876543',
+    district: 'Chattogram',
+    fullAddress: 'পাহাড়তলী, চট্টগ্রাম',
+    subtotal: 360,
+    deliveryCharge: 120,
+    discountAmount: 0,
+    totalAmount: 480,
+    status: 'SHIPPED',
+    paymentStatus: 'UNPAID',
+    paymentMethod: 'COD',
+    courier: 'STEADFAST',
+    consignmentId: 'STF-849201',
+    trackingCode: 'TRK-771239',
+    source: 'facebook',
+    timeline: [
+      { status: 'PENDING', timestamp: 'Yesterday 02:00 PM', note: 'Order placed via Facebook Messenger' },
+      { status: 'CONFIRMED', timestamp: 'Yesterday 03:00 PM', note: 'Confirmed with customer' },
+      { status: 'SHIPPED', timestamp: 'Yesterday 06:00 PM', note: 'Steadfast dispatched' },
+    ],
+    items: [
+      {
+        id: 'item-3749-1',
+        productId: 'prod-wooden-puzzle',
+        title: 'Wooden Puzzle Board',
+        price: 360,
+        quantity: 1,
+        total: 360,
+        imageUrl: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=600&q=80',
+      },
+    ],
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'ord-ckc-3748',
+    orderNumber: 'CKC-20261018-3748',
+    customerName: 'Nusrat Jahan',
+    customerPhone: '01655443322',
+    district: 'Sylhet',
+    fullAddress: 'জিন্দাবাজার, সিলেট',
+    subtotal: 2150,
+    deliveryCharge: 120,
+    discountAmount: 120,
+    totalAmount: 2150,
+    status: 'DELIVERED',
+    paymentStatus: 'PAID',
+    paymentMethod: 'COD',
+    courier: 'STEADFAST',
+    consignmentId: 'STF-849202',
+    trackingCode: 'TRK-771240',
+    source: 'website',
+    timeline: [
+      { status: 'DELIVERED', timestamp: 'Yesterday 04:30 PM', note: 'Steadfast delivered & cash collected' },
+    ],
+    items: [
+      {
+        id: 'item-3748-1',
+        productId: 'prod-art-combo',
+        title: 'Little Artist Combo',
+        price: 1450,
+        quantity: 1,
+        total: 1450,
+        imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=600&q=80',
+      },
+      {
+        id: 'item-3748-2',
+        productId: 'prod-crayons-12',
+        title: 'Classic Beeswax Crayons',
+        price: 350,
+        quantity: 2,
+        total: 700,
+        imageUrl: 'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=600&q=80',
+      },
+    ],
+    createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
+  },
   {
     id: 'ord-rk-1001',
     orderNumber: 'RK-1001',
@@ -67,57 +224,23 @@ export let globalOrders: OrderRecord[] = [
     status: 'CONFIRMED',
     paymentStatus: 'UNPAID',
     paymentMethod: 'COD',
+    source: 'website',
     timeline: [
-      { status: 'PENDING', timestamp: '২০২৬-১০-১২ ১০:৩০ AM', note: 'গ্রাহক দ্বারা অর্ডার সফলভাবে প্লেস করা হয়েছে' },
-      { status: 'CONFIRMED', timestamp: '২০২৬-১০-১২ ১১:১৫ AM', note: 'অর্ডার ভেরিফাই ও কনফার্ম করা হয়েছে' },
+      { status: 'PENDING', timestamp: '২০২৬-১০-১২ ১০:৩০ AM', note: 'অর্ডার প্লেস করা হয়েছে' },
+      { status: 'CONFIRMED', timestamp: '২০২৬-১০-১২ ১১:১৫ AM', note: 'অর্ডার ভেরিফাই করা হয়েছে' },
     ],
     items: [
       {
         id: 'item-1',
         productId: 'prod-crayons-24',
         title: 'CraftyKidsCo ন্যাচারাল মোমের রঙ - ২৪ শেড',
-        variationTitle: '২৪ রঙের ক্লাসিক সেট',
         price: 299,
         quantity: 2,
         total: 598,
+        imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=600&q=80',
       },
     ],
     createdAt: '2026-10-12T04:30:00.000Z',
-  },
-  {
-    id: 'ord-rk-1002',
-    orderNumber: 'RK-1002',
-    customerName: 'রাকিব আহমেদ',
-    customerPhone: '01819876543',
-    district: 'Chittagong',
-    fullAddress: 'জিইসি মোড়, লালখান বাজার, চট্টগ্রাম',
-    subtotal: 360,
-    deliveryCharge: 120,
-    discountAmount: 0,
-    totalAmount: 480,
-    status: 'SHIPPED',
-    paymentStatus: 'UNPAID',
-    paymentMethod: 'COD',
-    courier: 'STEADFAST',
-    consignmentId: 'STF-849201',
-    trackingCode: 'TRK-771239',
-    timeline: [
-      { status: 'PENDING', timestamp: '২০২৬-১০-১১ ০২:০০ PM', note: 'অর্ডার গৃহীত হয়েছে' },
-      { status: 'CONFIRMED', timestamp: '২০২৬-১০-১১ ০৩:০০ PM', note: 'কনফার্মেশন কল সম্পন্ন' },
-      { status: 'PROCESSING', timestamp: '২০২৬-১০-১১ ০৫:০০ PM', note: 'প্যাকেজিং সম্পন্ন' },
-      { status: 'SHIPPED', timestamp: '২০২৬-১০-১২ ০৯:০০ AM', note: 'স্টিডফাস্ট কুরিয়ারে হস্তান্তর করা হয়েছে' },
-    ],
-    items: [
-      {
-        id: 'item-2',
-        productId: 'prod-wooden-puzzle',
-        title: 'বর্ণমালা কাঠের লার্নিং পাজল বোর্ড',
-        price: 360,
-        quantity: 1,
-        total: 360,
-      },
-    ],
-    createdAt: '2026-10-11T08:00:00.000Z',
   },
 ];
 

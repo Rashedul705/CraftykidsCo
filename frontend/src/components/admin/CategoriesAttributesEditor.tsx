@@ -1016,7 +1016,7 @@ export default function CategoriesAttributesEditor({
                           }}
                           className="rounded text-[#0288D1]"
                         />
-                        <span>{attr.nameBn} ({attr.nameEn})</span>
+                        <span>{attr.nameEn} ({attr.nameBn})</span>
                       </label>
                     );
                   })}
@@ -1175,7 +1175,7 @@ export default function CategoriesAttributesEditor({
                             }}
                             className="rounded text-[#D32F2F]"
                           />
-                          <span>{c.nameBn} ({c.nameEn})</span>
+                          <span>{c.nameEn} ({c.nameBn})</span>
                         </label>
                       ))}
                     </div>

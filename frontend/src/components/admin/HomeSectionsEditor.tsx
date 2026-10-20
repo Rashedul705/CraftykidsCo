@@ -364,10 +364,10 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
             href="/"
             target="_blank"
             className="px-3.5 py-2 rounded-xl bg-[#FAF7F2] border border-[#E5E0D8] text-xs font-bold text-[#2B2B2B] hover:bg-[#EFEAE2] flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="লাইভ হোমপেজ নতুন ট্যাবে দেখুন"
+            title="Open Live Homepage in new tab"
           >
             <Eye className="w-3.5 h-3.5 text-[#16A34A]" />
-            <span>লাইভ প্রিভিউ</span>
+            <span>Live Preview</span>
             <ExternalLink className="w-3 h-3 text-[#8A8A8A]" />
           </Link>
 
@@ -387,7 +387,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
             className="px-5 py-2 rounded-xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>সব পরিবর্তন সেভ করুন</span>
+            <span>Save Changes</span>
           </button>
         </div>
       </div>
@@ -409,15 +409,15 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
       {/* 2. Sub-Tabs Navigation (Horizontal Scrollable) */}
       <div className="bg-white rounded-2xl border border-[#EFEAE2] p-2 shadow-xs overflow-x-auto flex items-center gap-1.5">
         {[
-          { id: 'hero', label: '🎪 হিরো ব্যানার (Slider)' },
-          { id: 'announcement', label: '📢 টপ অ্যানাউন্সমেন্ট' },
-          { id: 'trust', label: '🛡️ ট্রাস্ট ব্যাজ (Features)' },
-          { id: 'showcases', label: '🛍️ প্রোডাক্ট শোকেস' },
-          { id: 'promos', label: '🎨 প্রোমো ব্যানার' },
-          { id: 'whylove', label: '💖 কেন CraftyKidsCo?' },
-          { id: 'reviews', label: '⭐ প্যারেন্টস রিভিউ' },
-          { id: 'bulk', label: '🏫 স্কুল ও বাল্ক অফার' },
-          { id: 'footer', label: '📑 ফুটার ও ঠিকানা' },
+          { id: 'hero', label: '🎪 Hero Banner (Slider)' },
+          { id: 'announcement', label: '📢 Top Announcement' },
+          { id: 'trust', label: '🛡️ Trust Badges' },
+          { id: 'showcases', label: '🛍️ Product Showcases' },
+          { id: 'promos', label: '🎨 Promo Banners' },
+          { id: 'whylove', label: '💖 Why CraftyKidsCo?' },
+          { id: 'reviews', label: '⭐ Parent Reviews' },
+          { id: 'bulk', label: '🏫 School & Bulk Orders' },
+          { id: 'footer', label: '📑 Footer & Info' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -452,7 +452,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
               className="px-4 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold flex items-center gap-1.5 hover:bg-[#B71C1C] shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>নতুন স্লাইড যোগ করুন</span>
+              <span>+ Add New Slide</span>
             </button>
           </div>
 
@@ -550,7 +550,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
                 className="w-4 h-4 text-[#D32F2F] rounded"
               />
               <label htmlFor="ann-enabled" className="font-bold text-[#1A1A1A] cursor-pointer">
-                টপ অ্যানাউন্সমেন্ট বার চালু রাখুন (Show Announcement Bar)
+                Enable Top Announcement Bar
               </label>
             </div>
 
@@ -648,7 +648,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
                       }}
                       className="w-3.5 h-3.5 text-[#D32F2F] rounded"
                     />
-                    <span>চালু রাখুন</span>
+                    <span>Active</span>
                   </label>
                 </div>
 
@@ -731,7 +731,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
                         }}
                         className="w-3.5 h-3.5 text-[#D32F2F] rounded"
                       />
-                      <span>{cfg?.enabled !== false ? 'দৃশ্যমান' : 'লুকানো'}</span>
+                      <span>{cfg?.enabled !== false ? 'Visible' : 'Hidden'}</span>
                     </label>
                   </div>
 
@@ -811,7 +811,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
                       }}
                       className="w-3.5 h-3.5 text-[#D32F2F] rounded"
                     />
-                    <span>চালু রাখুন</span>
+                    <span>Active</span>
                   </label>
                 </div>
 
@@ -834,7 +834,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
                       ) : (
                         <Upload className="w-4 h-4 text-[#D32F2F]" />
                       )}
-                      <span>নতুন ছবি আপলোড (ImgBB)</span>
+                      <span>Upload Image (ImgBB)</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1025,7 +1025,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
               className="px-4 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold flex items-center gap-1.5 hover:bg-[#B71C1C] shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>নতুন রিভিউ যোগ করুন</span>
+              <span>+ Add New Review</span>
             </button>
           </div>
 
@@ -1099,7 +1099,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
                 className="w-4 h-4 text-[#D32F2F] rounded"
               />
               <label htmlFor="bulk-enabled" className="font-bold text-[#1A1A1A] cursor-pointer">
-                বাল্ক অর্ডার ব্যানার চালু রাখুন (Show Bulk Order Banner)
+                Enable Bulk Order Banner
               </label>
             </div>
 
@@ -1292,7 +1292,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
                       ) : (
                         <Upload className="w-4 h-4" />
                       )}
-                      <span>ImgBB CDN এ ছবি আপলোড</span>
+                      <span>Upload Image (ImgBB)</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1522,7 +1522,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
                   className="w-4 h-4 text-[#D32F2F] rounded"
                 />
                 <label htmlFor="rev-verified" className="font-bold text-[#1A1A1A] cursor-pointer">
-                  Verified Buyer ব্যাজ যুক্ত করুন
+                  Verified Buyer Badge
                 </label>
               </div>
 
