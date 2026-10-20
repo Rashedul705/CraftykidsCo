@@ -5,7 +5,9 @@ const path = require('path');
 const { connectDB, getDBStatus } = require('./db');
 const Product = require('./models/Product');
 const Category = require('./models/Category');
+const Attribute = require('./models/Attribute');
 const Order = require('./models/Order');
+const SiteSettings = require('./models/SiteSettings');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -910,14 +912,80 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-// 4. GET /api/categories
+// 3.1 PUT/PATCH /api/products/:id (Update product details or stock)
+app.put('/api/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    const dbStatus = getDBStatus();
+
+    if (dbStatus.connected) {
+      const updated = await Product.findOneAndUpdate(
+        { $or: [{ id }, { slug: id }] },
+        { $set: updateData },
+        { new: true }
+      );
+      if (updated) {
+        return res.json({ success: true, product: updated });
+      }
+    }
+
+    // Fallback to in-memory array
+    const idx = products.findIndex((p) => p.id === id || p.slug === id);
+    if (idx !== -1) {
+      products[idx] = { ...products[idx], ...updateData };
+      return res.json({ success: true, product: products[idx] });
+    }
+
+    res.status(404).json({ success: false, message: 'Product not found' });
+  } catch (err) {
+    console.error('Error updating product:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.patch('/api/products/:id', (req, res) => {
+  req.url = `/api/products/${req.params.id}`;
+  app.handle(req, res);
+});
+
+// 3.2 DELETE /api/products/:id (Delete product permanently)
+app.delete('/api/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const dbStatus = getDBStatus();
+
+    let deleted = false;
+    if (dbStatus.connected) {
+      const result = await Product.findOneAndDelete({ $or: [{ id }, { slug: id }] });
+      if (result) deleted = true;
+    }
+
+    const idx = products.findIndex((p) => p.id === id || p.slug === id);
+    if (idx !== -1) {
+      products.splice(idx, 1);
+      deleted = true;
+    }
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    res.json({ success: true, message: 'Product deleted successfully', id });
+  } catch (err) {
+    console.error('Error deleting product:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 4. Categories Endpoints
 app.get('/api/categories', async (req, res) => {
   try {
     const dbStatus = getDBStatus();
     if (dbStatus.connected) {
-      const cats = await Category.find().sort({ order: 1 }).lean();
+      const cats = await Category.find().sort({ order: 1, displayOrder: 1 }).lean();
       if (cats && cats.length > 0) {
-        return res.json(cats);
+        return res.json({ success: true, count: cats.length, categories: cats, source: 'mongodb' });
       }
     }
   } catch (err) {
@@ -926,14 +994,215 @@ app.get('/api/categories', async (req, res) => {
 
   // Fallback
   const fallbackCats = [
-    { id: 'art-kits', name: 'Art Kits', slug: 'art-kits' },
-    { id: 'nature-bugs', name: 'Nature & Bugs', slug: 'nature-bugs' },
-    { id: 'fruits-sweets', name: 'Fruits & Sweet Treats', slug: 'fruits-sweets' },
-    { id: 'vehicles-transport', name: 'Vehicles & Transport', slug: 'vehicles-transport' },
-    { id: 'builder-tools', name: 'Builder & Tools', slug: 'builder-tools' },
-    { id: 'ocean-beach', name: 'Ocean & Beach Life', slug: 'ocean-beach' }
+    { id: 'art-kits', nameEn: 'Art Kits', nameBn: 'আর্ট কিট', slug: 'art-kits', imageUrl: 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg' },
+    { id: 'nature-bugs', nameEn: 'Nature & Bugs', nameBn: 'প্রকৃতি ও পোকা', slug: 'nature-bugs', imageUrl: 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg' },
+    { id: 'fruits-sweets', nameEn: 'Fruits & Sweet Treats', nameBn: 'ফলমূল ও মিষ্টি', slug: 'fruits-sweets', imageUrl: 'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg' },
+    { id: 'vehicles-transport', nameEn: 'Vehicles & Transport', nameBn: 'গাড়ি ও যানবাহন', slug: 'vehicles-transport', imageUrl: 'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg' },
+    { id: 'builder-tools', nameEn: 'Builder & Tools', nameBn: 'বিল্ডার ও টুলস', slug: 'builder-tools', imageUrl: 'https://i.ibb.co/kVrGCzrh/craftykidsco-tool-set.jpg' },
+    { id: 'ocean-beach', nameEn: 'Ocean & Beach Life', nameBn: 'সাগর ও সমুদ্র সৈকত', slug: 'ocean-beach', imageUrl: 'https://i.ibb.co/7J0qh5wC/craftykidsco-ocean-world.jpg' }
   ];
-  res.json(fallbackCats);
+  res.json({ success: true, count: fallbackCats.length, categories: fallbackCats, source: 'fallback' });
+});
+
+app.post('/api/categories', async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body.nameBn || !body.nameEn) {
+      return res.status(400).json({ success: false, message: 'Category name (Bn & En) required' });
+    }
+    const slug = body.slug || body.nameEn.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    const catData = {
+      name: body.nameEn,
+      nameBn: body.nameBn,
+      nameEn: body.nameEn,
+      slug,
+      description: body.description || '',
+      imageUrl: body.imageUrl || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+      badgeColor: body.badgeColor || '#FFE8D6',
+      children: body.children || [],
+      attributes: body.attributes || []
+    };
+
+    let doc = null;
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      doc = await Category.findOneAndUpdate({ slug }, { $set: catData }, { upsert: true, new: true }).lean();
+    }
+    res.status(201).json({ success: true, message: 'Category saved', category: doc || catData });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.put('/api/categories/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const updates = req.body;
+    let doc = null;
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      doc = await Category.findOneAndUpdate(
+        { $or: [{ slug: id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }] },
+        { $set: updates },
+        { new: true }
+      ).lean();
+    }
+    res.json({ success: true, message: 'Category updated', category: doc || { slug: id, ...updates } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/categories/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      await Category.deleteOne({ $or: [{ slug: id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }] });
+    }
+    res.json({ success: true, message: 'Category deleted', id });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 4.1. Attributes Endpoints
+app.get('/api/attributes', async (req, res) => {
+  try {
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      const attrs = await Attribute.find().sort({ displayOrder: 1, createdAt: 1 }).lean();
+      if (attrs && attrs.length > 0) {
+        return res.json({ success: true, count: attrs.length, attributes: attrs, source: 'mongodb' });
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching attributes:', err.message);
+  }
+
+  const fallbackAttrs = [
+    {
+      id: 'attr-age-group',
+      code: 'ageGroup',
+      nameBn: 'বয়স সীমা',
+      nameEn: 'Age Group',
+      type: 'select',
+      categories: ['ALL'],
+      options: [
+        { labelBn: '২-৪ বছর (টডলার)', labelEn: '2-4 Years (Toddler)', value: '2-4' },
+        { labelBn: '৪-৬ বছর (প্রি-স্কুল)', labelEn: '4-6 Years (Pre-School)', value: '4-6' },
+        { labelBn: '৬-৮ বছর (স্কুল গোয়ার)', labelEn: '6-8 Years (School)', value: '6-8' },
+        { labelBn: '৮+ বছর (ক্রিয়েটিভ জুনিয়র)', labelEn: '8+ Years (Creative Junior)', value: '8+' }
+      ]
+    },
+    {
+      id: 'attr-theme',
+      code: 'theme',
+      nameBn: 'থিম ও চরিত্র',
+      nameEn: 'Theme & Character',
+      type: 'select',
+      categories: ['art-kits', 'puzzles', 'wax-crayons'],
+      options: [
+        { labelBn: 'ছোট পোকা অ্যাডভেঞ্চার', labelEn: 'Little Bug Adventure', value: 'bugs' },
+        { labelBn: 'মিষ্টি ফলমূল ও খাবার', labelEn: 'Sweet Fruits & Treats', value: 'fruits' },
+        { labelBn: 'গাড়ি ও যানবাহন', labelEn: 'Vehicles & Transport', value: 'vehicles' },
+        { labelBn: 'টুলস ও মেকানিক আর্ট', labelEn: 'Builder & Tools', value: 'tools' },
+        { labelBn: 'সানি শোরস বিচ', labelEn: 'Sunny Shores', value: 'beach' },
+        { labelBn: 'সাগরের জীবজগৎ', labelEn: 'Ocean World', value: 'ocean' }
+      ]
+    },
+    {
+      id: 'attr-pack-size',
+      code: 'packSize',
+      nameBn: 'প্যাকের আকার ও সংখ্যা',
+      nameEn: 'Pack Size & Pieces',
+      type: 'select',
+      categories: ['wax-crayons', 'play-dough-clay', 'art-kits'],
+      options: [
+        { labelBn: 'সিঙ্গেল প্যাক (১ টি)', labelEn: 'Single Pack (1 Pc)', value: '1-pc' },
+        { labelBn: 'স্টার্টার সেট (৬ টি)', labelEn: 'Starter Set (6 Pcs)', value: '6-pcs' },
+        { labelBn: 'ডিলাক্স প্যাক (১২ টি)', labelEn: 'Deluxe Pack (12 Pcs)', value: '12-pcs' },
+        { labelBn: 'মেগা ক্রাফট বান্ডেল (২৪ টি)', labelEn: 'Mega Bundle (24 Pcs)', value: '24-pcs' }
+      ]
+    },
+    {
+      id: 'attr-material',
+      code: 'material',
+      nameBn: 'নিরাপত্তা ও উপাদান',
+      nameEn: 'Material & Safety Grade',
+      type: 'select',
+      categories: ['ALL'],
+      options: [
+        { labelBn: '১০০% ফুড-গ্রেড প্রাকৃতিক মোম', labelEn: '100% Food-Grade Beeswax', value: 'beeswax' },
+        { labelBn: 'ইকো-ফ্রেন্ডলি ন্যাচারাল প্লাস্টার', labelEn: 'Child-Safe Natural Plaster', value: 'plaster' },
+        { labelBn: 'অর্গানিক ফুড ডো (লবণ ও আটা)', labelEn: 'Organic Food-Grade Dough', value: 'organic-dough' },
+        { labelBn: 'মসৃণ কেমিক্যালমুক্ত পাইন উড', labelEn: 'Smooth Chemical-Free Wood', value: 'wood' }
+      ]
+    }
+  ];
+  res.json({ success: true, count: fallbackAttrs.length, attributes: fallbackAttrs, source: 'fallback' });
+});
+
+app.post('/api/attributes', async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body.nameBn || !body.nameEn) {
+      return res.status(400).json({ success: false, message: 'Attribute name (Bn & En) required' });
+    }
+    const code = body.code || body.nameEn.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    const attrData = {
+      id: body.id || `attr-${code}-${Date.now()}`,
+      code,
+      nameBn: body.nameBn,
+      nameEn: body.nameEn,
+      type: body.type || 'select',
+      categories: body.categories || ['ALL'],
+      options: body.options || [],
+      displayOrder: body.displayOrder || 0,
+      isActive: body.isActive !== false
+    };
+
+    let doc = null;
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      doc = await Attribute.findOneAndUpdate({ code }, { $set: attrData }, { upsert: true, new: true }).lean();
+    }
+    res.status(201).json({ success: true, message: 'Attribute saved', attribute: doc || attrData });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.put('/api/attributes/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const updates = req.body;
+    let doc = null;
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      doc = await Attribute.findOneAndUpdate(
+        { $or: [{ code: id }, { id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }] },
+        { $set: updates },
+        { new: true }
+      ).lean();
+    }
+    res.json({ success: true, message: 'Attribute updated', attribute: doc || { id, ...updates } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/attributes/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      await Attribute.deleteOne({ $or: [{ code: id }, { id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }] });
+    }
+    res.json({ success: true, message: 'Attribute deleted', id });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // 5. Orders Endpoints
@@ -1027,6 +1296,55 @@ app.post('/api/upload-image', async (req, res) => {
 
 app.post('/api/upload', (req, res) => {
   req.url = '/api/upload-image';
+  app.handle(req, res);
+});
+
+// Site Settings & Home Sections Endpoints
+let inMemorySiteSettings = null;
+
+app.get('/api/site-settings', async (req, res) => {
+  try {
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      const doc = await SiteSettings.findOne({ key: 'global_sections' }).lean();
+      if (doc && doc.data) {
+        inMemorySiteSettings = doc.data;
+        return res.json({ success: true, settings: doc.data, source: 'mongodb' });
+      }
+    }
+    if (inMemorySiteSettings) {
+      return res.json({ success: true, settings: inMemorySiteSettings, source: 'memory' });
+    }
+    res.json({ success: true, settings: null, message: 'No custom settings saved yet' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.put('/api/site-settings', async (req, res) => {
+  try {
+    const newSettings = req.body;
+    inMemorySiteSettings = newSettings;
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected) {
+      await SiteSettings.findOneAndUpdate(
+        { key: 'global_sections' },
+        { key: 'global_sections', data: newSettings },
+        { upsert: true, new: true }
+      );
+    }
+    res.json({ success: true, message: 'Settings saved successfully', settings: newSettings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.get('/api/home-sections', (req, res) => {
+  req.url = '/api/site-settings';
+  app.handle(req, res);
+});
+app.put('/api/home-sections', (req, res) => {
+  req.url = '/api/site-settings';
   app.handle(req, res);
 });
 

@@ -22,6 +22,10 @@ import {
   Image as ImageIcon,
   Loader2,
   Menu,
+  Edit3,
+  Trash2,
+  Filter,
+  Minus,
 } from 'lucide-react';
 import {
   getAllOrders,
@@ -34,6 +38,8 @@ import {
 import { SampleProduct, SampleCategory } from '@/lib/sample-data';
 import { formatBDT } from '@/lib/utils';
 import { getCourierProvider } from '@/core/courier';
+import { HomeSectionsEditor } from '@/components/admin/HomeSectionsEditor';
+import CategoriesAttributesEditor from '@/components/admin/CategoriesAttributesEditor';
 
 export default function AdminDashboardPage() {
   // Navigation State
@@ -72,6 +78,30 @@ export default function AdminDashboardPage() {
 
   // Orders status filter for Orders tab
   const [ordersStatusFilter, setOrdersStatusFilter] = useState<string>('ALL');
+
+  // Edit Product Modal State
+  const [editingProduct, setEditingProduct] = useState<SampleProduct | null>(null);
+  const [editProdTitleBn, setEditProdTitleBn] = useState('');
+  const [editProdTitleEn, setEditProdTitleEn] = useState('');
+  const [editProdPrice, setEditProdPrice] = useState<number>(0);
+  const [editProdSalePrice, setEditProdSalePrice] = useState<number>(0);
+  const [editProdStock, setEditProdStock] = useState<number>(25);
+  const [editProdCategory, setEditProdCategory] = useState('art-kits');
+  const [editProdImage, setEditProdImage] = useState('');
+  const [editProdDescription, setEditProdDescription] = useState('');
+  const [editProdPieces, setEditProdPieces] = useState('');
+  const [editProdBadge, setEditProdBadge] = useState('');
+  const [isUpdatingProduct, setIsUpdatingProduct] = useState(false);
+  const [isUploadingEditImage, setIsUploadingEditImage] = useState(false);
+  const [editUploadError, setEditUploadError] = useState<string | null>(null);
+
+  // Delete Product Confirmation State
+  const [deletingProduct, setDeletingProduct] = useState<SampleProduct | null>(null);
+  const [isDeletingProduct, setIsDeletingProduct] = useState(false);
+
+  // Product Catalog Search & Category Filter
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
 
   // Sync data from API / store
   const refreshData = async () => {
@@ -130,6 +160,21 @@ export default function AdminDashboardPage() {
       return true;
     });
   }, [orders, ordersStatusFilter, searchQuery]);
+
+  // Filtered products for Catalog tab
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      if (productCategoryFilter !== 'ALL' && p.categorySlug !== productCategoryFilter) return false;
+      if (productSearchQuery.trim()) {
+        const q = productSearchQuery.toLowerCase();
+        const matchTitleBn = p.titleBn?.toLowerCase().includes(q);
+        const matchTitleEn = p.titleEn?.toLowerCase().includes(q);
+        const matchSlug = p.slug?.toLowerCase().includes(q);
+        if (!matchTitleBn && !matchTitleEn && !matchSlug) return false;
+      }
+      return true;
+    });
+  }, [products, productCategoryFilter, productSearchQuery]);
 
   // Order status update
   const handleStatusChange = async (orderId: string, newStatus: OrderRecord['status']) => {
@@ -300,6 +345,157 @@ export default function AdminDashboardPage() {
       }
     } catch {
       setShowAddCategoryModal(false);
+    }
+  };
+
+  // Open Edit Product Modal
+  const handleOpenEditProduct = (p: SampleProduct) => {
+    setEditingProduct(p);
+    setEditProdTitleBn(p.titleBn || '');
+    setEditProdTitleEn(p.titleEn || '');
+    setEditProdPrice(p.basePrice || 0);
+    setEditProdSalePrice(p.baseSalePrice || p.basePrice || 0);
+    setEditProdStock((p as any).stock ?? 25);
+    setEditProdCategory(p.categorySlug || 'art-kits');
+    setEditProdImage(p.imageUrl || '');
+    setEditProdDescription(p.description || '');
+    setEditProdPieces((p as any).pieces || '');
+    setEditProdBadge((p as any).badge || '');
+    setEditUploadError(null);
+  };
+
+  // Upload new image for Edit Product modal via ImgBB
+  const handleEditImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingEditImage(true);
+    setEditUploadError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('name', `craftykidsco_edit_${Date.now()}`);
+
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && (data.url || data.display_url)) {
+        const cdnUrl = data.url || data.display_url;
+        setEditProdImage(cdnUrl);
+        setActionFeedback('নতুন ছবি ImgBB CDN এ সফলভাবে আপলোড হয়েছে!');
+      } else {
+        setEditUploadError(data.message || 'ImgBB আপলোডে সমস্যা হয়েছে');
+      }
+    } catch (err: any) {
+      setEditUploadError(err.message || 'ছবি আপলোড ব্যর্থ হয়েছে');
+    } finally {
+      setIsUploadingEditImage(false);
+    }
+  };
+
+  // Save changes to existing product
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    setIsUpdatingProduct(true);
+
+    try {
+      const targetId = editingProduct.id || editingProduct.slug;
+      const res = await fetch(`/api/products/${targetId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titleBn: editProdTitleBn,
+          titleEn: editProdTitleEn,
+          basePrice: Number(editProdPrice),
+          baseSalePrice: Number(editProdSalePrice || editProdPrice),
+          stock: Number(editProdStock),
+          categorySlug: editProdCategory,
+          imageUrl: editProdImage,
+          description: editProdDescription,
+          pieces: editProdPieces,
+          badge: editProdBadge,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        refreshData();
+        setEditingProduct(null);
+        setActionFeedback(`পণ্য '${editProdTitleBn}' সফলভাবে আপডেট হয়েছে!`);
+        setTimeout(() => setActionFeedback(null), 3500);
+      } else {
+        setActionFeedback(data.message || 'আপডেট করতে সমস্যা হয়েছে');
+        setTimeout(() => setActionFeedback(null), 3000);
+      }
+    } catch {
+      setActionFeedback('পণ্য আপডেট করতে ব্যর্থ হয়েছে');
+      setTimeout(() => setActionFeedback(null), 3000);
+    } finally {
+      setIsUpdatingProduct(false);
+    }
+  };
+
+  // Confirm delete product permanently
+  const handleConfirmDeleteProduct = async () => {
+    if (!deletingProduct) return;
+    setIsDeletingProduct(true);
+
+    try {
+      const targetId = deletingProduct.id || deletingProduct.slug;
+      const res = await fetch(`/api/products/${targetId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        refreshData();
+        setActionFeedback(`পণ্য '${deletingProduct.titleBn}' সফলভাবে মুছে ফেলা হয়েছে!`);
+        setTimeout(() => setActionFeedback(null), 3500);
+      } else {
+        setActionFeedback(data.message || 'ডিলিট করতে সমস্যা হয়েছে');
+        setTimeout(() => setActionFeedback(null), 3000);
+      }
+    } catch {
+      setActionFeedback('পণ্য ডিলিট করতে ব্যর্থ হয়েছে');
+      setTimeout(() => setActionFeedback(null), 3000);
+    } finally {
+      setIsDeletingProduct(false);
+      setDeletingProduct(null);
+    }
+  };
+
+  // Quick inline stock delta adjustment (+1 / -1)
+  const handleQuickStockChange = async (p: SampleProduct, delta: number) => {
+    const current = (p as any).stock ?? 25;
+    const nextStock = Math.max(0, current + delta);
+    const targetId = p.id || p.slug;
+
+    // Optimistic UI update
+    setProducts((prev) =>
+      prev.map((item) =>
+        item.id === p.id || item.slug === p.slug ? { ...item, stock: nextStock } : item
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/products/${targetId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock: nextStock }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionFeedback(`স্টক আপডেট: ${p.titleBn} (${nextStock} টি)`);
+        setTimeout(() => setActionFeedback(null), 2000);
+      }
+    } catch (err) {
+      console.error('Quick stock update failed:', err);
+      refreshData();
     }
   };
 
@@ -508,7 +704,8 @@ export default function AdminDashboardPage() {
             {activeNav === 'categories' && 'Categories & Attributes'}
             {activeNav === 'steadfast' && 'Steadfast Courier Dispatch'}
             {activeNav === 'stock' && 'Stock Inventory'}
-            {!['dashboard', 'orders', 'products', 'categories', 'steadfast', 'stock'].includes(activeNav) &&
+            {activeNav === 'home-sections' && 'Home Sections & Storefront Customizer'}
+            {!['dashboard', 'orders', 'products', 'categories', 'steadfast', 'stock', 'home-sections'].includes(activeNav) &&
               activeNav.replace('-', ' ').toUpperCase()}
           </h1>
 
@@ -878,65 +1075,178 @@ export default function AdminDashboardPage() {
             VIEW 3: PRODUCTS & INVENTORY
            ===================================================================== */}
         {activeNav === 'products' && (
-          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
-              <h3 className="font-heading font-black text-base text-[#1A1A1A]">
-                Product Catalog & Variations ({products.length})
-              </h3>
-              <button
-                onClick={() => setShowAddProductModal(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] cursor-pointer"
-              >
-                + Add new product
-              </button>
+          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-4 sm:p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFEAE2]">
+              <div>
+                <h3 className="font-heading font-black text-base text-[#1A1A1A]">
+                  Product Catalog & Variations ({filteredProducts.length})
+                </h3>
+                <p className="text-xs text-[#6B6B6B]">
+                  Manage prices, inventory stocks, and catalog items in MongoDB Atlas
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAddProductModal(true)}
+                  className="px-3.5 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                >
+                  <Plus className="w-4 h-4" /> Add Product
+                </button>
+              </div>
+            </div>
+
+            {/* Product Search & Filter Bar */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8A8A]" />
+                <input
+                  type="text"
+                  placeholder="Search products by title or slug..."
+                  value={productSearchQuery}
+                  onChange={(e) => setProductSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] focus:bg-white focus:outline-[#D32F2F]"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter className="w-3.5 h-3.5 text-[#8A8A8A]" />
+                <select
+                  value={productCategoryFilter}
+                  onChange={(e) => setProductCategoryFilter(e.target.value)}
+                  className="p-2 text-xs rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] font-semibold text-[#2B2B2B] cursor-pointer"
+                >
+                  <option value="ALL">All Categories</option>
+                  <option value="art-kits">Art Kits (আর্ট কিট)</option>
+                  <option value="wax-crayons">Wax Crayons (মোমের রঙ)</option>
+                  <option value="play-dough-clay">Clay &amp; Dough (ক্লে ও ডো)</option>
+                  <option value="wooden-toys">Wooden Toys (কাঠের খেলনা)</option>
+                  <option value="educational-toys">Educational (শিক্ষামূলক)</option>
+                </select>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[620px]">
+              <table className="w-full text-left text-xs min-w-[700px]">
                 <thead>
                   <tr className="border-b border-[#EFEAE2] text-[#6B6B6B]">
                     <th className="pb-3 font-semibold">Image</th>
                     <th className="pb-3 font-semibold">Product Name</th>
-                    <th className="pb-3 font-semibold">Variations</th>
                     <th className="pb-3 font-semibold">Price</th>
-                    <th className="pb-3 font-semibold">Inventory</th>
+                    <th className="pb-3 font-semibold">Inventory / Stock</th>
+                    <th className="pb-3 font-semibold text-right pr-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EFEAE2]">
-                  {products.map((p) => (
-                    <tr key={p.id}>
-                      <td className="py-3">
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2]">
-                          <Image src={p.imageUrl} alt={p.titleBn} fill className="object-cover" />
-                        </div>
-                      </td>
-                      <td className="py-3 font-bold text-[#1A1A1A]">
-                        {p.titleBn}
-                        <span className="block text-[11px] text-[#6B6B6B] font-normal">{p.slug}</span>
-                      </td>
-                      <td className="py-3">
-                        {p.variations && p.variations.length > 0 ? (
-                          <div className="space-y-0.5">
-                            {p.variations.map((v) => (
-                              <div key={v.sku} className="text-[11px]">
-                                <span className="font-bold">{v.titleBn}:</span> ৳{v.salePrice || v.price} (Stock: {v.stock})
-                              </div>
-                            ))}
+                  {filteredProducts.map((p) => {
+                    const currentStock = (p as any).stock ?? 25;
+                    const isOutOfStock = currentStock <= 0;
+                    const isLowStock = currentStock > 0 && currentStock <= 5;
+
+                    return (
+                      <tr key={p.id} className="hover:bg-[#FAF7F2]/50 transition-colors">
+                        <td className="py-3">
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shrink-0">
+                            <Image src={p.imageUrl} alt={p.titleBn} fill className="object-cover" />
                           </div>
-                        ) : (
-                          <span className="text-[#6B6B6B]">Single item (25 stock)</span>
-                        )}
-                      </td>
-                      <td className="py-3 font-black text-[#D32F2F]">
-                        ৳{p.baseSalePrice || p.basePrice}
-                      </td>
-                      <td className="py-3">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#DCFCE7] text-[#15803D]">
-                          In stock
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="py-3 font-bold text-[#1A1A1A]">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span>{p.titleBn}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FAF7F2] border border-[#E5E0D8] text-[#666]">
+                              {p.categorySlug}
+                            </span>
+                            {(p as any).badge && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                                {(p as any).badge}
+                              </span>
+                            )}
+                          </div>
+                          <span className="block text-[11px] text-[#6B6B6B] font-normal">{p.titleEn}</span>
+                          <span className="block text-[10px] font-mono text-[#8A8A8A]">{p.slug}</span>
+                        </td>
+                        <td className="py-3">
+                          <div className="flex flex-col">
+                            <span className="font-black text-[#D32F2F] text-sm">
+                              ৳{p.baseSalePrice || p.basePrice}
+                            </span>
+                            {p.baseSalePrice && p.baseSalePrice < p.basePrice && (
+                              <span className="text-[10px] text-[#8A8A8A] line-through">
+                                ৳{p.basePrice}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                isOutOfStock
+                                  ? 'bg-[#FEE2E2] text-[#DC2626]'
+                                  : isLowStock
+                                  ? 'bg-[#FEF3C7] text-[#B45309]'
+                                  : 'bg-[#DCFCE7] text-[#15803D]'
+                              }`}
+                            >
+                              {isOutOfStock ? 'Out of Stock' : isLowStock ? `Low (${currentStock})` : `In Stock (${currentStock})`}
+                            </span>
+
+                            {/* Quick Stock Counter +/- */}
+                            <div className="inline-flex items-center border border-[#E5E0D8] rounded-lg bg-white overflow-hidden shadow-2xs">
+                              <button
+                                onClick={() => handleQuickStockChange(p, -1)}
+                                disabled={currentStock <= 0}
+                                className="px-1.5 py-0.5 hover:bg-[#FAF7F2] text-[#666] disabled:opacity-30 cursor-pointer transition-colors"
+                                title="Decrease stock by 1"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="px-1.5 text-[11px] font-bold text-[#1A1A1A] min-w-[20px] text-center">
+                                {currentStock}
+                              </span>
+                              <button
+                                onClick={() => handleQuickStockChange(p, 1)}
+                                className="px-1.5 py-0.5 hover:bg-[#FAF7F2] text-[#666] cursor-pointer transition-colors"
+                                title="Increase stock by 1"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 text-right pr-2">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Edit Button */}
+                            <button
+                              onClick={() => handleOpenEditProduct(p)}
+                              className="p-1.5 rounded-lg bg-[#F0FDF4] text-[#16A34A] hover:bg-[#DCFCE7] transition-colors cursor-pointer border border-[#BBF7D0]"
+                              title="Edit Product"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => setDeletingProduct(p)}
+                              className="p-1.5 rounded-lg bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2] transition-colors cursor-pointer border border-[#FECACA]"
+                              title="Delete Product"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* View on storefront */}
+                            <Link
+                              href={`/product/${p.slug}`}
+                              target="_blank"
+                              className="p-1.5 rounded-lg bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#1A1A1A] hover:bg-[#EFEAE2] transition-colors cursor-pointer border border-[#EFEAE2]"
+                              title="View on Storefront"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -947,41 +1257,7 @@ export default function AdminDashboardPage() {
             VIEW 4: CATEGORIES & ATTRIBUTES
            ===================================================================== */}
         {activeNav === 'categories' && (
-          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
-              <h3 className="font-heading font-black text-base text-[#1A1A1A]">
-                Unlimited-Depth Category Tree
-              </h3>
-              <button
-                onClick={() => setShowAddCategoryModal(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] cursor-pointer"
-              >
-                + Add category
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {categories.map((c) => (
-                <div key={c.slug} className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFEAE2] space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-heading font-bold text-sm text-[#1A1A1A]">
-                      📁 {c.nameBn} ({c.nameEn})
-                    </span>
-                    <span className="text-xs text-[#6B6B6B] font-mono">/{c.slug}</span>
-                  </div>
-                  {c.children && c.children.length > 0 && (
-                    <div className="pl-6 border-l-2 border-[#D32F2F] space-y-1 text-xs">
-                      {c.children.map((sub) => (
-                        <div key={sub.slug} className="text-[#6B6B6B]">
-                          ↳ {sub.nameBn} ({sub.nameEn})
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          <CategoriesAttributesEditor onCategoriesChanged={refreshData} />
         )}
 
         {/* =====================================================================
@@ -1030,8 +1306,13 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
+        {/* VIEW 6: HOME SECTIONS & STOREFRONT CUSTOMIZER */}
+        {activeNav === 'home-sections' && (
+          <HomeSectionsEditor onSaved={refreshData} />
+        )}
+
         {/* Fallback for other sidebar sections */}
-        {!['dashboard', 'orders', 'products', 'categories', 'steadfast'].includes(activeNav) && (
+        {!['dashboard', 'orders', 'products', 'categories', 'steadfast', 'home-sections'].includes(activeNav) && (
           <div className="bg-white rounded-2xl border border-[#EFEAE2] p-8 shadow-xs text-center space-y-3">
             <span className="text-3xl">⚙️</span>
             <h3 className="font-heading font-bold text-lg text-[#1A1A1A]">
@@ -1419,6 +1700,246 @@ export default function AdminDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          EDIT PRODUCT MODAL (WITH IMGBB CDN RE-UPLOAD)
+         ========================================================================= */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-[28px] max-w-xl w-full p-6 space-y-4 shadow-2xl border border-[#EFEAE2] max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
+              <div>
+                <span className="text-[10px] font-bold text-[#8A8A8A] uppercase tracking-wider block">
+                  Product Management
+                </span>
+                <h3 className="font-heading font-black text-lg text-[#1A1A1A]">
+                  Edit Product ({editingProduct.slug})
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="w-8 h-8 rounded-full bg-[#FAF7F2] flex items-center justify-center text-[#6B6B6B] hover:text-[#1A1A1A] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateProduct} className="space-y-4 text-xs">
+              {/* Product Image Preview & ImgBB Upload */}
+              <div>
+                <label className="font-bold block mb-1 text-[#2B2B2B]">Product Image (ImgBB CDN):</label>
+                <div className="flex items-center gap-4">
+                  {editProdImage && (
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shrink-0">
+                      <Image src={editProdImage} alt="Preview" fill className="object-cover" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      id="edit-product-image-file"
+                      accept="image/*"
+                      onChange={handleEditImageFileChange}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="edit-product-image-file"
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#FAF7F2] hover:bg-[#EFEAE2] text-[#2B2B2B] font-bold border border-[#E5E0D8] cursor-pointer transition-colors"
+                    >
+                      {isUploadingEditImage ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-[#D32F2F]" />
+                          <span>Uploading to ImgBB...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 text-[#D32F2F]" />
+                          <span>Replace Image via ImgBB</span>
+                        </>
+                      )}
+                    </label>
+                    {editUploadError && (
+                      <p className="text-[11px] text-[#D32F2F] font-bold mt-1">{editUploadError}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Title Bangla & English */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Title (Bangla):</label>
+                  <input
+                    required
+                    value={editProdTitleBn}
+                    onChange={(e) => setEditProdTitleBn(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] focus:bg-white focus:outline-[#D32F2F]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Title (English):</label>
+                  <input
+                    required
+                    value={editProdTitleEn}
+                    onChange={(e) => setEditProdTitleEn(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] focus:bg-white focus:outline-[#D32F2F]"
+                  />
+                </div>
+              </div>
+
+              {/* Prices, Stock & Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Regular Price (৳):</label>
+                  <input
+                    type="number"
+                    required
+                    value={editProdPrice}
+                    onChange={(e) => setEditProdPrice(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Sale Price (৳):</label>
+                  <input
+                    type="number"
+                    value={editProdSalePrice}
+                    onChange={(e) => setEditProdSalePrice(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Stock Quantity:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editProdStock}
+                    onChange={(e) => setEditProdStock(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Category:</label>
+                  <select
+                    value={editProdCategory}
+                    onChange={(e) => setEditProdCategory(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+                  >
+                    <option value="art-kits">আর্ট কিট (Plaster Art)</option>
+                    <option value="wax-crayons">মোমের রঙ (Wax Crayons)</option>
+                    <option value="play-dough-clay">ক্লে ও ডো (Clay &amp; Dough)</option>
+                    <option value="wooden-toys">Wooden Toys (কাঠের খেলনা)</option>
+                    <option value="educational-toys">শিক্ষামূলক (Educational)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Pieces & Badge */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Pieces / Components:</label>
+                  <input
+                    value={editProdPieces}
+                    onChange={(e) => setEditProdPieces(e.target.value)}
+                    placeholder="যেমন: ৬টি গাড়ি + ৫টি রঙ + ব্রাশ"
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1 text-[#2B2B2B]">Product Badge:</label>
+                  <input
+                    value={editProdBadge}
+                    onChange={(e) => setEditProdBadge(e.target.value)}
+                    placeholder="যেমন: সেরা অফার / নতুন"
+                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="font-bold block mb-1 text-[#2B2B2B]">Description:</label>
+                <textarea
+                  rows={3}
+                  value={editProdDescription}
+                  onChange={(e) => setEditProdDescription(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] resize-none"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex justify-end gap-2 border-t border-[#EFEAE2]">
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="px-4 py-2.5 rounded-xl bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#1A1A1A] font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingProduct}
+                  className="px-5 py-2.5 rounded-xl bg-[#D32F2F] text-white font-bold hover:bg-[#B71C1C] flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isUpdatingProduct && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          DELETE PRODUCT CONFIRMATION MODAL
+         ========================================================================= */}
+      {deletingProduct && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-[#FECACA]">
+            <div className="flex items-center gap-3 text-[#DC2626]">
+              <div className="w-10 h-10 rounded-2xl bg-[#FEF2F2] flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-[#DC2626]" />
+              </div>
+              <div>
+                <h3 className="font-heading font-black text-base text-[#1A1A1A]">
+                  Delete Product Confirmation
+                </h3>
+                <span className="text-[11px] text-[#6B6B6B]">This action cannot be undone</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EFEAE2] text-xs space-y-1">
+              <span className="font-bold text-[#1A1A1A] block">{deletingProduct.titleBn}</span>
+              <p className="text-[11px] text-[#6B6B6B]">{deletingProduct.titleEn}</p>
+              <p className="text-[10px] font-mono text-[#8A8A8A]">Slug: {deletingProduct.slug}</p>
+            </div>
+
+            <p className="text-xs text-[#6B6B6B] leading-relaxed">
+              Are you sure you want to permanently delete this product? It will be removed from MongoDB Atlas and will no longer appear on the storefront.
+            </p>
+
+            <div className="pt-2 flex justify-end gap-2 border-t border-[#EFEAE2]">
+              <button
+                type="button"
+                onClick={() => setDeletingProduct(null)}
+                disabled={isDeletingProduct}
+                className="px-4 py-2.5 rounded-xl bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#1A1A1A] font-bold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteProduct}
+                disabled={isDeletingProduct}
+                className="px-5 py-2.5 rounded-xl bg-[#DC2626] text-white font-bold hover:bg-[#B91C1C] flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingProduct && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>Delete Permanently</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

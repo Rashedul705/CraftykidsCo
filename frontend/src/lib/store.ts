@@ -1,4 +1,5 @@
 import { SampleProduct, SampleCategory, sampleCategories, sampleProducts } from './sample-data';
+import { SiteSettings, defaultSiteSettings } from './site-settings';
 
 export interface CartItemData {
   id: string; // unique item id in cart (productId + variationSku)
@@ -165,6 +166,140 @@ export function addCategory(cat: SampleCategory): SampleCategory {
   return cat;
 }
 
+export function updateCategory(slugOrId: string, updates: Partial<SampleCategory>): SampleCategory | null {
+  const index = globalCategories.findIndex(
+    (c) => c.slug === slugOrId || (c as any).id === slugOrId || (c as any)._id === slugOrId
+  );
+  if (index === -1) return null;
+  globalCategories[index] = {
+    ...globalCategories[index],
+    ...updates,
+  };
+  return globalCategories[index];
+}
+
+export function deleteCategory(slugOrId: string): boolean {
+  const initialLen = globalCategories.length;
+  globalCategories = globalCategories.filter(
+    (c) => c.slug !== slugOrId && (c as any).id !== slugOrId && (c as any)._id !== slugOrId
+  );
+  return globalCategories.length < initialLen;
+}
+
+// ---------------------------------------------------------------------------
+// ATTRIBUTES & VARIATIONS TAXONOMY STORE
+// ---------------------------------------------------------------------------
+
+export interface AttributeOption {
+  labelBn: string;
+  labelEn: string;
+  value: string;
+}
+
+export interface AttributeItem {
+  id: string;
+  code: string;
+  nameBn: string;
+  nameEn: string;
+  type?: string;
+  categories: string[]; // ['ALL'] or specific category slugs
+  options: AttributeOption[];
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+export const defaultAttributes: AttributeItem[] = [
+  {
+    id: 'attr-age-group',
+    code: 'ageGroup',
+    nameBn: 'বয়স সীমা',
+    nameEn: 'Age Group',
+    type: 'select',
+    categories: ['ALL'],
+    options: [
+      { labelBn: '২-৪ বছর (টডলার)', labelEn: '2-4 Years (Toddler)', value: '2-4' },
+      { labelBn: '৪-৬ বছর (প্রি-স্কুল)', labelEn: '4-6 Years (Pre-School)', value: '4-6' },
+      { labelBn: '৬-৮ বছর (স্কুল গোয়ার)', labelEn: '6-8 Years (School)', value: '6-8' },
+      { labelBn: '৮+ বছর (ক্রিয়েটিভ জুনিয়র)', labelEn: '8+ Years (Creative Junior)', value: '8+' },
+    ],
+  },
+  {
+    id: 'attr-theme',
+    code: 'theme',
+    nameBn: 'থিম ও চরিত্র',
+    nameEn: 'Theme & Character',
+    type: 'select',
+    categories: ['art-kits', 'puzzles', 'wax-crayons'],
+    options: [
+      { labelBn: 'ছোট পোকা অ্যাডভেঞ্চার', labelEn: 'Little Bug Adventure', value: 'bugs' },
+      { labelBn: 'মিষ্টি ফলমূল ও খাবার', labelEn: 'Sweet Fruits & Treats', value: 'fruits' },
+      { labelBn: 'গাড়ি ও যানবাহন', labelEn: 'Vehicles & Transport', value: 'vehicles' },
+      { labelBn: 'টুলস ও মেকানিক আর্ট', labelEn: 'Builder & Tools', value: 'tools' },
+      { labelBn: 'সানি শোরস বিচ', labelEn: 'Sunny Shores', value: 'beach' },
+      { labelBn: 'সাগরের জীবজগৎ', labelEn: 'Ocean World', value: 'ocean' },
+    ],
+  },
+  {
+    id: 'attr-pack-size',
+    code: 'packSize',
+    nameBn: 'প্যাকের আকার ও সংখ্যা',
+    nameEn: 'Pack Size & Pieces',
+    type: 'select',
+    categories: ['wax-crayons', 'play-dough-clay', 'art-kits'],
+    options: [
+      { labelBn: 'সিঙ্গেল প্যাক (১ টি)', labelEn: 'Single Pack (1 Pc)', value: '1-pc' },
+      { labelBn: 'স্টার্টার সেট (৬ টি)', labelEn: 'Starter Set (6 Pcs)', value: '6-pcs' },
+      { labelBn: 'ডিলাক্স প্যাক (১২ টি)', labelEn: 'Deluxe Pack (12 Pcs)', value: '12-pcs' },
+      { labelBn: 'মেগা ক্রাফট বান্ডেল (২৪ টি)', labelEn: 'Mega Bundle (24 Pcs)', value: '24-pcs' },
+    ],
+  },
+  {
+    id: 'attr-material',
+    code: 'material',
+    nameBn: 'নিরাপত্তা ও উপাদান',
+    nameEn: 'Material & Safety Grade',
+    type: 'select',
+    categories: ['ALL'],
+    options: [
+      { labelBn: '১০০% ফুড-গ্রেড প্রাকৃতিক মোম', labelEn: '100% Food-Grade Beeswax', value: 'beeswax' },
+      { labelBn: 'ইকো-ফ্রেন্ডলি ন্যাচারাল প্লাস্টার', labelEn: 'Child-Safe Natural Plaster', value: 'plaster' },
+      { labelBn: 'অর্গানিক ফুড ডো (লবণ ও আটা)', labelEn: 'Organic Food-Grade Dough', value: 'organic-dough' },
+      { labelBn: 'মসৃণ কেমিক্যালমুক্ত পাইন উড', labelEn: 'Smooth Chemical-Free Wood', value: 'wood' },
+    ],
+  },
+];
+
+export let globalAttributes: AttributeItem[] = [...defaultAttributes];
+
+export function getAllAttributes(): AttributeItem[] {
+  return globalAttributes;
+}
+
+export function addAttribute(attr: AttributeItem): AttributeItem {
+  globalAttributes.push(attr);
+  return attr;
+}
+
+export function updateAttribute(codeOrId: string, updates: Partial<AttributeItem>): AttributeItem | null {
+  const index = globalAttributes.findIndex(
+    (a) => a.code === codeOrId || a.id === codeOrId
+  );
+  if (index === -1) return null;
+  globalAttributes[index] = {
+    ...globalAttributes[index],
+    ...updates,
+  };
+  return globalAttributes[index];
+}
+
+export function deleteAttribute(codeOrId: string): boolean {
+  const initialLen = globalAttributes.length;
+  globalAttributes = globalAttributes.filter(
+    (a) => a.code !== codeOrId && a.id !== codeOrId
+  );
+  return globalAttributes.length < initialLen;
+}
+
 export function getAllProducts(): SampleProduct[] {
   return globalProducts;
 }
@@ -179,6 +314,13 @@ export function updateProduct(id: string, updates: Partial<SampleProduct>): Samp
   if (index === -1) return null;
   globalProducts[index] = { ...globalProducts[index], ...updates };
   return globalProducts[index];
+}
+
+export function deleteProduct(id: string): boolean {
+  const index = globalProducts.findIndex((p) => p.id === id || p.slug === id);
+  if (index === -1) return false;
+  globalProducts.splice(index, 1);
+  return true;
 }
 
 export function getProductBySlug(slug: string): SampleProduct | undefined {
@@ -298,4 +440,46 @@ export function assignCourierToOrder(orderId: string, consignmentId: string, tra
   });
 
   return order;
+}
+
+// Global Site Settings / Home Sections in-memory store
+export let globalSiteSettings: SiteSettings = { ...defaultSiteSettings };
+
+export function getSiteSettings(): SiteSettings {
+  return globalSiteSettings;
+}
+
+export function updateSiteSettings(newSettings: Partial<SiteSettings>): SiteSettings {
+  globalSiteSettings = {
+    ...globalSiteSettings,
+    ...newSettings,
+    announcement: {
+      ...globalSiteSettings.announcement,
+      ...(newSettings.announcement || {}),
+    },
+    showcases: {
+      ...globalSiteSettings.showcases,
+      ...(newSettings.showcases || {}),
+    },
+    whyLoveUs: {
+      ...globalSiteSettings.whyLoveUs,
+      ...(newSettings.whyLoveUs || {}),
+    },
+    testimonials: {
+      ...globalSiteSettings.testimonials,
+      ...(newSettings.testimonials || {}),
+    },
+    bulkOrderBanner: {
+      ...globalSiteSettings.bulkOrderBanner,
+      ...(newSettings.bulkOrderBanner || {}),
+    },
+    footer: {
+      ...globalSiteSettings.footer,
+      ...(newSettings.footer || {}),
+    },
+    heroSlides: Array.isArray(newSettings.heroSlides) ? newSettings.heroSlides : globalSiteSettings.heroSlides,
+    trustBadges: Array.isArray(newSettings.trustBadges) ? newSettings.trustBadges : globalSiteSettings.trustBadges,
+    promoBanners: Array.isArray(newSettings.promoBanners) ? newSettings.promoBanners : globalSiteSettings.promoBanners,
+  };
+  return globalSiteSettings;
 }

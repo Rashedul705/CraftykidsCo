@@ -7,12 +7,15 @@ import { ShoppingBag, Search, PhoneCall, Heart, Gift, Sparkles, Globe } from 'lu
 import { useCart } from '@/context/CartContext';
 import { formatBDT } from '@/lib/utils';
 
+import { SiteSettings, defaultSiteSettings } from '@/lib/site-settings';
+
 interface HeaderProps {
   locale?: 'bn' | 'en';
   onToggleLocale?: () => void;
+  announcement?: SiteSettings['announcement'];
 }
 
-export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
+export function Header({ locale = 'bn', onToggleLocale, announcement = defaultSiteSettings.announcement }: HeaderProps) {
   const { cartCount, subtotal } = useCart();
   const router = useRouter();
   const [internalLocale, setInternalLocale] = useState<'bn' | 'en'>(locale);
@@ -38,34 +41,36 @@ export function Header({ locale = 'bn', onToggleLocale }: HeaderProps) {
   return (
     <>
       {/* 1. Top Announcement Bar */}
-      <div className="bg-[#1F1F1F] text-white py-1.5 px-4 text-xs font-medium border-b border-black/10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="inline-block w-2 h-2 rounded-full bg-[#E53935] animate-pulse shrink-0" />
-            <span className="text-[#E0E0E0] truncate text-[11px] sm:text-xs">
-              {activeLocale === 'bn'
-                ? 'দেশজুড়ে দ্রুত হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি!'
-                : 'Nationwide Fast Home Delivery & Cash on Delivery!'}
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-[#B0B0B0] shrink-0">
-            <a
-              href="tel:+8801700000000"
-              className="hidden sm:flex items-center gap-1.5 hover:text-white transition-colors"
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-[#E53935]" />
-              <span>হটলাইন: 01700-000000</span>
-            </a>
-            <button
-              onClick={toggle}
-              className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer text-[11px] sm:text-xs"
-            >
-              <Globe className="w-3 h-3 text-[#FFC107]" />
-              <span>{activeLocale === 'bn' ? 'English' : 'বাংলা'}</span>
-            </button>
+      {announcement?.enabled !== false && (
+        <div className="bg-[#1F1F1F] text-white py-1.5 px-4 text-xs font-medium border-b border-black/10">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#E53935] animate-pulse shrink-0" />
+              <span className="text-[#E0E0E0] truncate text-[11px] sm:text-xs">
+                {activeLocale === 'bn'
+                  ? announcement?.textBn || 'দেশজুড়ে দ্রুত হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি!'
+                  : announcement?.textEn || 'Nationwide Fast Home Delivery & Cash on Delivery!'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-[#B0B0B0] shrink-0">
+              <a
+                href={`tel:${announcement?.hotline?.replace(/[^\d+]/g, '') || '+8801700000000'}`}
+                className="hidden sm:flex items-center gap-1.5 hover:text-white transition-colors"
+              >
+                <PhoneCall className="w-3.5 h-3.5 text-[#E53935]" />
+                <span>হটলাইন: {announcement?.hotline || '01700-000000'}</span>
+              </a>
+              <button
+                onClick={toggle}
+                className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer text-[11px] sm:text-xs"
+              >
+                <Globe className="w-3 h-3 text-[#FFC107]" />
+                <span>{activeLocale === 'bn' ? 'English' : 'বাংলা'}</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 2. Main Branding & Search Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-[#EFE9E0] shadow-[0_2px_12px_rgba(0,0,0,0.03)] transition-all">

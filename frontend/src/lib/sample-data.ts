@@ -1,4 +1,6 @@
 export interface SampleCategory {
+  _id?: string;
+  id?: string;
   slug: string;
   nameBn: string;
   nameEn: string;
@@ -6,6 +8,12 @@ export interface SampleCategory {
   imageUrl: string;
   badgeColor?: string;
   children?: { slug: string; nameBn: string; nameEn: string }[];
+  attributes?: {
+    code: string;
+    nameBn: string;
+    nameEn: string;
+    options: { labelBn: string; labelEn: string; value: string }[];
+  }[];
 }
 
 export interface ProductReview {
