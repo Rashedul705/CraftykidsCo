@@ -35,6 +35,7 @@ export interface ProductVariation {
   salePrice: number;
   stock: number;
   imageUrl?: string;
+  badge?: string;
 }
 
 export interface ProductVideo {
@@ -83,6 +84,13 @@ export function getProductMedia(product: SampleProduct): {
   if (product.galleryImages && product.galleryImages.length > 0) {
     product.galleryImages.forEach((img) => {
       if (!images.includes(img)) images.push(img);
+    });
+  }
+  if (product.variations && product.variations.length > 0) {
+    product.variations.forEach((v) => {
+      if (v.imageUrl && !images.includes(v.imageUrl)) {
+        images.push(v.imageUrl);
+      }
     });
   }
 
@@ -271,7 +279,7 @@ export const sampleProducts: SampleProduct[] = [
     baseSalePrice: 990,
     rating: 4.9,
     reviewCount: 42,
-    isVariable: false,
+    isVariable: true,
     isBestSeller: false,
     isNewArrival: true,
     targetAgeMin: 2,
@@ -283,6 +291,38 @@ export const sampleProducts: SampleProduct[] = [
       'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg'
     ],
     badge: 'সেরা উপহার',
+    variations: [
+      {
+        sku: 'SWEET-FRUIT-STARTER',
+        titleBn: 'স্টার্টার প্যাক (৬টি ফল + ৪টি রঙ + ১ ব্রাশ)',
+        titleEn: 'Starter Pack (6 Fruits + 4 Colors + 1 Brush)',
+        price: 1200,
+        salePrice: 990,
+        stock: 35,
+        imageUrl: 'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+        badge: 'Popular'
+      },
+      {
+        sku: 'SWEET-FRUIT-MEGA',
+        titleBn: 'মেগা আর্ট বক্স (১২টি ফল + ৮টি রঙ + ২ ব্রাশ + প্যালেট)',
+        titleEn: 'Mega Art Box (12 Fruits + 8 Colors + 2 Brushes + Palette)',
+        price: 1800,
+        salePrice: 1450,
+        stock: 18,
+        imageUrl: 'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg',
+        badge: 'Best Value'
+      },
+      {
+        sku: 'SWEET-FRUIT-DELUXE',
+        titleBn: 'ডিলাক্স ফ্যামিলি গিফট বক্স (১৮টি ফল + ১২ রঙ + ৪ ব্রাশ)',
+        titleEn: 'Deluxe Family Gift Box (18 Fruits + 12 Colors + 4 Brushes)',
+        price: 2400,
+        salePrice: 1890,
+        stock: 5,
+        imageUrl: 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+        badge: 'Save ৳510'
+      }
+    ],
     safetyBadges: ['১০০% ফুড-গ্রেড ন্যাচারাল জিপসাম', 'ওয়াশেবল ও নন-টক্সিক কালার', 'স্মুথ ও নিরাপদ এজ', 'স্ক্রিন-ফ্রি ক্রিয়েটিভ প্লে'],
     description: 'রসালো ও রঙিন ফলের আনন্দময় ভুবন! এই কিটে রয়েছে ৬টি সুদৃশ্য সাদা প্লাস্টার ফলের আকৃতি—আনারস (Pineapple), নাশপাতি (Pear), আঙ্গুর (Grapes), মিষ্টি লাল স্ট্রবেরি (Strawberry), রসালো তরমুজের টুকরো (Watermelon Slice) এবং মিষ্টি এক কাঁদি কলা (Bananas)। সাথে থাকছে ৪টি ব্রাইট পেইন্ট পট (লাল, হলুদ, নীল, সবুজ) এবং ১টি স্মুথ পেইন্টিং ব্রাশ। শিশুরা নিজে নিজে পছন্দমতো রঙ করে বিভিন্ন ফল চিনবে, রঙ মেলানো শিখবে এবং তাদের কল্পনাশক্তির বাস্তব রূপ দেবে। পেইন্ট করা শেষে এগুলোকে ফ্রিজ ম্যাগনেট বা পড়ার টেবিলের সুন্দর শোপিস হিসেবে সাজিয়ে রাখা যায়!',
     specifications: [
@@ -339,7 +379,7 @@ export const sampleProducts: SampleProduct[] = [
     baseSalePrice: 890,
     rating: 4.9,
     reviewCount: 56,
-    isVariable: false,
+    isVariable: true,
     isBestSeller: false,
     isNewArrival: true,
     targetAgeMin: 2,
@@ -351,6 +391,38 @@ export const sampleProducts: SampleProduct[] = [
       'https://i.ibb.co/q35L6xdm/craftykidsco-autumn-nature.jpg'
     ],
     badge: 'টপ সেলার',
+    variations: [
+      {
+        sku: 'BUG-STARTER-4',
+        titleBn: 'স্টার্টার প্যাক (৪টি পোকা + ৪টি রঙ + ১ ব্রাশ)',
+        titleEn: 'Starter Pack (4 Bugs + 4 Colors + 1 Brush)',
+        price: 1100,
+        salePrice: 890,
+        stock: 28,
+        imageUrl: 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+        badge: 'Popular'
+      },
+      {
+        sku: 'BUG-EXPLORER-8',
+        titleBn: 'এক্সপ্লোরার কম্বো (৮টি পোকা + ৬টি রঙ + ২ ব্রাশ)',
+        titleEn: 'Explorer Combo (8 Bugs + 6 Colors + 2 Brushes)',
+        price: 1650,
+        salePrice: 1350,
+        stock: 15,
+        imageUrl: 'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+        badge: 'Best Value'
+      },
+      {
+        sku: 'BUG-MEGA-12',
+        titleBn: 'মেগা কিংডম বক্স (১২টি পোকা + ৮ রঙ + ৩ ব্রাশ)',
+        titleEn: 'Mega Kingdom Box (12 Bugs + 8 Colors + 3 Brushes)',
+        price: 2200,
+        salePrice: 1750,
+        stock: 7,
+        imageUrl: 'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg',
+        badge: 'Only 7 Left'
+      }
+    ],
     safetyBadges: ['১০০% নন-টক্সিক ও নিরাপদ', '৪টি কিউট বাগ মডেল', 'মিনি ইজেল আর্ট বোর্ড অন্তর্ভুক্ত', 'সহজে ওয়াশেবল'],
     description: 'প্রকৃতির মিষ্টি মিষ্টি পতঙ্গদের নিয়ে গড়ে তুলুন আপনার শিশুর নিজস্ব জাদুকরী পৃথিবী! Little Bug Adventure কিটে রয়েছে ৪টি থ্রিডি প্লাস্টার শেপ—ডানামেলা কিউট প্রজাপতি (Butterfly), গোলগাল মিষ্টি লেডিবাগ (Ladybug), চটপটে ড্রাগনফ্লাই/ঘাসফড়িং (Dragonfly) এবং পরিশ্রমী মৌমাছি (Honeybee)। সাথে থাকছে ৪টি আকর্ষণীয় রঙ (গোলাপি, হলুদ, সবুজ, নীল), ব্রাশ এবং একটি মিনি ডিসপ্লে ইজেল। শিশুরা নিজ হাতে রঙ করে সৃষ্টি করবে রঙিন জীববৈচিত্র্য, যা তাদের হ্যান্ড-আই কোঅর্ডিনেশন ও একাগ্রতা বৃদ্ধিতে দারুণ কার্যকর।',
     specifications: [
@@ -394,7 +466,7 @@ export const sampleProducts: SampleProduct[] = [
     baseSalePrice: 1050,
     rating: 4.8,
     reviewCount: 64,
-    isVariable: false,
+    isVariable: true,
     isBestSeller: false,
     isNewArrival: true,
     targetAgeMin: 3,
@@ -406,6 +478,38 @@ export const sampleProducts: SampleProduct[] = [
       'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg'
     ],
     badge: 'জনপ্রিয়',
+    variations: [
+      {
+        sku: 'CAR-RACER-4',
+        titleBn: 'স্পিড রেসার প্যাক (৪টি গাড়ি + ৪ রঙ + ১ ব্রাশ)',
+        titleEn: 'Speed Racer Pack (4 Cars + 4 Colors + 1 Brush)',
+        price: 1200,
+        salePrice: 950,
+        stock: 22,
+        imageUrl: 'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg',
+        badge: 'Popular'
+      },
+      {
+        sku: 'CAR-GRAND-PRIX-8',
+        titleBn: 'গ্র্যান্ড প্রিক্স সেট (৮টি গাড়ি + ৬টি রঙ + ২ ব্রাশ)',
+        titleEn: 'Grand Prix Set (8 Cars + 6 Colors + 2 Brushes)',
+        price: 1750,
+        salePrice: 1420,
+        stock: 12,
+        imageUrl: 'https://i.ibb.co/kVrGCzrh/craftykidsco-tool-set.jpg',
+        badge: 'Best Value'
+      },
+      {
+        sku: 'CAR-ULTIMATE-12',
+        titleBn: 'আলটিমেট ট্র্যাক বক্স (১২টি গাড়ি + ৮ রঙ + ৩ ব্রাশ)',
+        titleEn: 'Ultimate Track Box (12 Cars + 8 Colors + 3 Brushes)',
+        price: 2300,
+        salePrice: 1850,
+        stock: 4,
+        imageUrl: 'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg',
+        badge: 'Only 4 Left'
+      }
+    ],
     safetyBadges: ['৬টি ভিন্ন যানবাহন মডেল', 'কালার গাইড কার্ড অন্তর্ভুক্ত', '৫টি শেডের কালার পট', 'স্মুথ সারফেস'],
     description: 'ছোট স্পিড ও গাড়িপ্রেমী শিশুদের জন্য স্বপ্নের আর্ট কিট! এই সেটে রয়েছে ৬টি আকর্ষণীয় যানবাহনের প্লাস্টার মডেল—মোটরসাইকেল, স্কুল বাস, ফার্ম ট্রাক্টর, ক্লাসিক প্রাইভেট কার, ডেলিভারি ভ্যান এবং রেসকিউ হেলিকপ্টার। সাথে রয়েছে ৫টি উজ্জ্বল রঙ (লাল, হলুদ, নীল, সবুজ, কালো), কালার গাইড কার্ড এবং ১টি ব্রাশ। শিশুরা পছন্দের কালার কম্বিনেশনে তৈরি করবে তাদের স্বপ্নের স্পিড ভেহিকল!',
     specifications: [

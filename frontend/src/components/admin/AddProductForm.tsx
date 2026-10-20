@@ -21,6 +21,7 @@ interface AddProductFormProps {
   onCancel: () => void;
   onSuccess: (createdProduct: any) => void;
   categories: SampleCategory[];
+  initialProduct?: any | null;
 }
 
 interface VariationRow {
@@ -37,73 +38,144 @@ export default function AddProductForm({
   onCancel,
   onSuccess,
   categories,
+  initialProduct,
 }: AddProductFormProps) {
+  const isEditing = Boolean(initialProduct);
+
   // Photos & Media
-  const [images, setImages] = useState<string[]>([]);
-  const [videoUrl, setVideoUrl] = useState<string>('');
+  const [images, setImages] = useState<string[]>(() => {
+    if (initialProduct?.galleryImages && initialProduct.galleryImages.length > 0) {
+      return initialProduct.galleryImages;
+    }
+    if (initialProduct?.imageUrl || initialProduct?.image) {
+      return [initialProduct.imageUrl || initialProduct.image];
+    }
+    return [];
+  });
+  const [videoUrl, setVideoUrl] = useState<string>(() => initialProduct?.videoUrl || '');
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
   const [uploadSlotIndex, setUploadSlotIndex] = useState<number | null>(null);
 
   // Basic Information
-  const [titleBn, setTitleBn] = useState('');
-  const [titleEn, setTitleEn] = useState('');
-  const [shortDescBn, setShortDescBn] = useState('');
-  const [shortDescEn, setShortDescEn] = useState('');
-  const [fullDescBn, setFullDescBn] = useState('');
-  const [whatsInTheBox, setWhatsInTheBox] = useState('');
+  const [titleBn, setTitleBn] = useState(() => initialProduct?.titleBn || '');
+  const [titleEn, setTitleEn] = useState(() => initialProduct?.titleEn || initialProduct?.title || '');
+  const [shortDescBn, setShortDescBn] = useState(() => initialProduct?.shortDescriptionBn || '');
+  const [shortDescEn, setShortDescEn] = useState(() => initialProduct?.shortDescriptionEn || '');
+  const [fullDescBn, setFullDescBn] = useState(() => initialProduct?.descriptionBn || initialProduct?.description || '');
+  const [whatsInTheBox, setWhatsInTheBox] = useState(() => initialProduct?.pieces || '');
 
   // Pricing & Stock
-  const [regularPrice, setRegularPrice] = useState<number | ''>(1200);
-  const [salePrice, setSalePrice] = useState<number | ''>(999);
-  const [costPerItem, setCostPerItem] = useState<number | ''>('');
-  const [sku, setSku] = useState('');
-  const [stockQuantity, setStockQuantity] = useState<number | ''>(25);
-  const [lowStockAlert, setLowStockAlert] = useState<number | ''>(5);
+  const [regularPrice, setRegularPrice] = useState<number | ''>(
+    () => initialProduct?.basePrice ?? initialProduct?.price ?? 1200
+  );
+  const [salePrice, setSalePrice] = useState<number | ''>(
+    () => initialProduct?.baseSalePrice ?? initialProduct?.salePrice ?? 999
+  );
+  const [costPerItem, setCostPerItem] = useState<number | ''>(() => initialProduct?.costPerItem || '');
+  const [sku, setSku] = useState(() => initialProduct?.sku || '');
+  const [stockQuantity, setStockQuantity] = useState<number | ''>(
+    () => initialProduct?.stock ?? 25
+  );
+  const [lowStockAlert, setLowStockAlert] = useState<number | ''>(
+    () => initialProduct?.lowStockAlert ?? 5
+  );
 
   // Variations
-  const [colorOptions, setColorOptions] = useState<string[]>(['12 colors', '24 colors', '48 colors']);
+  const [colorOptions, setColorOptions] = useState<string[]>(() => {
+    if (initialProduct?.variations && initialProduct.variations.length > 0) {
+      const extracted = initialProduct.variations
+        .map((v: any) => v.attributes?.colorSet || v.titleEn)
+        .filter(Boolean);
+      const unique = Array.from(new Set(extracted)) as string[];
+      if (unique.length > 0) return unique;
+    }
+    return ['12 colors', '24 colors', '48 colors'];
+  });
   const [newColorInput, setNewColorInput] = useState('');
   const [isAddingColor, setIsAddingColor] = useState(false);
 
-  const [ageOptions, setAgeOptions] = useState<string[]>(['2-3 yrs', '3-5 yrs', '5-8 yrs']);
+  const [ageOptions, setAgeOptions] = useState<string[]>(() => {
+    if (initialProduct?.variations && initialProduct.variations.length > 0) {
+      const extracted = initialProduct.variations
+        .map((v: any) => v.attributes?.ageGroup)
+        .filter(Boolean);
+      const unique = Array.from(new Set(extracted)) as string[];
+      if (unique.length > 0) return unique;
+    }
+    return ['2-3 yrs', '3-5 yrs', '5-8 yrs'];
+  });
   const [newAgeInput, setNewAgeInput] = useState('');
   const [isAddingAge, setIsAddingAge] = useState(false);
 
-  const [variations, setVariations] = useState<VariationRow[]>([
-    { id: 'var-1', colorSet: '12 colors', ageGroup: '2-3 yrs', sku: '', price: 999, stock: 25, imageUrl: '' },
-    { id: 'var-2', colorSet: '12 colors', ageGroup: '3-5 yrs', sku: '', price: 999, stock: 25, imageUrl: '' },
-    { id: 'var-3', colorSet: '24 colors', ageGroup: '2-3 yrs', sku: '', price: 1450, stock: 15, imageUrl: '' },
-    { id: 'var-4', colorSet: '24 colors', ageGroup: '3-5 yrs', sku: '', price: 1450, stock: 15, imageUrl: '' },
-  ]);
+  const [variations, setVariations] = useState<VariationRow[]>(() => {
+    if (initialProduct?.variations && initialProduct.variations.length > 0) {
+      return initialProduct.variations.map((v: any, idx: number) => ({
+        id: v.id || `var-${idx + 1}`,
+        colorSet: v.attributes?.colorSet || v.titleEn || `Option ${idx + 1}`,
+        ageGroup: v.attributes?.ageGroup || '2-3 yrs',
+        sku: v.sku || '',
+        price: v.price || v.salePrice || 999,
+        stock: v.stockQuantity ?? v.stock ?? 25,
+        imageUrl: v.imageUrl || '',
+      }));
+    }
+    return [
+      { id: 'var-1', colorSet: '12 colors', ageGroup: '2-3 yrs', sku: '', price: 999, stock: 25, imageUrl: '' },
+      { id: 'var-2', colorSet: '12 colors', ageGroup: '3-5 yrs', sku: '', price: 999, stock: 25, imageUrl: '' },
+      { id: 'var-3', colorSet: '24 colors', ageGroup: '2-3 yrs', sku: '', price: 1450, stock: 15, imageUrl: '' },
+      { id: 'var-4', colorSet: '24 colors', ageGroup: '3-5 yrs', sku: '', price: 1450, stock: 15, imageUrl: '' },
+    ];
+  });
 
   // Shipping & Search
-  const [weight, setWeight] = useState<number | ''>(0);
-  const [packageSize, setPackageSize] = useState('');
-  const [handlingTime, setHandlingTime] = useState<number | ''>(1);
-  const [seoTitle, setSeoTitle] = useState('');
-  const [urlSlug, setUrlSlug] = useState('');
-  const [seoDescription, setSeoDescription] = useState('');
+  const [weight, setWeight] = useState<number | ''>(() => initialProduct?.weight || 0);
+  const [packageSize, setPackageSize] = useState(() => initialProduct?.packageSize || '');
+  const [handlingTime, setHandlingTime] = useState<number | ''>(() => initialProduct?.handlingTime || 1);
+  const [seoTitle, setSeoTitle] = useState(() => initialProduct?.seoTitle || initialProduct?.titleEn || '');
+  const [urlSlug, setUrlSlug] = useState(() => initialProduct?.slug || '');
+  const [seoDescription, setSeoDescription] = useState(() => initialProduct?.seoDescription || '');
 
   // Publish Status
-  const [status, setStatus] = useState<'Published' | 'Draft'>('Published');
+  const [status, setStatus] = useState<'Published' | 'Draft'>(
+    () => (initialProduct?.isActive === false ? 'Draft' : 'Published')
+  );
 
   // Organize
-  const [categorySlug, setCategorySlug] = useState(categories[0]?.slug || 'art-kits');
-  const [subCategory, setSubCategory] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+  const [categorySlug, setCategorySlug] = useState(
+    () => initialProduct?.categorySlug || initialProduct?.primaryCategorySlug || categories[0]?.slug || 'art-kits'
+  );
+  const [subCategory, setSubCategory] = useState(() => initialProduct?.subCategory || '');
+  const [tags, setTags] = useState<string[]>(() => initialProduct?.tags || []);
   const [tagInput, setTagInput] = useState('');
-  const [brand, setBrand] = useState('CraftyKidsCo');
+  const [brand, setBrand] = useState(() => initialProduct?.brand || 'CraftyKidsCo');
 
   // Kids Essentials
-  const [safetyBadges, setSafetyBadges] = useState<string[]>(['Non-toxic']);
-  const [targetAge, setTargetAge] = useState<string>('2+');
-  const [productBadge, setProductBadge] = useState('');
+  const [safetyBadges, setSafetyBadges] = useState<string[]>(() => {
+    if (initialProduct?.safetyBadges && initialProduct.safetyBadges.length > 0) {
+      return initialProduct.safetyBadges.map((b: any) =>
+        typeof b === 'string' ? b : b.nameEn || b.code
+      );
+    }
+    return ['Non-toxic'];
+  });
+  const [targetAge, setTargetAge] = useState<string>(
+    () => initialProduct?.targetAge || (initialProduct?.targetAgeMin ? `${initialProduct.targetAgeMin}+` : '2+')
+  );
+  const [productBadge, setProductBadge] = useState(() => initialProduct?.badge || '');
 
   // Show on Store Toggles
-  const [showInNewArrivals, setShowInNewArrivals] = useState(true);
-  const [featureInTrending, setFeatureInTrending] = useState(false);
-  const [allowCashOnDelivery, setAllowCashOnDelivery] = useState(true);
-  const [requiresGiftWrap, setRequiresGiftWrap] = useState(false);
+  const [showInNewArrivals, setShowInNewArrivals] = useState(
+    () => initialProduct?.isNewArrival ?? true
+  );
+  const [featureInTrending, setFeatureInTrending] = useState(
+    () => initialProduct?.isBestSeller ?? false
+  );
+  const [allowCashOnDelivery, setAllowCashOnDelivery] = useState(
+    () => initialProduct?.allowCashOnDelivery ?? true
+  );
+  const [requiresGiftWrap, setRequiresGiftWrap] = useState(
+    () => initialProduct?.requiresGiftWrap ?? false
+  );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -314,10 +386,16 @@ export default function AddProductForm({
       isActive: submitStatus === 'Published',
     };
 
+    const isEditing = Boolean(initialProduct);
+    const targetId = initialProduct?.id || initialProduct?.slug;
+
     try {
       setIsSubmitting(true);
-      const res = await fetch('/api/products', {
-        method: 'POST',
+      const endpoint = isEditing ? `/api/products/${targetId}` : '/api/products';
+      const method = isEditing ? 'PATCH' : 'POST';
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -326,10 +404,10 @@ export default function AddProductForm({
       if (data.success) {
         onSuccess(data.product || payload);
       } else {
-        alert(data.message || 'Failed to publish product');
+        alert(data.message || (isEditing ? 'Failed to update product' : 'Failed to publish product'));
       }
     } catch (err: any) {
-      alert('Error creating product: ' + err.message);
+      alert(`Error ${isEditing ? 'updating' : 'creating'} product: ` + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -349,11 +427,19 @@ export default function AddProductForm({
           <div className="flex items-center gap-2 text-xs text-[#8A8A8A] font-semibold">
             <span>Products</span>
             <span>/</span>
-            <span className="text-[#1A1A1A] font-bold">Add new</span>
+            <span className="text-[#1A1A1A] font-bold">
+              {isEditing ? 'Edit product' : 'Add new'}
+            </span>
           </div>
           <h1 className="font-heading font-black text-2xl sm:text-3xl text-[#1A1A1A] mt-1">
-            Add new product
+            {isEditing ? 'Edit product' : 'Add new product'}
           </h1>
+          {isEditing && (
+            <p className="text-xs text-[#6B6B6B] mt-1">
+              Editing: <span className="font-bold text-[#1A1A1A]">{initialProduct.titleEn || initialProduct.titleBn || initialProduct.slug}</span>
+              <span className="text-[11px] text-[#8A8A8A] ml-1.5 font-mono">({initialProduct.slug})</span>
+            </p>
+          )}
         </div>
 
         {/* Action Buttons Top Right */}
@@ -376,7 +462,7 @@ export default function AddProductForm({
             ) : (
               <Check className="w-4 h-4" />
             )}
-            <span>Publish product</span>
+            <span>{isEditing ? 'Save changes' : 'Publish product'}</span>
           </button>
         </div>
       </div>
@@ -1038,7 +1124,7 @@ export default function AddProductForm({
               ) : (
                 <Check className="w-4 h-4" />
               )}
-              <span>Publish product</span>
+              <span>{isEditing ? 'Save changes' : 'Publish product'}</span>
             </button>
 
             <button

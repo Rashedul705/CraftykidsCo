@@ -48,7 +48,7 @@ export default function AdminDashboardPage() {
   const [activeNav, setActiveNav] = useState<string>('dashboard');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
-  const [productViewMode, setProductViewMode] = useState<'list' | 'add'>('list');
+  const [productViewMode, setProductViewMode] = useState<'list' | 'add' | 'edit'>('list');
 
   // Store Data States
   const [orders, setOrders] = useState<OrderRecord[]>([]);
@@ -82,21 +82,8 @@ export default function AdminDashboardPage() {
   // Orders status filter for Orders tab
   const [ordersStatusFilter, setOrdersStatusFilter] = useState<string>('ALL');
 
-  // Edit Product Modal State
+  // Edit & Delete Product States
   const [editingProduct, setEditingProduct] = useState<SampleProduct | null>(null);
-  const [editProdTitleBn, setEditProdTitleBn] = useState('');
-  const [editProdTitleEn, setEditProdTitleEn] = useState('');
-  const [editProdPrice, setEditProdPrice] = useState<number>(0);
-  const [editProdSalePrice, setEditProdSalePrice] = useState<number>(0);
-  const [editProdStock, setEditProdStock] = useState<number>(25);
-  const [editProdCategory, setEditProdCategory] = useState('art-kits');
-  const [editProdImage, setEditProdImage] = useState('');
-  const [editProdDescription, setEditProdDescription] = useState('');
-  const [editProdPieces, setEditProdPieces] = useState('');
-  const [editProdBadge, setEditProdBadge] = useState('');
-  const [isUpdatingProduct, setIsUpdatingProduct] = useState(false);
-  const [isUploadingEditImage, setIsUploadingEditImage] = useState(false);
-  const [editUploadError, setEditUploadError] = useState<string | null>(null);
 
   // Delete Product Confirmation State
   const [deletingProduct, setDeletingProduct] = useState<SampleProduct | null>(null);
@@ -351,97 +338,13 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Open Edit Product Modal
+  // Open Edit Product Page
   const handleOpenEditProduct = (p: SampleProduct) => {
     setEditingProduct(p);
-    setEditProdTitleBn(p.titleBn || '');
-    setEditProdTitleEn(p.titleEn || '');
-    setEditProdPrice(p.basePrice || 0);
-    setEditProdSalePrice(p.baseSalePrice || p.basePrice || 0);
-    setEditProdStock((p as any).stock ?? 25);
-    setEditProdCategory(p.categorySlug || 'art-kits');
-    setEditProdImage(p.imageUrl || '');
-    setEditProdDescription(p.description || '');
-    setEditProdPieces((p as any).pieces || '');
-    setEditProdBadge((p as any).badge || '');
-    setEditUploadError(null);
+    setProductViewMode('edit');
   };
 
-  // Upload new image for Edit Product modal via ImgBB
-  const handleEditImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    setIsUploadingEditImage(true);
-    setEditUploadError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('name', `craftykidsco_edit_${Date.now()}`);
-
-      const res = await fetch('/api/upload-image', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (data.success && (data.url || data.display_url)) {
-        const cdnUrl = data.url || data.display_url;
-        setEditProdImage(cdnUrl);
-        setActionFeedback('নতুন ছবি ImgBB CDN এ সফলভাবে আপলোড হয়েছে!');
-      } else {
-        setEditUploadError(data.message || 'ImgBB আপলোডে সমস্যা হয়েছে');
-      }
-    } catch (err: any) {
-      setEditUploadError(err.message || 'ছবি আপলোড ব্যর্থ হয়েছে');
-    } finally {
-      setIsUploadingEditImage(false);
-    }
-  };
-
-  // Save changes to existing product
-  const handleUpdateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProduct) return;
-    setIsUpdatingProduct(true);
-
-    try {
-      const targetId = editingProduct.id || editingProduct.slug;
-      const res = await fetch(`/api/products/${targetId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          titleBn: editProdTitleBn,
-          titleEn: editProdTitleEn,
-          basePrice: Number(editProdPrice),
-          baseSalePrice: Number(editProdSalePrice || editProdPrice),
-          stock: Number(editProdStock),
-          categorySlug: editProdCategory,
-          imageUrl: editProdImage,
-          description: editProdDescription,
-          pieces: editProdPieces,
-          badge: editProdBadge,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        refreshData();
-        setEditingProduct(null);
-        setActionFeedback(`পণ্য '${editProdTitleBn}' সফলভাবে আপডেট হয়েছে!`);
-        setTimeout(() => setActionFeedback(null), 3500);
-      } else {
-        setActionFeedback(data.message || 'আপডেট করতে সমস্যা হয়েছে');
-        setTimeout(() => setActionFeedback(null), 3000);
-      }
-    } catch {
-      setActionFeedback('পণ্য আপডেট করতে ব্যর্থ হয়েছে');
-      setTimeout(() => setActionFeedback(null), 3000);
-    } finally {
-      setIsUpdatingProduct(false);
-    }
-  };
 
   // Confirm delete product permanently
   const handleConfirmDeleteProduct = async () => {
@@ -705,7 +608,7 @@ export default function AdminDashboardPage() {
          ========================================================================= */}
       <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1280px] w-full min-w-0">
         {/* Top Header Bar */}
-        {!(activeNav === 'products' && productViewMode === 'add') && activeNav !== 'orders' && (
+        {!(activeNav === 'products' && (productViewMode === 'add' || productViewMode === 'edit')) && activeNav !== 'orders' && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h1 className="font-heading font-black text-xl sm:text-2xl lg:text-3xl text-[#1F1F1F]">
               {activeNav === 'dashboard' && 'Dashboard'}
@@ -1029,14 +932,22 @@ export default function AdminDashboardPage() {
             VIEW 3: PRODUCTS & INVENTORY
            ===================================================================== */}
         {activeNav === 'products' && (
-          productViewMode === 'add' ? (
+          productViewMode === 'add' || productViewMode === 'edit' ? (
             <AddProductForm
-              onCancel={() => setProductViewMode('list')}
-              onSuccess={(created) => {
+              key={productViewMode === 'edit' ? (editingProduct?.id || editingProduct?.slug || 'edit') : 'add'}
+              initialProduct={productViewMode === 'edit' ? editingProduct : null}
+              onCancel={() => {
+                setProductViewMode('list');
+                setEditingProduct(null);
+              }}
+              onSuccess={(saved) => {
                 refreshData();
                 setProductViewMode('list');
+                setEditingProduct(null);
                 setActionFeedback(
-                  `Product "${created?.titleBn || created?.titleEn || 'New Product'}" published successfully!`
+                  productViewMode === 'edit'
+                    ? `Product "${saved?.titleBn || saved?.titleEn || 'Product'}" updated successfully!`
+                    : `Product "${saved?.titleBn || saved?.titleEn || 'New Product'}" published successfully!`
                 );
                 setTimeout(() => setActionFeedback(null), 4000);
               }}
@@ -1673,194 +1584,7 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* =========================================================================
-          EDIT PRODUCT MODAL (WITH IMGBB CDN RE-UPLOAD)
-         ========================================================================= */}
-      {editingProduct && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-[28px] max-w-xl w-full p-6 space-y-4 shadow-2xl border border-[#EFEAE2] max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
-              <div>
-                <span className="text-[10px] font-bold text-[#8A8A8A] uppercase tracking-wider block">
-                  Product Management
-                </span>
-                <h3 className="font-heading font-black text-lg text-[#1A1A1A]">
-                  Edit Product ({editingProduct.slug})
-                </h3>
-              </div>
-              <button
-                onClick={() => setEditingProduct(null)}
-                className="w-8 h-8 rounded-full bg-[#FAF7F2] flex items-center justify-center text-[#6B6B6B] hover:text-[#1A1A1A] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <form onSubmit={handleUpdateProduct} className="space-y-4 text-xs">
-              {/* Product Image Preview & ImgBB Upload */}
-              <div>
-                <label className="font-bold block mb-1 text-[#2B2B2B]">Product Image (ImgBB CDN):</label>
-                <div className="flex items-center gap-4">
-                  {editProdImage && (
-                    <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shrink-0">
-                      <Image src={editProdImage} alt="Preview" fill className="object-cover" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <input
-                      type="file"
-                      id="edit-product-image-file"
-                      accept="image/*"
-                      onChange={handleEditImageFileChange}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="edit-product-image-file"
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#FAF7F2] hover:bg-[#EFEAE2] text-[#2B2B2B] font-bold border border-[#E5E0D8] cursor-pointer transition-colors"
-                    >
-                      {isUploadingEditImage ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin text-[#D32F2F]" />
-                          <span>Uploading to ImgBB...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4 text-[#D32F2F]" />
-                          <span>Replace Image via ImgBB</span>
-                        </>
-                      )}
-                    </label>
-                    {editUploadError && (
-                      <p className="text-[11px] text-[#D32F2F] font-bold mt-1">{editUploadError}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Title Bangla & English */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold block mb-1 text-[#2B2B2B]">Title (Bangla):</label>
-                  <input
-                    required
-                    value={editProdTitleBn}
-                    onChange={(e) => setEditProdTitleBn(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] focus:bg-white focus:outline-[#D32F2F]"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold block mb-1 text-[#2B2B2B]">Title (English):</label>
-                  <input
-                    required
-                    value={editProdTitleEn}
-                    onChange={(e) => setEditProdTitleEn(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] focus:bg-white focus:outline-[#D32F2F]"
-                  />
-                </div>
-              </div>
-
-              {/* Prices, Stock & Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="font-bold block mb-1 text-[#2B2B2B]">Regular Price (৳):</label>
-                  <input
-                    type="number"
-                    required
-                    value={editProdPrice}
-                    onChange={(e) => setEditProdPrice(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold block mb-1 text-[#2B2B2B]">Sale Price (৳):</label>
-                  <input
-                    type="number"
-                    value={editProdSalePrice}
-                    onChange={(e) => setEditProdSalePrice(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold block mb-1 text-[#2B2B2B]">Stock Quantity:</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editProdStock}
-                    onChange={(e) => setEditProdStock(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold block mb-1 text-[#2B2B2B]">Category:</label>
-                  <select
-                    value={editProdCategory}
-                    onChange={(e) => setEditProdCategory(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
-                  >
-                    <option value="art-kits">আর্ট কিট (Plaster Art)</option>
-                    <option value="wax-crayons">মোমের রঙ (Wax Crayons)</option>
-                    <option value="play-dough-clay">ক্লে ও ডো (Clay &amp; Dough)</option>
-                    <option value="wooden-toys">Wooden Toys (কাঠের খেলনা)</option>
-                    <option value="educational-toys">শিক্ষামূলক (Educational)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Pieces & Badge */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold block mb-1 text-[#2B2B2B]">Pieces / Components:</label>
-                  <input
-                    value={editProdPieces}
-                    onChange={(e) => setEditProdPieces(e.target.value)}
-                    placeholder="যেমন: ৬টি গাড়ি + ৫টি রঙ + ব্রাশ"
-                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold block mb-1 text-[#2B2B2B]">Product Badge:</label>
-                  <input
-                    value={editProdBadge}
-                    onChange={(e) => setEditProdBadge(e.target.value)}
-                    placeholder="যেমন: সেরা অফার / নতুন"
-                    className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
-                  />
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="font-bold block mb-1 text-[#2B2B2B]">Description:</label>
-                <textarea
-                  rows={3}
-                  value={editProdDescription}
-                  onChange={(e) => setEditProdDescription(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] resize-none"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-2 flex justify-end gap-2 border-t border-[#EFEAE2]">
-                <button
-                  type="button"
-                  onClick={() => setEditingProduct(null)}
-                  className="px-4 py-2.5 rounded-xl bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#1A1A1A] font-bold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUpdatingProduct}
-                  className="px-5 py-2.5 rounded-xl bg-[#D32F2F] text-white font-bold hover:bg-[#B71C1C] flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {isUpdatingProduct && <Loader2 className="w-4 h-4 animate-spin" />}
-                  <span>Save Changes</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* =========================================================================
           DELETE PRODUCT CONFIRMATION MODAL

@@ -85,11 +85,35 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
       updateFields.image = body.imageUrl;
     }
     if (body.galleryImages !== undefined) updateFields.galleryImages = body.galleryImages;
-    if (body.description !== undefined) updateFields.description = body.description;
+    if (body.description !== undefined) {
+      updateFields.description = body.description;
+      updateFields.descriptionBn = body.descriptionBn || body.description;
+      updateFields.descriptionEn = body.descriptionEn || body.description;
+    }
+    if (body.shortDescriptionBn !== undefined) updateFields.shortDescriptionBn = body.shortDescriptionBn;
+    if (body.shortDescriptionEn !== undefined) updateFields.shortDescriptionEn = body.shortDescriptionEn;
     if (body.pieces !== undefined) updateFields.pieces = body.pieces;
     if (body.badge !== undefined) updateFields.badge = body.badge;
     if (body.isNewArrival !== undefined) updateFields.isNewArrival = Boolean(body.isNewArrival);
     if (body.isBestSeller !== undefined) updateFields.isBestSeller = Boolean(body.isBestSeller);
+    if (body.costPerItem !== undefined) updateFields.costPerItem = Number(body.costPerItem);
+    if (body.sku !== undefined) updateFields.sku = body.sku;
+    if (body.lowStockAlert !== undefined) updateFields.lowStockAlert = Number(body.lowStockAlert);
+    if (body.subCategory !== undefined) updateFields.subCategory = body.subCategory;
+    if (body.tags !== undefined) updateFields.tags = body.tags;
+    if (body.brand !== undefined) updateFields.brand = body.brand;
+    if (body.safetyBadges !== undefined) updateFields.safetyBadges = body.safetyBadges;
+    if (body.targetAge !== undefined) updateFields.targetAge = body.targetAge;
+    if (body.targetAgeMin !== undefined) updateFields.targetAgeMin = body.targetAgeMin;
+    if (body.videoUrl !== undefined) updateFields.videoUrl = body.videoUrl;
+    if (body.weight !== undefined) updateFields.weight = body.weight;
+    if (body.packageSize !== undefined) updateFields.packageSize = body.packageSize;
+    if (body.handlingTime !== undefined) updateFields.handlingTime = body.handlingTime;
+    if (body.seoTitle !== undefined) updateFields.seoTitle = body.seoTitle;
+    if (body.seoDescription !== undefined) updateFields.seoDescription = body.seoDescription;
+    if (body.allowCashOnDelivery !== undefined) updateFields.allowCashOnDelivery = Boolean(body.allowCashOnDelivery);
+    if (body.requiresGiftWrap !== undefined) updateFields.requiresGiftWrap = Boolean(body.requiresGiftWrap);
+    if (body.isActive !== undefined) updateFields.isActive = Boolean(body.isActive);
     if (body.variations !== undefined) {
       updateFields.variations = body.variations;
       updateFields.isVariable = body.variations.length > 0;

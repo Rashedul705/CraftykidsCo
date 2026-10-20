@@ -45,6 +45,152 @@ import { SampleProduct, getProductMedia, ProductVideo } from '@/lib/sample-data'
 import { formatBDT } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 
+function getEffectiveVariations(product: SampleProduct) {
+  if (product.variations && product.variations.length > 0) {
+    return product.variations;
+  }
+  const base = product.baseSalePrice || product.basePrice || 990;
+  const original = product.basePrice || Math.round(base * 1.25);
+  const img = product.imageUrl || '';
+  const gallery = product.galleryImages || [];
+  const slug = product.slug || '';
+
+  if (slug.includes('fruit')) {
+    return [
+      {
+        sku: 'SWEET-FRUIT-STARTER',
+        titleBn: 'স্টার্টার প্যাক (৬টি ফল + ৪টি রঙ + ১ ব্রাশ)',
+        titleEn: 'Starter Pack (6 Fruits + 4 Colors + 1 Brush)',
+        price: 1200,
+        salePrice: 990,
+        stock: 35,
+        imageUrl: img,
+        badge: 'Popular',
+      },
+      {
+        sku: 'SWEET-FRUIT-MEGA',
+        titleBn: 'মেগা আর্ট বক্স (১২টি ফল + ৮টি রঙ + ২ ব্রাশ + প্যালেট)',
+        titleEn: 'Mega Art Box (12 Fruits + 8 Colors + 2 Brushes + Palette)',
+        price: 1800,
+        salePrice: 1450,
+        stock: 18,
+        imageUrl: gallery[1] || img,
+        badge: 'Best Value',
+      },
+      {
+        sku: 'SWEET-FRUIT-DELUXE',
+        titleBn: 'ডিলাক্স ফ্যামিলি গিফট বক্স (১৮টি ফল + ১২ রঙ + ৪ ব্রাশ)',
+        titleEn: 'Deluxe Family Gift Box (18 Fruits + 12 Colors + 4 Brushes)',
+        price: 2400,
+        salePrice: 1890,
+        stock: 5,
+        imageUrl: gallery[2] || img,
+        badge: 'Save ৳510',
+      },
+    ];
+  }
+
+  if (slug.includes('paint') || slug.includes('kit') || product.categorySlug === 'art-kits') {
+    return [
+      {
+        sku: `${product.slug.slice(0, 8).toUpperCase()}-STARTER`,
+        titleBn: 'স্টার্টার প্যাক (মূল সেট + রঙ + ব্রাশ)',
+        titleEn: 'Starter Pack (Standard Kit + Colors + Brush)',
+        price: original,
+        salePrice: base,
+        stock: 30,
+        imageUrl: img,
+        badge: 'Popular',
+      },
+      {
+        sku: `${product.slug.slice(0, 8).toUpperCase()}-MEGA`,
+        titleBn: 'মেগা আর্ট বক্স (ডাবল শেপ + অতিরিক্ত রঙ ও ব্রাশ)',
+        titleEn: 'Mega Art Box (Double Shapes + Extra Colors & Brushes)',
+        price: Math.round(original * 1.5),
+        salePrice: Math.round(base * 1.45),
+        stock: 15,
+        imageUrl: gallery[1] || img,
+        badge: 'Best Value',
+      },
+      {
+        sku: `${product.slug.slice(0, 8).toUpperCase()}-DELUXE`,
+        titleBn: 'ডিলাক্স ফ্যামিলি গিফট সেট (সম্পূর্ণ কালেকশন)',
+        titleEn: 'Deluxe Family Gift Box (Complete Collection Set)',
+        price: Math.round(original * 2.0),
+        salePrice: Math.round(base * 1.85),
+        stock: 6,
+        imageUrl: gallery[2] || img,
+        badge: 'Save Extra',
+      },
+    ];
+  }
+
+  if (slug.includes('crayon') || product.categorySlug === 'wax-crayons') {
+    return [
+      {
+        sku: 'CRAYON-12',
+        titleBn: '১২ রঙের স্টার্টার প্যাক',
+        titleEn: '12 Colors Starter Pack',
+        price: original,
+        salePrice: base,
+        stock: 45,
+        imageUrl: img,
+      },
+      {
+        sku: 'CRAYON-24',
+        titleBn: '২৪ রঙের ক্লাসিক বক্স',
+        titleEn: '24 Colors Classic Box',
+        price: Math.round(original * 1.7),
+        salePrice: Math.round(base * 1.6),
+        stock: 6,
+        imageUrl: gallery[1] || img,
+        badge: 'Popular',
+      },
+      {
+        sku: 'CRAYON-36',
+        titleBn: '৩৬ রঙের মেগা আর্টিস্ট কালেকশন',
+        titleEn: '36 Colors Mega Artist Collection',
+        price: Math.round(original * 2.3),
+        salePrice: Math.round(base * 2.1),
+        stock: 25,
+        imageUrl: gallery[2] || img,
+      },
+    ];
+  }
+
+  return [
+    {
+      sku: `${product.slug.slice(0, 8).toUpperCase()}-STD`,
+      titleBn: 'স্ট্যান্ডার্ড প্যাক (১টি)',
+      titleEn: 'Standard Pack (1 Unit)',
+      price: original,
+      salePrice: base,
+      stock: 40,
+      imageUrl: img,
+    },
+    {
+      sku: `${product.slug.slice(0, 8).toUpperCase()}-COMBO-2`,
+      titleBn: '২-প্যাক সুপার সেভার কম্বো',
+      titleEn: '2-Pack Super Saver Combo',
+      price: Math.round(original * 1.9),
+      salePrice: Math.round(base * 1.8),
+      stock: 18,
+      imageUrl: gallery[1] || img,
+      badge: 'Best Value',
+    },
+    {
+      sku: `${product.slug.slice(0, 8).toUpperCase()}-GIFT-3`,
+      titleBn: '৩-প্যাক ফ্যামিলি মেগা গিফট সেট',
+      titleEn: '3-Pack Family Mega Gift Set',
+      price: Math.round(original * 2.8),
+      salePrice: Math.round(base * 2.5),
+      stock: 7,
+      imageUrl: gallery[2] || img,
+      badge: 'Only 7 Left',
+    },
+  ];
+}
+
 function ProductContent() {
   const params = useParams();
   const router = useRouter();
@@ -52,7 +198,28 @@ function ProductContent() {
   const { addItem, cartCount } = useCart();
 
   const allProducts = getAllProducts();
-  const product: SampleProduct = getProductBySlug(slug) || allProducts[0];
+  const initialProduct: SampleProduct = getProductBySlug(slug) || allProducts[0];
+  const [product, setProduct] = useState<SampleProduct>(initialProduct);
+
+  // Sync when slug changes or fetch latest from DB
+  useEffect(() => {
+    const memProd = getProductBySlug(slug);
+    if (memProd) {
+      setProduct(memProd);
+    }
+    let isMounted = true;
+    fetch(`/api/products/${slug}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data?.success && data?.product) {
+          setProduct((prev) => ({ ...prev, ...data.product }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [slug]);
 
   // 1 Main Image, 4-5 Supporting Images, 1-2 Product Short Videos
   const { images: galleryImages, videos: productVideos } = useMemo(() => {
@@ -73,12 +240,22 @@ function ProductContent() {
   const mainVideoRef = useRef<HTMLVideoElement | null>(null);
 
   // Variation state
-  const variations = product.variations || [];
-  const [selectedVariationIndex, setSelectedVariationIndex] = useState<number>(() => {
-    return variations.length > 0 ? 0 : -1;
-  });
+  const variations = useMemo(() => {
+    if (product.variations && product.variations.length > 0) {
+      return product.variations;
+    }
+    return getEffectiveVariations(product);
+  }, [product]);
+
+  const [selectedVariationIndex, setSelectedVariationIndex] = useState<number>(0);
   const [variationError, setVariationError] = useState<string | null>(null);
-  const currentVariation = variations[selectedVariationIndex];
+  const currentVariation = variations[selectedVariationIndex] || variations[0];
+
+  // Reset variation selection when slug changes
+  useEffect(() => {
+    setSelectedVariationIndex(0);
+    setVariationError(null);
+  }, [slug]);
 
   // Price calculations
   const currentPrice = currentVariation
@@ -722,42 +899,114 @@ function ProductContent() {
               )}
             </div>
 
-            {/* Variant Selector (If Variable Product) */}
+            {/* Variant / Option Selector */}
             {variations.length > 0 && (
-              <div className="space-y-2.5 pt-2 border-t border-[#EFEAE2]">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-[#1A1A1A]">
-                    সাইজ বা ভ্যারিয়েন্ট নির্বাচন করুন:
-                  </span>
-                  <span className="font-bold text-[#E53935]">
-                    {currentVariation?.titleBn}
-                  </span>
+              <div className="space-y-3 pt-3 border-t border-[#EFEAE2]">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">
+                      Select Variation:
+                    </span>
+                    <span className="text-xs text-[#888]">({variations.length} Options)</span>
+                  </div>
+                  {currentVariation && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-[#E53935]/10 text-[#E53935] border border-[#E53935]/20">
+                      {currentVariation.titleEn || currentVariation.titleBn}
+                    </span>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {variations.map((v, idx) => {
                     const isSelected = selectedVariationIndex === idx;
+                    const vPrice = v.salePrice || v.price;
+                    const vOrigPrice = v.price;
+                    const vHasDiscount = vOrigPrice > vPrice;
+                    const vStock = v.stock ?? 20;
+
                     return (
                       <button
-                        key={v.sku}
+                        key={v.sku || `var-${idx}`}
                         type="button"
                         onClick={() => handleSelectVariation(idx)}
-                        className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        className={`relative p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between group ${
                           isSelected
-                            ? 'border-2 border-[#E53935] bg-[#FDE8E8]/40 shadow-xs ring-1 ring-[#E53935]/20'
-                            : 'border-[#E5E0D8] bg-[#FAF8F5] hover:border-[#E53935]/60'
+                            ? 'border-2 border-[#E53935] bg-[#FFF5F5] shadow-md ring-2 ring-[#E53935]/20 scale-[1.01]'
+                            : 'border-[#E5E0D8] bg-white hover:border-[#E53935]/60 hover:bg-[#FAF8F5]'
                         }`}
                       >
-                        <span className="text-xs font-bold text-[#1F1F1F] truncate">
-                          {v.titleBn}
-                        </span>
-                        <div className="mt-1 flex items-baseline justify-between text-[11px]">
-                          <span className="font-black text-[#E53935]">
-                            ৳{v.salePrice || v.price}
-                          </span>
-                          <span className="text-[#888]">
-                            {v.stock <= 10 ? `বাকি ${v.stock}` : 'স্টকে আছে'}
-                          </span>
+                        {/* Top: Thumbnail + Badge + Checkmark */}
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {v.imageUrl && (
+                              <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shrink-0">
+                                <Image
+                                  src={v.imageUrl}
+                                  alt={v.titleEn || v.titleBn}
+                                  fill
+                                  className="object-cover group-hover:scale-105 transition-transform"
+                                />
+                              </div>
+                            )}
+                            {v.badge ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#E53935] text-white whitespace-nowrap shadow-xs">
+                                {v.badge}
+                              </span>
+                            ) : vHasDiscount ? (
+                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#E53935]/15 text-[#E53935] whitespace-nowrap">
+                                -{Math.round(((vOrigPrice - vPrice) / vOrigPrice) * 100)}%
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {/* Selected Checkmark Badge */}
+                          {isSelected && (
+                            <div className="w-5 h-5 rounded-full bg-[#E53935] text-white flex items-center justify-center shrink-0 shadow-xs">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Middle: Title in English & Bengali */}
+                        <div className="min-w-0 space-y-0.5">
+                          <p className={`text-xs font-bold leading-snug truncate ${isSelected ? 'text-[#E53935]' : 'text-[#1F1F1F]'}`}>
+                            {v.titleEn || v.titleBn}
+                          </p>
+                          {v.titleEn && v.titleBn && v.titleEn !== v.titleBn && (
+                            <p className="text-[11px] text-[#777] truncate leading-tight">
+                              {v.titleBn}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Bottom: Price + Stock */}
+                        <div className="mt-2.5 pt-2 border-t border-dashed border-[#EAE5DE] flex items-baseline justify-between gap-1">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-sm font-black text-[#E53935]">
+                              ৳{vPrice}
+                            </span>
+                            {vHasDiscount && (
+                              <span className="text-[11px] text-[#888] line-through font-medium">
+                                ৳{vOrigPrice}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-[10px] font-bold whitespace-nowrap">
+                            {vStock <= 0 ? (
+                              <span className="text-[#DC2626]">Out of stock</span>
+                            ) : vStock <= 10 ? (
+                              <span className="text-[#D97706] flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#D97706] animate-pulse" />
+                                Only {vStock} left
+                              </span>
+                            ) : (
+                              <span className="text-[#16A34A] flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
+                                In stock
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </button>
                     );
@@ -1331,9 +1580,16 @@ function ProductContent() {
             <span className="text-[11px] font-bold text-[#1F1F1F] truncate leading-tight">
               {product.titleBn}
             </span>
-            <span className="text-xs font-black text-[#E53935]">
-              {formatBDT(currentPrice, { locale: 'en' })}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-[#E53935]">
+                {formatBDT(currentPrice, { locale: 'en' })}
+              </span>
+              {currentVariation && (
+                <span className="text-[10px] text-[#666] bg-[#FAF7F2] border border-[#EFEAE2] px-1.5 py-0.5 rounded truncate max-w-[120px]">
+                  {currentVariation.titleEn || currentVariation.titleBn}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
