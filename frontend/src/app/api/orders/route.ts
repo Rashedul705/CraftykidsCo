@@ -14,6 +14,7 @@ import {
 import { connectToDatabase } from '@/lib/mongodb';
 import { Order } from '@/models/Order';
 import { getNotificationProvider } from '@/core/notification';
+import { verifyAdminRequest } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
@@ -21,6 +22,14 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status');
     const phone = searchParams.get('phone');
     const query = searchParams.get('query');
+
+    // If not searching for a customer's own phone orders, require admin authentication
+    if (!phone) {
+      const auth = await verifyAdminRequest(req);
+      if (!auth.authorized) {
+        return auth.response;
+      }
+    }
 
     // 1. Try querying MongoDB Atlas
     try {

@@ -8,6 +8,7 @@ import {
 import { SampleCategory } from '@/lib/sample-data';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Category } from '@/models/Category';
+import { verifyAdminRequest } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -38,6 +39,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const body = await req.json();
 
     if (!body.nameBn || !body.nameEn) {
@@ -100,6 +106,11 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(req.url);
     const body = await req.json();
     const slug = searchParams.get('slug') || body.slug || body.id;
@@ -154,6 +165,11 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(req.url);
     const slug = searchParams.get('slug') || searchParams.get('id');
 

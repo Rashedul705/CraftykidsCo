@@ -3,6 +3,7 @@ import { getAllProducts as getMemoryProducts, addProduct as addMemoryProduct } f
 import { SampleProduct } from '@/lib/sample-data';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
+import { verifyAdminRequest } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
@@ -74,6 +75,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const body = await req.json();
 
     if (!body.titleBn || !body.titleEn || !body.basePrice) {

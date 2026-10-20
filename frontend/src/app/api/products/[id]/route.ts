@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
 import { getProductBySlug, updateProduct as updateMemoryProduct, deleteProduct as deleteMemoryProduct } from '@/lib/store';
+import { verifyAdminRequest } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -55,6 +56,11 @@ export async function GET(req: NextRequest, context: RouteParams) {
 // 2. PATCH /api/products/[id] - Update product details or stock
 export async function PATCH(req: NextRequest, context: RouteParams) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { id } = await context.params;
     const body = await req.json();
 
@@ -159,6 +165,11 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
 // 3. DELETE /api/products/[id] - Delete product permanently
 export async function DELETE(req: NextRequest, context: RouteParams) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { id } = await context.params;
 
     let deletedFromDb = false;

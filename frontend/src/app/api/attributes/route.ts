@@ -8,6 +8,7 @@ import {
 } from '@/lib/store';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Attribute } from '@/models/Attribute';
+import { verifyAdminRequest } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -43,6 +44,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const body = await req.json();
 
     if (!body.nameBn || !body.nameEn) {
@@ -103,6 +109,11 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(req.url);
     const body = await req.json();
     const id = searchParams.get('id') || searchParams.get('code') || body.id || body.code;
@@ -156,6 +167,11 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id') || searchParams.get('code');
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AdminLoginSchema } from '@/lib/validations';
+import { validateAdminCredentials, signAdminToken, setAdminSessionCookie } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,38 +9,44 @@ export async function POST(req: NextRequest) {
     const validation = AdminLoginSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
-        { success: false, message: validation.error.issues[0]?.message },
+        { success: false, message: validation.error.issues[0]?.message || 'ভুল তথ্য' },
         { status: 400 }
       );
     }
 
     const { email, password } = validation.data;
-    const cleanEmail = email.toLowerCase().trim();
+    const authResult = await validateAdminCredentials(email, password);
 
-    // Default admin accounts for development & operations
-    const validAdmins = [
-      'admin@craftykidsco.com',
-      'admin@rongdhonukids.com',
-      'owner@craftykidsco.com',
-    ];
-
-    if (validAdmins.includes(cleanEmail) && (password === 'admin123' || password === 'craftykids2026')) {
-      return NextResponse.json({
-        success: true,
-        message: 'এডমিন লগইন সফল হয়েছে!',
-        user: {
-          email: cleanEmail,
-          role: 'ADMIN',
-          name: 'Super Admin',
-        },
-      });
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        { success: false, message: authResult.message || 'ভুল ইমেইল বা পাসওয়ার্ড' },
+        { status: 401 }
+      );
     }
 
+    // Generate signed JWT
+    const token = await signAdminToken({
+      email: authResult.user.email,
+      role: 'ADMIN',
+      name: authResult.user.name,
+      userId: authResult.user.userId,
+    });
+
+    const response = NextResponse.json({
+      success: true,
+      message: 'এডমিন লগইন সফল হয়েছে!',
+      user: authResult.user,
+    });
+
+    // Set HTTP-Only Cookie
+    setAdminSessionCookie(response, token);
+
+    return response;
+  } catch (error: any) {
+    console.error('Error during admin login:', error);
     return NextResponse.json(
-      { success: false, message: 'ভুল ইমেইল বা পাসওয়ার্ড' },
-      { status: 401 }
+      { success: false, message: 'সার্ভারে লগইনে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।' },
+      { status: 500 }
     );
-  } catch (error) {
-    return NextResponse.json({ success: false, message: 'লগইনে ত্রুটি' }, { status: 500 });
   }
 }

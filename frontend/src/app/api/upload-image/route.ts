@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminRequest } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const apiKey = process.env.IMGBB_API_KEY || process.env.NEXT_PUBLIC_IMGBB_API_KEY || 'd110c221cdd13543af463618efa8df04';
     
     let base64Image = '';

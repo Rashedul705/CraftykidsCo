@@ -6,6 +6,7 @@ import {
 } from '@/lib/store';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Attribute } from '@/models/Attribute';
+import { verifyAdminRequest } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -42,6 +43,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
 export async function PUT(req: NextRequest, { params }: RouteParams) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { id } = await params;
     const body = await req.json();
 
@@ -84,6 +90,11 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { id } = await params;
 
     try {

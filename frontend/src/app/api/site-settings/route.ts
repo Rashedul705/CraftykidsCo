@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { Setting } from '@/models/Setting';
 import { SiteSettings, defaultSiteSettings } from '@/lib/site-settings';
 import { getSiteSettings, updateSiteSettings } from '@/lib/store';
+import { verifyAdminRequest } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -53,6 +54,11 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const body = await req.json();
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ success: false, message: 'Invalid payload' }, { status: 400 });

@@ -26,6 +26,7 @@ import {
   Trash2,
   Filter,
   Minus,
+  LogOut,
 } from 'lucide-react';
 import {
   getAllOrders,
@@ -56,6 +57,7 @@ export default function AdminDashboardPage() {
   const [categories, setCategories] = useState<SampleCategory[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const [adminUser, setAdminUser] = useState<{ email: string; name?: string; role?: string } | null>(null);
 
   // Modals
   const [showAddProductModal, setShowAddProductModal] = useState<boolean>(false);
@@ -133,8 +135,30 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
+    // 1. Verify admin session
+    fetch('/api/admin/me')
+      .then((res) => {
+        if (!res.ok) {
+          window.location.href = '/admin/login';
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data?.user) setAdminUser(data.user);
+      })
+      .catch(() => {});
+
+    // 2. Refresh dashboard data
     refreshData();
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } catch {}
+    window.location.href = '/admin/login';
+  };
 
   // Filtered orders for Recent Orders & Orders tab
   const filteredOrders = useMemo(() => {
@@ -528,6 +552,30 @@ export default function AdminDashboardPage() {
           { id: 'payments-sms', label: 'Payments and SMS' },
         ])}
       </nav>
+
+      {/* Admin User Info & Logout Button */}
+      <div className="pt-4 border-t border-[#EFEAE2] flex items-center justify-between">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-200 text-amber-800 flex items-center justify-center font-bold text-xs shrink-0">
+            {adminUser?.email ? adminUser.email[0].toUpperCase() : 'A'}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-slate-800 truncate">
+              {adminUser?.name || 'Super Admin'}
+            </p>
+            <p className="text-[10px] text-slate-400 truncate">
+              {adminUser?.email || 'admin@craftykidsco.com'}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleLogout}
+          title="লগআউট"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 
@@ -573,6 +621,13 @@ export default function AdminDashboardPage() {
             className="px-3 py-1.5 rounded-lg bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] flex items-center gap-1 shadow-xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" /> Product
+          </button>
+          <button
+            onClick={handleLogout}
+            title="লগআউট"
+            className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -651,6 +706,16 @@ export default function AdminDashboardPage() {
                 className="hidden sm:inline-flex px-3.5 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] transition-colors shadow-xs cursor-pointer items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" /> Add product
+              </button>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="hidden sm:inline-flex px-3.5 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-colors cursor-pointer items-center gap-1.5 shadow-xs"
+                title="লগআউট"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>লগআউট</span>
               </button>
             </div>
           </div>

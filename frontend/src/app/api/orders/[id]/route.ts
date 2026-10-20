@@ -3,6 +3,7 @@ import { getOrderByIdOrNumber, updateOrderStatus, OrderRecord } from '@/lib/stor
 import { connectToDatabase } from '@/lib/mongodb';
 import { Order } from '@/models/Order';
 import { getNotificationProvider } from '@/core/notification';
+import { verifyAdminRequest } from '@/lib/auth';
 
 export async function GET(
   req: NextRequest,
@@ -53,6 +54,11 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await verifyAdminRequest(req);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { id } = await context.params;
     const body = await req.json();
     const { status, note } = body;
