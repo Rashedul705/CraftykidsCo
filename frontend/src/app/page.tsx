@@ -21,19 +21,25 @@ import {
   PhoneCall,
   Mail,
   MapPin,
+  Tag,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import { sampleCategories, sampleProducts } from '@/lib/sample-data';
-import { formatBDT } from '@/lib/utils';
+import { formatBDT, toBanglaDigits } from '@/lib/utils';
+import { BRAND_CONFIG } from '@/lib/brand';
 import { SiteSettings, defaultSiteSettings, HeroSlide } from '@/lib/site-settings';
+import { useToast } from '@/components/ui/Toast';
 
 export default function HomePage() {
   const [locale, setLocale] = useState<'bn' | 'en'>('bn');
-  const [emailSub, setEmailSub] = useState('');
-  const [subSuccess, setSubSuccess] = useState(false);
+  const toast = useToast();
+  const [couponCopied, setCouponCopied] = useState(false);
+  const [subscriberInput, setSubscriberInput] = useState('');
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
 
   const heroSlides: HeroSlide[] =
@@ -41,19 +47,19 @@ export default function HomePage() {
       ? settings.heroSlides.filter((s) => s.isActive !== false)
       : defaultSiteSettings.heroSlides;
 
-  // Hero Slider & Zoom State
+  // Hero Slider State
   const [currentSlide, setCurrentSlide] = useState(0);
   const safeCurrentSlide = currentSlide < heroSlides.length ? currentSlide : 0;
   const [isHovered, setIsHovered] = useState(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
-  // Auto-play timer for Hero Slider (pauses on hover or zoom modal)
+  // Auto-play timer for Hero Slider
   useEffect(() => {
     if (isHovered || isZoomModalOpen || heroSlides.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 5500);
+    }, 6000);
     return () => clearInterval(interval);
   }, [isHovered, isZoomModalOpen, heroSlides.length]);
 
@@ -81,12 +87,21 @@ export default function HomePage() {
     setLocale((prev) => (prev === 'bn' ? 'en' : 'bn'));
   };
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  // Copy coupon handler
+  const handleCopyCoupon = (code: string = 'CRAFTY10') => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard?.writeText(code);
+      setCouponCopied(true);
+      toast.success(`কুপন কোড '${code}' কপি হয়েছে! চেকআউটে ব্যবহার করুন।`);
+      setTimeout(() => setCouponCopied(false), 3000);
+    }
+  };
+
+  const handleCouponSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    if (emailSub.trim()) {
-      setSubSuccess(true);
-      setTimeout(() => setSubSuccess(false), 3000);
-      setEmailSub('');
+    if (subscriberInput.trim()) {
+      handleCopyCoupon('CRAFTY10');
+      setSubscriberInput('');
     }
   };
 
@@ -130,43 +145,46 @@ export default function HomePage() {
   }, []);
 
   // Filter products for various sections (Max 4 products in a row)
-  const newArrivalProducts = products.filter((p) => p.isNewArrival).slice(0, 4);
-  const bestSellerProducts = products.filter((p) => p.isBestSeller).slice(0, 4);
+  const newArrivalProducts = products.filter((p) => p.isNewArrival || p.badge === 'New').slice(0, 4);
+  const trendingProducts = products.filter((p) => p.isBestSeller || p.badge === 'Popular' || p.badge === 'Best Seller').slice(0, 4);
 
-  const artKitShowcaseProducts = products
+  // Category Showcases (Minimum 4 products required to show block)
+  const artKitProducts = products
     .filter((p) => p.categorySlug === 'art-kits' || (p.slug && (p.slug.includes('paint') || p.slug.includes('kit'))))
     .slice(0, 4);
 
-  const crayonShowcaseProducts = products
-    .filter((p) => p.categorySlug === 'wax-crayons')
+  const crayonProducts = products
+    .filter((p) => p.categorySlug === 'wax-crayons' || (p.slug && p.slug.includes('crayon')))
     .slice(0, 4);
 
-  const clayShowcaseProducts = products
-    .filter((p) => p.categorySlug === 'play-dough-clay')
+  const clayProducts = products
+    .filter((p) => p.categorySlug === 'play-dough-clay' || (p.slug && p.slug.includes('clay')))
     .slice(0, 4);
 
-  const educationalShowcaseProducts = products
+  const educationalProducts = products
     .filter((p) => p.categorySlug === 'educational-toys' || p.categorySlug === 'wooden-toys')
     .slice(0, 4);
 
+  const isBn = locale === 'bn';
+
   return (
-    <div className="min-h-screen bg-[#FAF7F2] text-[#222222] font-sans">
-      {/* 1. Header with CraftyKidsCo English branding & Navigation */}
+    <div className="min-h-screen bg-[#FAF7F2] text-[#2B2B2B]">
+      {/* 1. Top Bar, 2. Header, 3. Category Menu Bar */}
       <Header locale={locale} onToggleLocale={toggleLocale} announcement={settings.announcement} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-10 sm:space-y-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-10 sm:space-y-14">
         {/* ========================================================================= */}
-        {/* 2. Hero Campaign Slider with Continuous Ken-Burns Zoom & Interactive Zoom */}
+        {/* 4. Hero Banner Slider (Admin Managed)                                      */}
         {/* ========================================================================= */}
         <section
-          className="relative overflow-hidden rounded-3xl sm:rounded-[36px] shadow-[0_8px_30px_rgba(43,43,43,0.06)] border border-[#EFEAE2] select-none group"
+          className="relative overflow-hidden rounded-2xl border border-[#EFE9E0] select-none group bg-white shadow-xs"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
           {/* Slides Container */}
-          <div className="relative w-full min-h-[500px] sm:min-h-[460px] lg:min-h-[480px]">
+          <div className="relative w-full min-h-[440px] sm:min-h-[460px] lg:min-h-[480px]">
             {heroSlides.map((slide, idx) => {
               const isActive = idx === safeCurrentSlide;
               return (
@@ -176,54 +194,50 @@ export default function HomePage() {
                     isActive
                       ? 'opacity-100 z-10 relative'
                       : 'opacity-0 z-0 absolute inset-0 pointer-events-none'
-                  } bg-gradient-to-r ${slide.bgGradient} p-6 sm:p-10 lg:p-12 h-full flex flex-col justify-center`}
+                  } bg-gradient-to-r ${slide.bgGradient || 'from-[#FFF7ED] to-[#FFEDD5]'} p-6 sm:p-10 lg:p-12 h-full flex flex-col justify-center`}
                 >
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                     {/* Banner Text Content */}
                     <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-center lg:text-left">
-                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-xs text-[#222] font-bold text-xs shadow-xs border border-white/60">
-                        <Sparkles className="w-3.5 h-3.5" style={{ color: slide.accentColor }} />
-                        <span>{locale === 'bn' ? slide.tagBn : slide.tagEn}</span>
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white text-[#2B2B2B] font-bold text-xs shadow-2xs border border-[#EFE9E0]">
+                        <Sparkles className="w-3.5 h-3.5 text-[#D6403B]" />
+                        <span>{isBn ? slide.tagBn : slide.tagEn}</span>
                       </div>
 
-                      <h1 className="font-heading font-black text-2xl sm:text-4xl lg:text-5xl text-[#222222] leading-tight tracking-tight">
-                        {locale === 'bn' ? slide.titleBn : slide.titleEn}
-                        <span
-                          className="block text-xl sm:text-3xl lg:text-4xl mt-1.5"
-                          style={{ color: slide.accentColor }}
-                        >
+                      <h1 className="font-heading font-black text-2xl sm:text-4xl lg:text-5xl text-[#2B2B2B] leading-tight tracking-tight">
+                        {isBn ? slide.titleBn : slide.titleEn}
+                        <span className="block text-xl sm:text-3xl lg:text-4xl mt-1.5 text-[#D6403B]">
                           {slide.titleBnHighlight}
                         </span>
                       </h1>
 
-                      <p className="text-sm sm:text-base text-[#555555] max-w-xl mx-auto lg:mx-0 leading-relaxed font-medium">
-                        {locale === 'bn' ? slide.descBn : slide.descEn}
+                      <p className="text-sm sm:text-base text-[#6B6B6B] max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+                        {isBn ? slide.descBn : slide.descEn}
                       </p>
 
                       <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-4 pt-2">
                         <Link
-                          href={slide.ctaPrimaryHref}
-                          className="px-7 sm:px-8 py-3.5 rounded-full text-white font-black text-sm sm:text-base shadow-[0_4px_18px_rgba(229,57,53,0.35)] hover:shadow-[0_6px_24px_rgba(229,57,53,0.45)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-                          style={{ backgroundColor: slide.accentColor }}
+                          href={slide.ctaPrimaryHref || '/shop'}
+                          className="px-7 sm:px-8 py-3.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-sm sm:text-base shadow-xs hover:shadow transition-all flex items-center gap-2 cursor-pointer"
                         >
-                          <span>{slide.ctaPrimaryText}</span>
+                          <span>{slide.ctaPrimaryText || 'এখনই অর্ডার করুন'}</span>
                           <ArrowRight className="w-4 h-4" />
                         </Link>
                         <Link
-                          href={slide.ctaSecondaryHref}
-                          className="px-6 py-3.5 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#DFD7CC] text-[#333] font-bold text-sm sm:text-base shadow-xs hover:border-[#999] transition-all"
+                          href={slide.ctaSecondaryHref || '/category/wax-crayons'}
+                          className="px-6 py-3.5 rounded-xl bg-white hover:bg-[#FAF7F2] border border-[#EFE9E0] text-[#2B2B2B] font-bold text-sm sm:text-base shadow-2xs transition-all cursor-pointer"
                         >
-                          {slide.ctaSecondaryText}
+                          {slide.ctaSecondaryText || 'বিস্তারিত জানুন'}
                         </Link>
                       </div>
                     </div>
 
-                    {/* Banner Hero Photo with Continuous Ken-Burns Zoom In & Interactive Hover Zoom */}
+                    {/* Banner Hero Photo with Zoom Lightbox */}
                     <div className="lg:col-span-5 relative">
                       <div
-                        className="relative w-full aspect-4/3 sm:aspect-16/10 lg:aspect-square rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border-4 border-white group/image cursor-pointer"
+                        className="relative w-full aspect-4/3 sm:aspect-16/10 lg:aspect-square rounded-2xl overflow-hidden shadow-sm border-2 border-white group/image cursor-pointer"
                         onClick={() => setIsZoomModalOpen(true)}
-                        title="Click to Zoom"
+                        title="ছবি বড় করে দেখুন"
                       >
                         <div className="relative w-full h-full overflow-hidden bg-white">
                           <Image
@@ -231,27 +245,25 @@ export default function HomePage() {
                             alt={slide.titleBn}
                             fill
                             priority={idx === 0}
-                            className={`object-cover transition-transform duration-[6500ms] ease-out ${
-                              isActive ? 'scale-115' : 'scale-100'
-                            } group-hover/image:scale-125 transition-all duration-700`}
+                            className={`object-cover transition-transform duration-[6000ms] ease-out ${
+                              isActive ? 'scale-110' : 'scale-100'
+                            } group-hover/image:scale-115`}
                           />
                         </div>
 
                         {/* Floating Bottom Card Over Image */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent flex items-end justify-between p-4 sm:p-5 pointer-events-none">
-                          <div className="bg-white/95 backdrop-blur-xs rounded-xl p-3 shadow-md border border-white/60 max-w-[85%]">
-                            <p className="text-xs font-bold" style={{ color: slide.accentColor }}>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent flex items-end justify-between p-4 pointer-events-none">
+                          <div className="bg-white/95 backdrop-blur-xs rounded-xl p-3 shadow-xs border border-white/60 max-w-[85%]">
+                            <p className="text-xs font-bold text-[#D6403B]">
                               {slide.badgeTop}
                             </p>
-                            <p className="text-[11px] text-[#555] font-medium mt-0.5">
+                            <p className="text-[11px] text-[#6B6B6B] font-medium mt-0.5 truncate">
                               {slide.badgeBottom}
                             </p>
                           </div>
 
-                          {/* Zoom In Badge Indicator */}
-                          <div className="bg-black/60 backdrop-blur-xs text-white p-2 rounded-xl flex items-center gap-1 shadow-md shrink-0">
+                          <div className="bg-black/60 text-white p-2 rounded-xl flex items-center gap-1 shadow-xs shrink-0">
                             <Maximize2 className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-bold hidden sm:inline">Zoom</span>
                           </div>
                         </div>
                       </div>
@@ -265,31 +277,31 @@ export default function HomePage() {
           {/* Slider Navigation Arrows */}
           <button
             onClick={prevSlide}
-            className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] hover:text-[#E53935] shadow-lg flex items-center justify-center transition-all opacity-80 hover:opacity-100 hover:scale-110 z-20 cursor-pointer"
-            title="Previous Slide"
+            className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] hover:text-[#D6403B] shadow-sm flex items-center justify-center transition-all opacity-80 hover:opacity-100 z-20 cursor-pointer"
+            title="পূর্ববর্তী স্লাইড"
           >
-            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] hover:text-[#E53935] shadow-lg flex items-center justify-center transition-all opacity-80 hover:opacity-100 hover:scale-110 z-20 cursor-pointer"
-            title="Next Slide"
+            className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] hover:text-[#D6403B] shadow-sm flex items-center justify-center transition-all opacity-80 hover:opacity-100 z-20 cursor-pointer"
+            title="পরবর্তী স্লাইড"
           >
-            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+            <ChevronRight className="w-5 h-5" />
           </button>
 
-          {/* Bottom Slider Dots Indicator with active progress */}
-          <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+          {/* Bottom Slider Dots Indicator */}
+          <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-black/25 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
             {heroSlides.map((s, i) => (
               <button
                 key={s.id}
                 onClick={() => setCurrentSlide(i)}
                 className={`rounded-full transition-all cursor-pointer ${
                   safeCurrentSlide === i
-                    ? 'w-7 sm:w-8 h-2 bg-[#E53935] shadow-sm'
+                    ? 'w-6 h-2 bg-[#D6403B] shadow-xs'
                     : 'w-2 h-2 bg-white/70 hover:bg-white'
                 }`}
-                title={`Slide ${i + 1}`}
+                title={`স্লাইড ${i + 1}`}
               />
             ))}
           </div>
@@ -297,12 +309,12 @@ export default function HomePage() {
 
         {/* Fullscreen Hero Image Zoom Modal */}
         {isZoomModalOpen && heroSlides[safeCurrentSlide] && (
-          <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
               <button
                 onClick={() => setIsZoomModalOpen(false)}
-                className="absolute -top-12 right-0 text-white hover:text-[#E53935] p-2 cursor-pointer z-10"
-                title="Close"
+                className="absolute -top-12 right-0 text-white hover:text-[#D6403B] p-2 cursor-pointer z-10"
+                title="বন্ধ করুন"
               >
                 <X className="w-7 h-7" />
               </button>
@@ -314,44 +326,31 @@ export default function HomePage() {
                   className="object-contain"
                 />
               </div>
-              <div className="mt-3 flex items-center gap-2">
-                {heroSlides.map((s, idx) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setCurrentSlide(idx)}
-                    className={`w-12 h-12 rounded-xl overflow-hidden border-2 relative transition-all ${
-                      safeCurrentSlide === idx ? 'border-[#E53935] scale-105' : 'border-white/40 opacity-70'
-                    }`}
-                  >
-                    <Image src={s.imageUrl} alt="Thumbnail" fill className="object-cover" />
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* 3. Shop by Category Circular Icons ("ক্যাটাগরি অনুযায়ী কিনুন")               */}
+        {/* 5. ক্যাটাগরি অনুযায়ী কিনুন: Round Category Images                           */}
         {/* ========================================================================= */}
-        <section className="space-y-5">
+        <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
                 ক্যাটাগরি অনুযায়ী কিনুন
               </h2>
-              <p className="text-xs sm:text-sm text-[#777777]">আপনার পছন্দের বিভাগ বেছে নিন</p>
+              <p className="text-xs sm:text-sm text-[#6B6B6B]">শিশুর বয়স ও আগ্রহ অনুযায়ী পছন্দের বিভাগ বেছে নিন</p>
             </div>
             <Link
               href="/shop"
-              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
+              className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
             >
-              <span>View All</span>
+              <span>সব দেখুন</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          {/* Row of 8 circular category buttons with pastel tints */}
+          {/* Row of 8 circular category buttons */}
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 sm:gap-4">
             {sampleCategories.map((cat) => (
               <Link
@@ -360,8 +359,8 @@ export default function HomePage() {
                 className="group flex flex-col items-center text-center transition-transform hover:-translate-y-1"
               >
                 <div
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 border-2 border-transparent group-hover:border-[#E53935] transition-all flex items-center justify-center relative overflow-hidden shadow-xs"
-                  style={{ backgroundColor: cat.badgeColor || '#FFE8D6' }}
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 border-2 border-[#EFE9E0] group-hover:border-[#D6403B] transition-all flex items-center justify-center relative overflow-hidden shadow-2xs"
+                  style={{ backgroundColor: cat.badgeColor || '#FAF7F2' }}
                 >
                   <div className="relative w-full h-full rounded-full overflow-hidden">
                     <Image
@@ -373,7 +372,7 @@ export default function HomePage() {
                     />
                   </div>
                 </div>
-                <span className="mt-2 text-xs font-bold text-[#333333] group-hover:text-[#E53935] transition-colors line-clamp-1">
+                <span className="mt-2 text-xs font-bold text-[#2B2B2B] group-hover:text-[#D6403B] transition-colors line-clamp-1">
                   {cat.nameBn}
                 </span>
               </Link>
@@ -382,529 +381,691 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
-        {/* 4. Section 1: "নতুন পণ্য" (New Arrivals - 5 products grid)                  */}
+        {/* 6. নতুন পণ্য (New Products - 4 cards + সব দেখুন link)                       */}
         {/* ========================================================================= */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
                 নতুন পণ্য
               </h2>
-              <p className="text-xs sm:text-sm text-[#777777]">আমাদের সদ্য যুক্ত হওয়া কালেকশন</p>
+              <p className="text-xs sm:text-sm text-[#6B6B6B]">আমাদের সদ্য যুক্ত হওয়া ক্রিয়েটিভ কালেকশন</p>
             </div>
             <Link
-              href="/shop"
-              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
+              href="/shop?filter=new"
+              className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
             >
-              <span>View All</span>
+              <span>সব দেখুন</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          {/* 4-Column Grid (Max 4 products in a row) */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
             {newArrivalProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 id={product.id}
                 slug={product.slug || product.id}
-                title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
+                title={product.titleBn || product.title}
+                titleEn={product.titleEn}
                 price={product.basePrice ?? product.price}
                 salePrice={product.baseSalePrice ?? product.salePrice}
                 badge={product.badge}
+                ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 3)}+ বছর`}
+                safetyBadgeText="১০০% নিরাপদ"
                 rating={product.rating}
                 imageUrl={product.imageUrl || product.image}
                 locale={locale}
+                hasVariations={!!(product.variations && product.variations.length > 0)}
               />
             ))}
           </div>
         </section>
 
         {/* ========================================================================= */}
-        {/* 5. Section 2: "জনপ্রিয় পণ্য" (Best Sellers - 5 products grid)               */}
+        {/* 7. এখন ট্রেন্ডিং (Trending Now - 4 cards + সব দেখুন link)                    */}
         {/* ========================================================================= */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
-                জনপ্রিয় পণ্য
+              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
+                এখন ট্রেন্ডিং
               </h2>
-              <p className="text-xs sm:text-sm text-[#777777]">অভিভাবকদের সবচেয়ে পছন্দের খেলনা ও রঙ</p>
+              <p className="text-xs sm:text-sm text-[#6B6B6B]">অভিভাবকদের সবচেয়ে পছন্দের খেলনা ও রঙ</p>
             </div>
             <Link
-              href="/shop"
-              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
+              href="/shop?filter=trending"
+              className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
             >
-              <span>View All</span>
+              <span>সব দেখুন</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          {/* 4-Column Grid (Max 4 products in a row) */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-            {bestSellerProducts.map((product) => (
+            {trendingProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 id={product.id}
                 slug={product.slug || product.id}
-                title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
+                title={product.titleBn || product.title}
+                titleEn={product.titleEn}
                 price={product.basePrice ?? product.price}
                 salePrice={product.baseSalePrice ?? product.salePrice}
                 badge={product.badge}
+                ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 3)}+ বছর`}
+                safetyBadgeText="১০০% নিরাপদ"
                 rating={product.rating}
                 imageUrl={product.imageUrl || product.image}
                 locale={locale}
+                hasVariations={!!(product.variations && product.variations.length > 0)}
               />
             ))}
           </div>
         </section>
 
         {/* ========================================================================= */}
-        {/* 6. Category Showcase: "প্লাস্টার আর্ট কিট" (Plaster Painting Kits)          */}
+        {/* 8. One block per category (colored banner card first, then 4 products)      */}
         {/* ========================================================================= */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
-                {locale === 'bn' ? 'প্লাস্টার আর্ট ও পেইন্টিং কিট' : 'Plaster Painting Kits'}
-              </h2>
-              <p className="text-xs sm:text-sm text-[#777777]">
-                {locale === 'bn' ? 'ক্রিয়েট • পেইন্ট • প্লে - শিশুদের স্ক্রিন-ফ্রি ক্রিয়েটিভ আর্ট বক্স' : 'Create • Paint • Play - Screen-free creative activity for kids'}
-              </p>
-            </div>
-            <Link
-              href="/category/art-kits"
-              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
-            >
-              <span>View All</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-            {/* Left Category Highlight Card */}
-            <div className="lg:col-span-1 rounded-2xl bg-[#FFF3E0] border border-[#FFE0B2] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
-              <div className="space-y-3 z-10">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#E65100] bg-white/80 px-2.5 py-0.5 rounded-full inline-block">
-                  Paint & Play
-                </span>
-                <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222] leading-snug">
-                  {locale === 'bn' ? 'প্লাস্টার পেইন্টিং' : 'Plaster Kits'}
-                </h3>
-                <p className="text-xs text-[#666666] leading-relaxed">
-                  {locale === 'bn' ? 'রঙ, ব্রাশ ও থ্রিডি প্লাস্টার শেপ নিয়ে সম্পূর্ণ ক্রাফট বক্স' : 'Complete 3D plaster shapes, non-toxic colors & brush set'}
+        {/* BLOCK 1: প্লাস্টার আর্ট ও পেইন্টিং কিট */}
+        {artKitProducts.length >= 4 && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
+                  প্লাস্টার আর্ট ও পেইন্টিং কিট
+                </h2>
+                <p className="text-xs sm:text-sm text-[#6B6B6B]">
+                  ক্রিয়েট • পেইন্ট • প্লে - শিশুদের স্ক্রিন-ফ্রি ক্রিয়েটিভ আর্ট বক্স
                 </p>
               </div>
-
-              <div className="relative w-full h-44 sm:h-52 lg:h-auto lg:aspect-square my-3 sm:my-4 rounded-xl overflow-hidden shadow-xs">
-                <Image
-                  src="https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg"
-                  alt="Plaster Painting Kits Collection"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform"
-                />
-              </div>
-
               <Link
                 href="/category/art-kits"
-                className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
+                className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
               >
-                {locale === 'bn' ? 'সব পণ্য দেখুন' : 'Shop All'}
+                <span>সব দেখুন</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            {/* Right 4 Products */}
-            <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              {artKitShowcaseProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  slug={product.slug || product.id}
-                  title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
-                  price={product.basePrice ?? product.price}
-                  salePrice={product.baseSalePrice ?? product.salePrice}
-                  badge={product.badge}
-                  rating={product.rating}
-                  imageUrl={product.imageUrl || product.image}
-                  locale={locale}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
+              {/* Colored Banner Card First */}
+              <div className="lg:col-span-1 rounded-2xl bg-[#FFF3CC] border border-[#FFE28A] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
+                <div className="space-y-2.5 z-10">
+                  <span className="text-[11px] font-bold text-[#7A4E00] bg-white/90 px-2.5 py-0.5 rounded-full inline-block shadow-2xs">
+                    আর্ট ও ক্রাফট
+                  </span>
+                  <h3 className="font-heading font-black text-xl text-[#2B2B2B] leading-snug">
+                    প্লাস্টার পেইন্টিং
+                  </h3>
+                  <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                    রঙ, ব্রাশ ও থ্রিডি প্লাস্টার শেপ নিয়ে সম্পূর্ণ ক্রাফট বক্স
+                  </p>
+                </div>
 
-        {/* ========================================================================= */}
-        {/* 7. Category Showcase 1: "মোমের রঙ" (Wax Crayons Category)                  */}
-        {/* ========================================================================= */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
-                মোমের রঙ
-              </h2>
-              <p className="text-xs sm:text-sm text-[#777777]">ফুড-গ্রেড ন্যাচারাল উপাদান ও ভাইব্রেন্ট রঙ</p>
-            </div>
-            <Link
-              href="/category/wax-crayons"
-              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
-            >
-              <span>View All</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+                <div className="relative w-full h-40 sm:h-48 lg:h-auto lg:aspect-square my-3 rounded-xl overflow-hidden shadow-2xs border border-white">
+                  <Image
+                    src="https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg"
+                    alt="Plaster Painting Kits Collection"
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform"
+                  />
+                </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-            {/* Left Category Highlight Card */}
-            <div className="lg:col-span-1 rounded-2xl bg-[#FFE8D6] border border-[#FAD4BA] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
-              <div className="space-y-3 z-10">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#D84315] bg-white/70 px-2.5 py-0.5 rounded-full inline-block">
-                  Crayons Series
-                </span>
-                <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222] leading-snug">
+                <Link
+                  href="/category/art-kits"
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm text-center shadow-2xs transition-colors"
+                >
+                  সব পণ্য দেখুন
+                </Link>
+              </div>
+
+              {/* 4 Products on Right */}
+              <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                {artKitProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    slug={product.slug || product.id}
+                    title={product.titleBn || product.title}
+                    titleEn={product.titleEn}
+                    price={product.basePrice ?? product.price}
+                    salePrice={product.baseSalePrice ?? product.salePrice}
+                    badge={product.badge}
+                    ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 3)}+ বছর`}
+                    safetyBadgeText="১০০% নিরাপদ"
+                    rating={product.rating}
+                    imageUrl={product.imageUrl || product.image}
+                    locale={locale}
+                    hasVariations={!!(product.variations && product.variations.length > 0)}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* BLOCK 2: মোমের রঙ (Wax Crayons) */}
+        {crayonProducts.length >= 4 && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
                   মোমের রঙ
-                </h3>
-                <p className="text-xs text-[#666666] leading-relaxed">
-                  শিশুর হাতের উপযোগী গ্রিপ ও ওয়াশেবল মোমের রঙের সম্পূর্ণ রেঞ্জ
-                </p>
+                </h2>
+                <p className="text-xs sm:text-sm text-[#6B6B6B]">ফুড-গ্রেড প্রাকৃতিক মৌচাকের মোম ও উজ্জ্বল নিরাপদ রঙ</p>
               </div>
-
-              <div className="relative w-full h-44 sm:h-52 lg:h-auto lg:aspect-square my-3 sm:my-4 rounded-xl overflow-hidden shadow-xs">
-                <Image
-                  src="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=500&q=80"
-                  alt="Wax Crayons Collection"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform"
-                />
-              </div>
-
               <Link
                 href="/category/wax-crayons"
-                className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
+                className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
               >
-                View All Products
+                <span>সব দেখুন</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            {/* Right 4 Products */}
-            <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              {crayonShowcaseProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  slug={product.slug || product.id}
-                  title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
-                  price={product.basePrice ?? product.price}
-                  salePrice={product.baseSalePrice ?? product.salePrice}
-                  badge={product.badge}
-                  rating={product.rating}
-                  imageUrl={product.imageUrl || product.image}
-                  locale={locale}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
+              {/* Colored Banner Card First */}
+              <div className="lg:col-span-1 rounded-2xl bg-[#DDF3E6] border border-[#BDE6CE] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
+                <div className="space-y-2.5 z-10">
+                  <span className="text-[11px] font-bold text-[#1F6B43] bg-white/90 px-2.5 py-0.5 rounded-full inline-block shadow-2xs">
+                    ১০০% নন-টক্সিক
+                  </span>
+                  <h3 className="font-heading font-black text-xl text-[#2B2B2B] leading-snug">
+                    ন্যাচারাল ক্রেয়ন
+                  </h3>
+                  <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                    শিশুর নরম হাতের গ্রিপ ও ওয়াশেবল মোমের রঙের সম্পূর্ণ সিরিজ
+                  </p>
+                </div>
 
-        {/* ========================================================================= */}
-        {/* 7. Category Showcase 2: "আর্টক্লে" (Play Dough & Modeling Clay)             */}
-        {/* ========================================================================= */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
-                আর্টক্লে
-              </h2>
-              <p className="text-xs sm:text-sm text-[#777777]">সফট, গন্ধহীন ও নন-টক্সিক রঙিন মডেলিং ক্লে</p>
-            </div>
-            <Link
-              href="/category/play-dough-clay"
-              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
-            >
-              <span>View All</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+                <div className="relative w-full h-40 sm:h-48 lg:h-auto lg:aspect-square my-3 rounded-xl overflow-hidden shadow-2xs border border-white">
+                  <Image
+                    src="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=500&q=80"
+                    alt="Wax Crayons Collection"
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform"
+                  />
+                </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-            {/* Left Category Highlight Card on Pastel Blue */}
-            <div className="lg:col-span-1 rounded-2xl bg-[#E1F5FE] border border-[#B3E5FC] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
-              <div className="space-y-3 z-10">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0277BD] bg-white/70 px-2.5 py-0.5 rounded-full inline-block">
-                  Clay & Dough
-                </span>
-                <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222] leading-snug">
-                  আর্টক্লে
-                </h3>
-                <p className="text-xs text-[#666666] leading-relaxed">
-                  হাতে জড়াবে না, শুকাতে সময় নেবে না এবং সহজে আকার তৈরি উপযোগী
-                </p>
+                <Link
+                  href="/category/wax-crayons"
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm text-center shadow-2xs transition-colors"
+                >
+                  সব পণ্য দেখুন
+                </Link>
               </div>
 
-              <div className="relative w-full h-44 sm:h-52 lg:h-auto lg:aspect-square my-3 sm:my-4 rounded-xl overflow-hidden shadow-xs">
-                <Image
-                  src="https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=500&q=80"
-                  alt="Play Dough Collection"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform"
-                />
+              {/* 4 Products on Right */}
+              <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                {crayonProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    slug={product.slug || product.id}
+                    title={product.titleBn || product.title}
+                    titleEn={product.titleEn}
+                    price={product.basePrice ?? product.price}
+                    salePrice={product.baseSalePrice ?? product.salePrice}
+                    badge={product.badge}
+                    ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 2)}+ বছর`}
+                    safetyBadgeText="১০০% নিরাপদ"
+                    rating={product.rating}
+                    imageUrl={product.imageUrl || product.image}
+                    locale={locale}
+                    hasVariations={!!(product.variations && product.variations.length > 0)}
+                  />
+                ))}
               </div>
+            </div>
+          </section>
+        )}
 
+        {/* BLOCK 3: আর্টক্লে ও মডেলিং ডো (Clay & Dough) */}
+        {clayProducts.length >= 4 && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
+                  আর্টক্লে ও মডেলিং ডো
+                </h2>
+                <p className="text-xs sm:text-sm text-[#6B6B6B]">হাতে জড়াবে না, নরম ও গন্ধহীন রঙিন প্লে-ডো</p>
+              </div>
               <Link
                 href="/category/play-dough-clay"
-                className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
+                className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
               >
-                View All Products
+                <span>সব দেখুন</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            {/* Right 4 Products */}
-            <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              {clayShowcaseProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  slug={product.slug || product.id}
-                  title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
-                  price={product.basePrice ?? product.price}
-                  salePrice={product.baseSalePrice ?? product.salePrice}
-                  badge={product.badge}
-                  rating={product.rating}
-                  imageUrl={product.imageUrl || product.image}
-                  locale={locale}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
+              {/* Colored Banner Card First */}
+              <div className="lg:col-span-1 rounded-2xl bg-[#DDF1FB] border border-[#BEE4F7] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
+                <div className="space-y-2.5 z-10">
+                  <span className="text-[11px] font-bold text-[#0B5F85] bg-white/90 px-2.5 py-0.5 rounded-full inline-block shadow-2xs">
+                    মডেলিং ডো
+                  </span>
+                  <h3 className="font-heading font-black text-xl text-[#2B2B2B] leading-snug">
+                    সফট আর্টক্লে
+                  </h3>
+                  <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                    সহজে যেকোনো রূপ দেওয়ার মতো নরম এবং নিরাপদ উপাদান
+                  </p>
+                </div>
 
-        {/* ========================================================================= */}
-        {/* 8. Category Showcase 3: "শিক্ষণীয় খেলনা" (Educational & Wooden Toys)        */}
-        {/* ========================================================================= */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
-                শিক্ষণীয় খেলনা
-              </h2>
-              <p className="text-xs sm:text-sm text-[#777777]">বাচ্চাদের একাগ্রতা ও বুদ্ধিমত্তা বাড়ানোর কাঠের খেলনা</p>
-            </div>
-            <Link
-              href="/category/educational-toys"
-              className="text-xs sm:text-sm font-bold text-[#E53935] hover:text-[#C62828] flex items-center gap-1 border border-[#E53935]/20 px-3 py-1.5 rounded-full hover:bg-[#E53935]/5 transition-colors"
-            >
-              <span>View All</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+                <div className="relative w-full h-40 sm:h-48 lg:h-auto lg:aspect-square my-3 rounded-xl overflow-hidden shadow-2xs border border-white">
+                  <Image
+                    src="https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=500&q=80"
+                    alt="Play Dough Collection"
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform"
+                  />
+                </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-            {/* Left Category Highlight Card on Pastel Pink */}
-            <div className="lg:col-span-1 rounded-2xl bg-[#FCE4EC] border border-[#F8BBD0] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
-              <div className="space-y-3 z-10">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#C2185B] bg-white/70 px-2.5 py-0.5 rounded-full inline-block">
-                  Montessori Toys
-                </span>
-                <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222] leading-snug">
-                  শিক্ষণীয় খেলনা
-                </h3>
-                <p className="text-xs text-[#666666] leading-relaxed">
-                  স্ক্রিন টাইম কমিয়ে মেধা ও মনোযোগ বাড়াতে সহায়ক মন্টেসরি মেথড গেমস
-                </p>
+                <Link
+                  href="/category/play-dough-clay"
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm text-center shadow-2xs transition-colors"
+                >
+                  সব পণ্য দেখুন
+                </Link>
               </div>
 
-              <div className="relative w-full h-44 sm:h-52 lg:h-auto lg:aspect-square my-3 sm:my-4 rounded-xl overflow-hidden shadow-xs">
-                <Image
-                  src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=500&q=80"
-                  alt="Educational Toys Collection"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform"
-                />
+              {/* 4 Products on Right */}
+              <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                {clayProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    slug={product.slug || product.id}
+                    title={product.titleBn || product.title}
+                    titleEn={product.titleEn}
+                    price={product.basePrice ?? product.price}
+                    salePrice={product.baseSalePrice ?? product.salePrice}
+                    badge={product.badge}
+                    ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 3)}+ বছর`}
+                    safetyBadgeText="১০০% নিরাপদ"
+                    rating={product.rating}
+                    imageUrl={product.imageUrl || product.image}
+                    locale={locale}
+                    hasVariations={!!(product.variations && product.variations.length > 0)}
+                  />
+                ))}
               </div>
+            </div>
+          </section>
+        )}
 
+        {/* BLOCK 4: শিক্ষণীয় কাঠের খেলনা (Educational & Wooden Toys) */}
+        {educationalProducts.length >= 4 && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
+                  শিক্ষণীয় কাঠের খেলনা
+                </h2>
+                <p className="text-xs sm:text-sm text-[#6B6B6B]">শিশুর মেধার বিকাশ ও মনোযোগ বাড়াতে সহায়ক মন্টেসরি মেথড গেমস</p>
+              </div>
               <Link
                 href="/category/educational-toys"
-                className="w-full py-2.5 px-4 rounded-lg bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm text-center shadow-xs transition-colors"
+                className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
               >
-                View All Products
+                <span>সব দেখুন</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            {/* Right 4 Products */}
-            <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              {educationalShowcaseProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  slug={product.slug || product.id}
-                  title={locale === 'bn' ? (product.titleBn || product.title) : (product.titleEn || product.title)}
-                  price={product.basePrice ?? product.price}
-                  salePrice={product.baseSalePrice ?? product.salePrice}
-                  badge={product.badge}
-                  rating={product.rating}
-                  imageUrl={product.imageUrl || product.image}
-                  locale={locale}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ========================================================================= */}
-        {/* 9. Promotional Banners Row                                                */}
-        {/* ========================================================================= */}
-        {settings.promoBanners && settings.promoBanners.filter((b) => b.enabled !== false).length > 0 && (
-          <section className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            {settings.promoBanners
-              .filter((b) => b.enabled !== false)
-              .map((banner) => (
-                <div
-                  key={banner.id}
-                  className={`rounded-2xl border border-[#DFD7CC] p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center text-center sm:text-left gap-5 shadow-xs bg-gradient-to-r ${banner.bgGradient || 'from-[#FFF7ED] to-[#FFEDD5]'}`}
-                >
-                  <div className="space-y-2.5 flex-1">
-                    {banner.tag && (
-                      <span className="text-xs font-black uppercase text-[#E53935] bg-white/90 px-3 py-1 rounded-full shadow-xs inline-block">
-                        {banner.tag}
-                      </span>
-                    )}
-                    <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
-                      {banner.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-[#555555] max-w-sm leading-relaxed">
-                      {banner.desc}
-                    </p>
-                    <div className="pt-1">
-                      <Link
-                        href={banner.link || '/shop'}
-                        className="inline-block px-6 py-2.5 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors"
-                      >
-                        {banner.buttonText || 'Shop Now'}
-                      </Link>
-                    </div>
-                  </div>
-                  {banner.imageUrl && (
-                    <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl overflow-hidden shrink-0 border-2 border-white/80 shadow-md">
-                      <Image
-                        src={banner.imageUrl}
-                        alt={banner.title}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
+              {/* Colored Banner Card First */}
+              <div className="lg:col-span-1 rounded-2xl bg-[#FDE3E1] border border-[#F8BEBA] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
+                <div className="space-y-2.5 z-10">
+                  <span className="text-[11px] font-bold text-[#9B2420] bg-white/90 px-2.5 py-0.5 rounded-full inline-block shadow-2xs">
+                    মন্টেসরি মেথড
+                  </span>
+                  <h3 className="font-heading font-black text-xl text-[#2B2B2B] leading-snug">
+                    কাঠের খেলনা
+                  </h3>
+                  <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                    স্ক্রিন টাইম কমিয়ে মেধা ও মনোযোগ বাড়াতে সহায়ক নিরাপদ খেলনা
+                  </p>
                 </div>
-              ))}
+
+                <div className="relative w-full h-40 sm:h-48 lg:h-auto lg:aspect-square my-3 rounded-xl overflow-hidden shadow-2xs border border-white">
+                  <Image
+                    src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=500&q=80"
+                    alt="Educational Toys Collection"
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform"
+                  />
+                </div>
+
+                <Link
+                  href="/category/educational-toys"
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm text-center shadow-2xs transition-colors"
+                >
+                  সব পণ্য দেখুন
+                </Link>
+              </div>
+
+              {/* 4 Products on Right */}
+              <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                {educationalProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    slug={product.slug || product.id}
+                    title={product.titleBn || product.title}
+                    titleEn={product.titleEn}
+                    price={product.basePrice ?? product.price}
+                    salePrice={product.baseSalePrice ?? product.salePrice}
+                    badge={product.badge}
+                    ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 2)}+ বছর`}
+                    safetyBadgeText="১০০% নিরাপদ"
+                    rating={product.rating}
+                    imageUrl={product.imageUrl || product.image}
+                    locale={locale}
+                    hasVariations={!!(product.variations && product.variations.length > 0)}
+                  />
+                ))}
+              </div>
+            </div>
           </section>
         )}
 
         {/* ========================================================================= */}
-        {/* 10. Value Propositions: "কেন CraftyKidsCo?"                                */}
+        {/* 9. Offer and Flash Sale Banners                                            */}
         {/* ========================================================================= */}
-        <section className="space-y-6 pt-4">
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="rounded-2xl border border-[#EFE9E0] p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center text-center sm:text-left gap-5 shadow-xs bg-gradient-to-r from-[#FFF5F5] to-[#FFF0E6]">
+            <div className="space-y-2.5 flex-1">
+              <span className="text-xs font-bold uppercase text-[#D6403B] bg-white px-3 py-1 rounded-full shadow-2xs inline-block border border-[#EFE9E0]">
+                সীমিত সময়ের অফার
+              </span>
+              <h3 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
+                গিফট কম্বো ও বান্ডেল সেট
+              </h3>
+              <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-sm leading-relaxed">
+                পেইন্টিং কিট ও ওয়াটার কালার একসাথে নিলে পাচ্ছেন বিশেষ ক্যাশব্যাক ও ফ্রি গিফট র্যাপিং
+              </p>
+              <div className="pt-1">
+                <Link
+                  href="/bundles"
+                  className="inline-block px-6 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm shadow-2xs transition-colors"
+                >
+                  কম্বো অফার দেখুন
+                </Link>
+              </div>
+            </div>
+            <div className="relative w-36 h-36 sm:w-40 sm:h-40 rounded-2xl overflow-hidden shrink-0 border-2 border-white shadow-xs">
+              <Image
+                src="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=500&q=80"
+                alt="Combo Offer"
+                fill
+                className="object-cover"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#EFE9E0] p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center text-center sm:text-left gap-5 shadow-xs bg-gradient-to-r from-[#F0FDF4] to-[#E6F4EA]">
+            <div className="space-y-2.5 flex-1">
+              <span className="text-xs font-bold uppercase text-[#1F6B43] bg-white px-3 py-1 rounded-full shadow-2xs inline-block border border-[#EFE9E0]">
+                ফ্রি ডেলিভারি
+              </span>
+              <h3 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
+                ৳{toBanglaDigits(BRAND_CONFIG.freeDeliveryThreshold)}+ অর্ডারে ডেলিভারি ফ্রি
+              </h3>
+              <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-sm leading-relaxed">
+                সারা দেশে যে কোনো অর্ডারে ক্যাশ অন ডেলিভারি সুবিধা এবং সম্পূর্ণ ফ্রি শিপিং উপভোগ করুন
+              </p>
+              <div className="pt-1">
+                <Link
+                  href="/shop"
+                  className="inline-block px-6 py-2.5 rounded-xl bg-[#1F6B43] hover:bg-[#185334] text-white font-bold text-xs sm:text-sm shadow-2xs transition-colors"
+                >
+                  এখনই শপিং করুন
+                </Link>
+              </div>
+            </div>
+            <div className="relative w-36 h-36 sm:w-40 sm:h-40 rounded-2xl overflow-hidden shrink-0 border-2 border-white shadow-xs">
+              <Image
+                src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=500&q=80"
+                alt="Free Delivery Offer"
+                fill
+                className="object-cover"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 10. Why buy from us, Reviews, First Order Coupon Signup                    */}
+        {/* ========================================================================= */}
+
+        {/* A: Why buy from us (4 cards) */}
+        <section className="space-y-6 pt-2">
           <div className="text-center">
-            <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#222222]">
-              {locale === 'bn' ? settings.whyLoveUs?.headingBn || 'কেন CraftyKidsCo' : settings.whyLoveUs?.headingEn || 'Why CraftyKidsCo'}
+            <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
+              কেন {BRAND_CONFIG.name}?
             </h2>
-            <p className="text-xs sm:text-sm text-[#777777] mt-1 max-w-2xl mx-auto">
-              {settings.whyLoveUs?.subtitleBn || 'বাংলাদেশের সচেতন অভিভাবকদের আস্থার প্রথম পছন্দ'}
+            <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1 max-w-2xl mx-auto">
+              বাংলাদেশের সচেতন অভিভাবকদের আস্থার প্রথম ও নির্ভরযোগ্য পছন্দ
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(settings.whyLoveUs?.cards || defaultSiteSettings.whyLoveUs.cards).map((card, idx) => {
-              const bgColors = ['bg-[#E8F5E9] text-[#2E7D32]', 'bg-[#E3F2FD] text-[#1976D2]', 'bg-[#FFF8E1] text-[#F57F17]', 'bg-[#FCE4EC] text-[#C2185B]'];
-              return (
-                <div key={card.id || idx} className="bg-white rounded-2xl border border-[#EBE5DC] p-5 text-center flex flex-col items-center space-y-2.5 shadow-xs">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${bgColors[idx % bgColors.length]}`}>
-                    {idx === 0 && <ShieldCheck className="w-6 h-6" />}
-                    {idx === 1 && <Sparkles className="w-6 h-6" />}
-                    {idx === 2 && <RotateCcw className="w-6 h-6" />}
-                    {idx === 3 && <Headphones className="w-6 h-6" />}
-                  </div>
-                  <h3 className="font-heading font-bold text-sm sm:text-base text-[#222]">
-                    {card.titleBn}
-                  </h3>
-                  <p className="text-xs text-[#666] leading-relaxed">
-                    {card.descBn}
-                  </p>
-                </div>
-              );
-            })}
+            <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 text-center flex flex-col items-center space-y-2.5 shadow-xs">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#DDF3E6] text-[#1F6B43]">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-sm sm:text-base text-[#2B2B2B]">
+                ১০০% ফুড-গ্রেড ও নিরাপদ
+              </h3>
+              <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                কোনো ক্ষতিকর রাসায়নিক বা ভারী ধাতু নেই, শিশুর স্পর্শ ও মুখের জন্য সম্পূর্ণ নিরাপদ
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 text-center flex flex-col items-center space-y-2.5 shadow-xs">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#DDF1FB] text-[#0B5F85]">
+                <Truck className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-sm sm:text-base text-[#2B2B2B]">
+                সারা দেশে দ্রুত ডেলিভারি
+              </h3>
+              <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                ঢাকা শহরে ২৪-৪৮ ঘণ্টা এবং ঢাকার বাইরে ৩-৪ দিনে বিশ্বস্ত হোম ডেলিভারি সেবা
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 text-center flex flex-col items-center space-y-2.5 shadow-xs">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#FFF3CC] text-[#7A4E00]">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-sm sm:text-base text-[#2B2B2B]">
+                {toBanglaDigits(BRAND_CONFIG.defaultReturnDays)} দিনে সহজ রিটার্ন
+              </h3>
+              <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                পণ্য ভাঙা বা নষ্ট থাকলে কোনো ঝামেলা ছাড়া দ্রুত বিনামূল্যে রিপ্লেসমেন্ট সুবিধা
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 text-center flex flex-col items-center space-y-2.5 shadow-xs">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#FDE3E1] text-[#9B2420]">
+                <Headphones className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-sm sm:text-base text-[#2B2B2B]">
+                ২৪/৭ আন্তরিক সাপোর্ট
+              </h3>
+              <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                হোয়াটসঅ্যাপ বা ফোনে যেকোনো তথ্য ও অর্ডার সংক্রান্ত সহায়তায় আমাদের টিম সদা প্রস্তুত
+              </p>
+            </div>
           </div>
         </section>
 
-        {/* ========================================================================= */}
-        {/* 11. Customer Reviews: "সন্তুষ্ট অভিভাবকদের মতামত"                         */}
-        {/* ========================================================================= */}
+        {/* B: Customer Testimonials / Reviews (3 cards) */}
         <section className="space-y-6">
           <div className="text-center">
-            <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#222222]">
-              {locale === 'bn' ? settings.testimonials?.headingBn || 'হ্যাপি প্যারেন্টস রিভিউ' : settings.testimonials?.headingEn || 'Happy Parents Reviews'}
+            <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
+              সন্তুষ্ট অভিভাবকদের মতামত
             </h2>
-            <p className="text-xs sm:text-sm text-[#777777] mt-1">
-              {settings.testimonials?.subtitleBn || 'আমাদের প্রোডাক্ট ব্যবহার করে অভিভাবকরা কী বলছেন'}
+            <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1">
+              আমাদের প্রোডাক্ট ব্যবহার করে সম্মানিত ক্রেতারা কী বলছেন
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {(settings.testimonials?.reviews || defaultSiteSettings.testimonials.reviews).map((rev) => (
-              <div key={rev.id} className="bg-white rounded-2xl border border-[#EBE5DC] p-5 sm:p-6 space-y-3 shadow-xs flex flex-col justify-between">
-                <div className="space-y-2.5">
-                  <div className="flex items-center text-[#FFB300] gap-0.5">
-                    {[...Array(rev.rating || 5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-xs sm:text-sm text-[#444] leading-relaxed italic">
-                    &ldquo;{rev.reviewBn}&rdquo;
-                  </p>
+            <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 sm:p-6 space-y-3 shadow-xs flex flex-col justify-between">
+              <div className="space-y-2.5">
+                <div className="flex items-center text-[#FFC93C] gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-current" />
+                  ))}
                 </div>
-                <div className="pt-2 border-t border-[#F0EBE3] flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-xs text-[#222]">{rev.name}</h4>
-                    <span className="text-[11px] text-[#888]">{rev.kidAge}</span>
-                  </div>
-                  {rev.verified && (
-                    <span className="text-[10px] bg-[#E8F5E9] text-[#2E7D32] font-bold px-2 py-0.5 rounded-full">
-                      Verified Buyer
-                    </span>
-                  )}
-                </div>
+                <p className="text-xs sm:text-sm text-[#2B2B2B] leading-relaxed italic">
+                  &ldquo;প্লাস্টার আর্ট কিট পেয়ে আমার বাচ্চা ভীষণ আনন্দিত! স্ক্রিন টাইম এক নিমিষে ভুলে গিয়ে রঙ করায় মেতে উঠেছে। কোয়ালিটি দারুণ।&rdquo;
+                </p>
               </div>
-            ))}
+              <div className="pt-2 border-t border-[#EFE9E0] flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-xs text-[#2B2B2B]">সায়মা আহমেদ</h4>
+                  <span className="text-[11px] text-[#6B6B6B]">৪ বছরের বাচ্চার মা, ধানমন্ডি</span>
+                </div>
+                <span className="text-[10px] bg-[#DDF3E6] text-[#1F6B43] font-bold px-2 py-0.5 rounded-full">
+                  ভেরিফাইড
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 sm:p-6 space-y-3 shadow-xs flex flex-col justify-between">
+              <div className="space-y-2.5">
+                <div className="flex items-center text-[#FFC93C] gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-current" />
+                  ))}
+                </div>
+                <p className="text-xs sm:text-sm text-[#2B2B2B] leading-relaxed italic">
+                  &ldquo;মোমের রঙগুলো সত্যিই মুখে দেওয়ার ভয় নেই, সবচেয়ে ভালো লাগা সাধারণ পানিতেই মেঝে বা জামা থেকে রঙ উঠে যায়। শতভাগ নিরাপদ।&rdquo;
+                </p>
+              </div>
+              <div className="pt-2 border-t border-[#EFE9E0] flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-xs text-[#2B2B2B]">ফারহান সাদিক</h4>
+                  <span className="text-[11px] text-[#6B6B6B]">৩ বছরের বাচ্চার বাবা, চট্টগ্রাম</span>
+                </div>
+                <span className="text-[10px] bg-[#DDF3E6] text-[#1F6B43] font-bold px-2 py-0.5 rounded-full">
+                  ভেরিফাইড
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 sm:p-6 space-y-3 shadow-xs flex flex-col justify-between">
+              <div className="space-y-2.5">
+                <div className="flex items-center text-[#FFC93C] gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-current" />
+                  ))}
+                </div>
+                <p className="text-xs sm:text-sm text-[#2B2B2B] leading-relaxed italic">
+                  &ldquo;জন্মদিনের গিফটের জন্য ৩টি সেট অর্ডার করেছিলাম। সুন্দর প্যাকিং এবং এক দিনের মধ্যেই ঢাকায় ডেলিভারি পেয়েছি। অসাধারণ সার্ভিস!&rdquo;
+                </p>
+              </div>
+              <div className="pt-2 border-t border-[#EFE9E0] flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-xs text-[#2B2B2B]">নুসরাত জাহান</h4>
+                  <span className="text-[11px] text-[#6B6B6B]">উত্তরা, ঢাকা</span>
+                </div>
+                <span className="text-[10px] bg-[#DDF3E6] text-[#1F6B43] font-bold px-2 py-0.5 rounded-full">
+                  ভেরিফাইড
+                </span>
+              </div>
+            </div>
           </div>
         </section>
 
+        {/* C: First Order Coupon Signup */}
+        <section className="rounded-2xl bg-white border border-[#EFE9E0] p-6 sm:p-8 max-w-4xl mx-auto shadow-xs text-center space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF3CC] text-[#7A4E00] text-xs font-bold">
+            <Tag className="w-3.5 h-3.5" />
+            <span>স্পেশাল ওয়েলকাম অফার</span>
+          </div>
+
+          <div className="space-y-1">
+            <h3 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
+              প্রথম অর্ডারে ১০% বিশেষ ছাড়!
+            </h3>
+            <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-lg mx-auto">
+              আপনার মোবাইল নম্বর দিয়ে প্রথম অর্ডারের জন্য প্রোমো কোড সংগ্রহ করুন এবং চেকআউটে সরাসরি ছাড় উপভোগ করুন
+            </p>
+          </div>
+
+          {/* Coupon Code Pill & Copy Button */}
+          <div className="flex items-center justify-center gap-3 pt-1">
+            <div className="flex items-center gap-2 bg-[#FAF7F2] border-2 border-dashed border-[#D6403B] px-4 py-2 rounded-xl">
+              <span className="font-mono font-black text-lg text-[#D6403B] tracking-wider">
+                CRAFTY10
+              </span>
+              <button
+                type="button"
+                onClick={() => handleCopyCoupon('CRAFTY10')}
+                className="p-1 rounded hover:bg-black/5 text-[#6B6B6B] hover:text-[#D6403B] transition-colors cursor-pointer"
+                title="কুপন কোড কপি করুন"
+              >
+                {couponCopied ? <Check className="w-4 h-4 text-[#1F6B43]" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Input Form */}
+          <form onSubmit={handleCouponSignup} className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-md mx-auto pt-2">
+            <input
+              type="text"
+              value={subscriberInput}
+              onChange={(e) => setSubscriberInput(e.target.value)}
+              placeholder="মোবাইল নম্বর লিখুন (যেমন: 01700-000000)"
+              className="w-full px-4 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs sm:text-sm text-[#2B2B2B] focus:bg-white focus:outline-none focus:border-[#D6403B]"
+            />
+            <button
+              type="submit"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors shrink-0 cursor-pointer"
+            >
+              কোড নিন
+            </button>
+          </form>
+        </section>
+
         {/* ========================================================================= */}
-        {/* 12. School & Bulk Orders Banner                                           */}
+        {/* Bulk Orders Banner (School & Kindergarten)                                */}
         {/* ========================================================================= */}
         {settings.bulkOrderBanner?.enabled !== false && (
-          <section className="rounded-2xl bg-[#FFFDE7] border border-[#FFF59D] p-6 sm:p-8 text-center space-y-4 max-w-3xl mx-auto shadow-xs">
+          <section className="rounded-2xl bg-[#FFF3CC]/40 border border-[#FFE28A] p-6 sm:p-8 text-center space-y-4 max-w-3xl mx-auto shadow-2xs">
             <div>
-              <h3 className="font-heading font-black text-xl sm:text-2xl text-[#222222]">
+              <h3 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
                 {settings.bulkOrderBanner?.titleBn || 'স্কুল ও কিন্ডারগার্টেন বাল্ক অর্ডার'}
               </h3>
-              <p className="text-xs sm:text-sm text-[#666666] mt-1 max-w-xl mx-auto">
+              <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1 max-w-xl mx-auto">
                 {settings.bulkOrderBanner?.descBn || 'আপনার স্কুলের আর্ট ক্লাস বা জন্মদিনের রিটার্ন গিফটের জন্য বিশেষ মূল্যে ক্রাফট কিট নিতে যোগাযোগ করুন'}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
               <a
-                href={`https://wa.me/${(settings.bulkOrderBanner?.whatsappNumber || '8801711223344').replace(/[^\d]/g, '')}`}
+                href={`https://wa.me/${BRAND_CONFIG.defaultWhatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-2.5 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors flex items-center gap-1.5"
+                className="px-6 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs sm:text-sm shadow-2xs transition-colors flex items-center gap-1.5"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>{settings.bulkOrderBanner?.ctaText || 'Contact on WhatsApp'}</span>
+                <span>{settings.bulkOrderBanner?.ctaText || 'হোয়াটসঅ্যাপে যোগাযোগ করুন'}</span>
               </a>
             </div>
           </section>
         )}
       </main>
 
-      {/* Centralized Footer */}
+      {/* 11. Centralized Footer */}
       <Footer />
 
       {/* Mobile Sticky Navigation */}

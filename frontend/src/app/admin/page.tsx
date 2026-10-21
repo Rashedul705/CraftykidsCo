@@ -42,13 +42,69 @@ import { HomeSectionsEditor } from '@/components/admin/HomeSectionsEditor';
 import CategoriesAttributesEditor from '@/components/admin/CategoriesAttributesEditor';
 import AddProductForm from '@/components/admin/AddProductForm';
 import OrdersManager from '@/components/admin/OrdersManager';
+import { BundlesManager } from '@/components/admin/BundlesManager';
+import { DashboardView } from '@/components/admin/DashboardView';
+import { SmsCampaignsManager } from '@/components/admin/SmsCampaignsManager';
+import { IncompleteOrdersManager } from '@/components/admin/IncompleteOrdersManager';
+import { CustomersManager } from '@/components/admin/CustomersManager';
+import { CouponsManager } from '@/components/admin/CouponsManager';
+import { StockManager } from '@/components/admin/StockManager';
+import { DeliveryChargesManager } from '@/components/admin/DeliveryChargesManager';
+import { StaffRolesManager } from '@/components/admin/StaffRolesManager';
+import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
+import { AdminShell, AdminRole } from '@/components/admin/AdminShell';
+import { StatusPill } from '@/components/ui/Pill';
+
+const VALID_ADMIN_TABS = [
+  'dashboard',
+  'reports',
+  'orders',
+  'incomplete-orders',
+  'customers',
+  'coupons',
+  'sms-campaigns',
+  'products',
+  'categories',
+  'bundles',
+  'stock',
+  'steadfast',
+  'delivery-charges',
+  'block-list',
+  'blog',
+  'faq-policies',
+  'home-sections',
+  'staff',
+  'payments-sms',
+];
 
 export default function AdminDashboardPage() {
-  // Navigation State
+  // Navigation State with URL & LocalStorage persistence
   const [activeNav, setActiveNav] = useState<string>('dashboard');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
   const [productViewMode, setProductViewMode] = useState<'list' | 'add' | 'edit'>('list');
+
+  // Unified Tab Change Handler that keeps URL & localStorage in sync
+  const handleNavChange = (tabId: string, customMode?: 'list' | 'add' | 'edit') => {
+    setActiveNav(tabId);
+    if (customMode) {
+      setProductViewMode(customMode);
+    } else if (tabId === 'products') {
+      setProductViewMode('list');
+    }
+    setIsMobileNavOpen(false);
+
+    try {
+      localStorage.setItem('craftykidsco_admin_tab', tabId);
+      const newUrl = new URL(window.location.href);
+      if (tabId === 'dashboard') {
+        newUrl.searchParams.delete('tab');
+      } else {
+        newUrl.searchParams.set('tab', tabId);
+      }
+      window.history.pushState({ tab: tabId }, '', newUrl.toString());
+    } catch {}
+  };
 
   // Store Data States
   const [orders, setOrders] = useState<OrderRecord[]>([]);
@@ -57,6 +113,7 @@ export default function AdminDashboardPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [adminUser, setAdminUser] = useState<{ email: string; name?: string; role?: string } | null>(null);
+  const [userRole, setUserRole] = useState<AdminRole>('admin');
 
   // Modals
   const [showAddProductModal, setShowAddProductModal] = useState<boolean>(false);
@@ -144,16 +201,57 @@ export default function AdminDashboardPage() {
         return res.json();
       })
       .then((data) => {
-        if (data?.user) setAdminUser(data.user);
+        if (data?.user) {
+          setAdminUser(data.user);
+          if (data.user.role === 'order_handler' || data.user.role === 'product_manager') {
+            setUserRole(data.user.role);
+          }
+        }
       })
       .catch(() => {});
 
     // 2. Refresh dashboard data
     refreshData();
+
+    // 3. Restore active tab from URL query parameter or localStorage
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabFromUrl = urlParams.get('tab');
+      const hashFromUrl = window.location.hash.replace('#', '');
+      const savedTab = localStorage.getItem('craftykidsco_admin_tab');
+
+      const targetTab = tabFromUrl || (hashFromUrl && VALID_ADMIN_TABS.includes(hashFromUrl) ? hashFromUrl : savedTab);
+
+      if (targetTab && VALID_ADMIN_TABS.includes(targetTab)) {
+        setActiveNav(targetTab);
+        if (!tabFromUrl && targetTab !== 'dashboard') {
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.set('tab', targetTab);
+          window.history.replaceState({ tab: targetTab }, '', newUrl.toString());
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to restore active tab:', err);
+    }
+
+    // 4. Handle browser back / forward navigation
+    const handlePopState = () => {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab') || 'dashboard';
+        if (VALID_ADMIN_TABS.includes(tab)) {
+          setActiveNav(tab);
+        }
+      } catch {}
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('craftykidsco_admin_tab');
       await fetch('/api/admin/logout', { method: 'POST' });
     } catch {}
     window.location.href = '/admin/login';
@@ -478,566 +576,86 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Render Status Badge matching exact screenshot
+  // Render Status Badge using design tokens
   const renderStatusBadge = (status: string) => {
     switch (status) {
       case 'CONFIRMED':
         return (
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#92400E]">
+          <StatusPill variant="yellow" dot>
             Confirmed
-          </span>
+          </StatusPill>
         );
       case 'SHIPPED':
         return (
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[#E0F2FE] text-[#0369A1]">
+          <StatusPill variant="blue" dot>
             Shipped
-          </span>
+          </StatusPill>
         );
       case 'DELIVERED':
         return (
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[#DCFCE7] text-[#15803D]">
+          <StatusPill variant="green" dot>
             Delivered
-          </span>
+          </StatusPill>
         );
       case 'CANCELLED':
       case 'RETURNED':
         return (
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[#FEE2E2] text-[#DC2626]">
-            Returned
-          </span>
+          <StatusPill variant="red" dot>
+            {status === 'CANCELLED' ? 'Cancelled' : 'Returned'}
+          </StatusPill>
         );
       case 'PENDING':
       default:
         return (
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[#FEE2E2] text-[#B91C1C]">
+          <StatusPill variant="yellow" dot>
             Pending
-          </span>
+          </StatusPill>
         );
     }
   };
 
-  const renderNavSection = (title: string, items: { id: string; label: string }[]) => (
-    <div className="space-y-1">
-      <p className="text-[11px] font-bold text-[#9E9E9E] tracking-wider uppercase px-3 mb-1.5">
-        {title}
-      </p>
-      {items.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => {
-            setActiveNav(item.id);
-            if (item.id === 'products') {
-              setProductViewMode('list');
-            }
-            setIsMobileNavOpen(false);
-          }}
-          className={`w-full text-left px-3.5 py-2 rounded-xl transition-colors cursor-pointer text-[13px] ${
-            activeNav === item.id
-              ? 'bg-[#FDE8E8] text-[#D32F2F] font-bold'
-              : 'text-[#3E3E3E] hover:bg-[#FAF7F2] font-medium'
-          }`}
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
-  );
-
-  const sidebarContent = (
-    <div className="space-y-6">
-      {/* Brand Header */}
-      <div className="flex items-center justify-between px-1 py-1">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#D32F2F] text-white flex items-center justify-center font-bold text-xl shadow-xs">
-            <span className="font-heading">র</span>
-          </div>
-          <div>
-            <h2 className="font-heading font-black text-base text-[#1F1F1F] leading-tight">
-              CraftyKidsCo
-            </h2>
-            <p className="text-xs text-[#8A8A8A] font-medium">Admin panel</p>
-          </div>
-        </div>
-        {/* Close button for mobile drawer */}
-        <button
-          onClick={() => setIsMobileNavOpen(false)}
-          className="lg:hidden p-1.5 rounded-lg text-[#6B6B6B] hover:text-[#1F1F1F] hover:bg-[#FAF7F2]"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Navigation Links Grouped by Section */}
-      <nav className="space-y-5 text-[13px]">
-        {renderNavSection('OVERVIEW', [
-          { id: 'dashboard', label: 'Dashboard' },
-          { id: 'reports', label: 'Reports' },
-        ])}
-        {renderNavSection('SALES', [
-          { id: 'orders', label: 'Orders' },
-          { id: 'incomplete-orders', label: 'Incomplete orders' },
-          { id: 'customers', label: 'Customers' },
-          { id: 'coupons', label: 'Coupons' },
-          { id: 'sms-campaigns', label: 'SMS campaigns' },
-        ])}
-        {renderNavSection('CATALOG', [
-          { id: 'products', label: 'Products' },
-          { id: 'categories', label: 'Categories and attributes' },
-          { id: 'bundles', label: 'Bundles' },
-          { id: 'stock', label: 'Stock' },
-        ])}
-        {renderNavSection('SHIPPING', [
-          { id: 'steadfast', label: 'Steadfast courier' },
-          { id: 'delivery-charges', label: 'Delivery charges' },
-          { id: 'block-list', label: 'Block list' },
-        ])}
-        {renderNavSection('CONTENT', [
-          { id: 'blog', label: 'Blog' },
-          { id: 'faq-policies', label: 'FAQ and policies' },
-          { id: 'home-sections', label: 'Home sections' },
-        ])}
-        {renderNavSection('SYSTEM', [
-          { id: 'staff', label: 'Staff and roles' },
-          { id: 'payments-sms', label: 'Payments and SMS' },
-        ])}
-      </nav>
-
-      {/* Admin User Info & Logout Button */}
-      <div className="pt-4 border-t border-[#EFEAE2] flex items-center justify-between">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-200 text-amber-800 flex items-center justify-center font-bold text-xs shrink-0">
-            {adminUser?.email ? adminUser.email[0].toUpperCase() : 'A'}
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-slate-800 truncate">
-              {adminUser?.name || 'Super Admin'}
-            </p>
-            <p className="text-[10px] text-slate-400 truncate">
-              {adminUser?.email || 'admin@craftykidsco.com'}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          title="লগআউট"
-          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-[#FAF7F2] flex flex-col lg:flex-row text-[#2B2B2B] font-sans antialiased">
-      {/* 1. Mobile Admin Top Bar (< lg) */}
-      <div className="lg:hidden bg-white border-b border-[#EFEAE2] px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setIsMobileNavOpen(true)}
-            className="p-2 rounded-xl text-[#3E3E3E] hover:bg-[#FAF7F2] border border-[#EFEAE2] active:scale-95 transition-all cursor-pointer"
-            aria-label="Open Admin Navigation"
-          >
-            <Menu className="w-5 h-5" />
+    <AdminShell
+      activeTab={activeNav}
+      onTabChange={(tabId) => handleNavChange(tabId)}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      onMainAction={(actionKey) => {
+        if (actionKey === 'add_product') {
+          handleNavChange('products', 'add');
+        } else if (actionKey === 'create_order') {
+          handleNavChange('orders');
+        } else if (actionKey === 'add_category') {
+          setShowAddCategoryModal(true);
+        }
+      }}
+      onLogout={handleLogout}
+      userRole={userRole}
+      onRoleChange={setUserRole}
+    >
+      {/* Action Feedback Toast */}
+      {actionFeedback && (
+        <div className="p-3.5 rounded-[12px] bg-[#DDF3E6] border border-[#BDE7CC] text-xs font-bold text-[#1F6B43] flex items-center justify-between">
+          <span>{actionFeedback}</span>
+          <button onClick={() => setActionFeedback(null)} className="text-[#6B6B6B] hover:text-[#2B2B2B]">
+            ✕
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#D32F2F] text-white flex items-center justify-center font-bold text-base">
-              <span className="font-heading">র</span>
-            </div>
-            <div>
-              <span className="font-heading font-black text-sm text-[#1F1F1F] block leading-tight">
-                CraftyKidsCo
-              </span>
-              <span className="text-[10px] text-[#888] font-bold uppercase tracking-wider">
-                {activeNav}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="px-2.5 py-1.5 rounded-lg border border-[#E5E0D8] text-xs font-semibold text-[#2B2B2B] hover:bg-[#FAF7F2]"
-          >
-            Store
-          </Link>
-          <button
-            onClick={() => {
-              setActiveNav('products');
-              setProductViewMode('add');
-            }}
-            className="px-3 py-1.5 rounded-lg bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] flex items-center gap-1 shadow-xs cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" /> Product
-          </button>
-          <button
-            onClick={handleLogout}
-            title="লগআউট"
-            className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Mobile Drawer (< lg) */}
-      {isMobileNavOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
-            onClick={() => setIsMobileNavOpen(false)}
-          />
-          <aside className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white border-r border-[#EFEAE2] p-5 flex flex-col justify-between overflow-y-auto shadow-2xl z-50">
-            {sidebarContent}
-            <div className="pt-4 border-t border-[#EFEAE2] text-[11px] text-[#8A8A8A] px-2">
-              <p>© 2026 CraftyKidsCo</p>
-              <p className="text-[10px]">Mobile-first E-commerce</p>
-            </div>
-          </aside>
         </div>
       )}
 
-      {/* 3. Desktop Persistent Sidebar (lg+) */}
-      <aside className="w-64 flex-shrink-0 bg-white border-r border-[#EFEAE2] min-h-screen p-5 hidden lg:flex flex-col justify-between">
-        {sidebarContent}
-        <div className="pt-4 border-t border-[#EFEAE2] text-[11px] text-[#8A8A8A] px-2">
-          <p>© 2026 CraftyKidsCo</p>
-          <p className="text-[10px]">Mobile-first E-commerce</p>
-        </div>
-      </aside>
-
-      {/* =========================================================================
-          MAIN CONTENT AREA
-         ========================================================================= */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1280px] w-full min-w-0">
-        {/* Top Header Bar */}
-        {!(activeNav === 'products' && (productViewMode === 'add' || productViewMode === 'edit')) && activeNav !== 'orders' && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h1 className="font-heading font-black text-xl sm:text-2xl lg:text-3xl text-[#1F1F1F]">
-              {activeNav === 'dashboard' && 'Dashboard'}
-              {activeNav === 'orders' && 'Orders'}
-              {activeNav === 'products' && 'Products & Inventory'}
-              {activeNav === 'categories' && 'Categories & Attributes'}
-              {activeNav === 'steadfast' && 'Steadfast Courier Dispatch'}
-              {activeNav === 'stock' && 'Stock Inventory'}
-              {activeNav === 'home-sections' && 'Home Sections & Storefront Customizer'}
-              {!['dashboard', 'orders', 'products', 'categories', 'steadfast', 'stock', 'home-sections'].includes(activeNav) &&
-                activeNav.replace('-', ' ').toUpperCase()}
-            </h1>
-
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
-              {/* Search Input Box */}
-              <div className="relative flex-1 sm:w-64 lg:w-80 min-w-[180px]">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search orders, phone, products"
-                  className="w-full bg-white border border-[#E5E0D8] rounded-xl px-4 py-2 text-xs text-[#2B2B2B] placeholder:text-[#999999] focus:outline-none focus:border-[#D32F2F] shadow-xs"
-                />
-              </div>
-
-              {/* View Store Button */}
-              <Link
-                href="/"
-                className="hidden sm:inline-flex px-3.5 py-2 rounded-xl bg-white border border-[#E5E0D8] text-xs font-semibold text-[#2B2B2B] hover:bg-[#FAF7F2] transition-colors shadow-xs"
-              >
-                View store
-              </Link>
-
-              {/* Add Product Button */}
-              <button
-                onClick={() => {
-                  setActiveNav('products');
-                  setProductViewMode('add');
-                }}
-                className="hidden sm:inline-flex px-3.5 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] transition-colors shadow-xs cursor-pointer items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add product
-              </button>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="hidden sm:inline-flex px-3.5 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-colors cursor-pointer items-center gap-1.5 shadow-xs"
-                title="লগআউট"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>লগআউট</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Action Feedback Toast */}
-        {actionFeedback && (
-          <div className="p-3.5 rounded-2xl bg-[#EBF8EE] border border-[#C4EDCD] text-xs font-bold text-[#2D7A3E] flex items-center justify-between shadow-xs">
-            <span>{actionFeedback}</span>
-            <button onClick={() => setActionFeedback(null)} className="text-[#6B6B6B] hover:text-[#2B2B2B]">
-              ✕
-            </button>
-          </div>
-        )}
-
         {/* =====================================================================
-            VIEW 1: DASHBOARD (MATCHING SCREENSHOT EXACTLY)
+            VIEW 1: DASHBOARD (PART B3 SPECIFICATION)
            ===================================================================== */}
         {activeNav === 'dashboard' && (
-          <div className="space-y-6">
-            {/* 4 TOP METRIC CARDS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Card 1: Today sales */}
-              <div className="bg-white rounded-2xl border border-[#EFEAE2] p-5 shadow-xs flex flex-col justify-between">
-                <span className="text-xs text-[#6B6B6B] font-medium">Today sales</span>
-                <div className="my-2.5">
-                  <span className="text-2xl lg:text-[28px] font-black text-[#1A1A1A] tracking-tight">
-                    ৳42,380
-                  </span>
-                </div>
-                <div>
-                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F5E9] text-[#2E7D32]">
-                    +12% vs yesterday
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 2: Orders today */}
-              <div className="bg-white rounded-2xl border border-[#EFEAE2] p-5 shadow-xs flex flex-col justify-between">
-                <span className="text-xs text-[#6B6B6B] font-medium">Orders today</span>
-                <div className="my-2.5">
-                  <span className="text-2xl lg:text-[28px] font-black text-[#1A1A1A] tracking-tight">
-                    {Math.max(38, orders.length)}
-                  </span>
-                </div>
-                <div>
-                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FEF3C7] text-[#92400E]">
-                    9 need confirmation
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 3: COD to collect */}
-              <div className="bg-white rounded-2xl border border-[#EFEAE2] p-5 shadow-xs flex flex-col justify-between">
-                <span className="text-xs text-[#6B6B6B] font-medium">COD to collect</span>
-                <div className="my-2.5">
-                  <span className="text-2xl lg:text-[28px] font-black text-[#1A1A1A] tracking-tight">
-                    ৳186,200
-                  </span>
-                </div>
-                <div>
-                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#E0F2FE] text-[#0369A1]">
-                    24 parcels in transit
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 4: Return rate */}
-              <div className="bg-white rounded-2xl border border-[#EFEAE2] p-5 shadow-xs flex flex-col justify-between">
-                <span className="text-xs text-[#6B6B6B] font-medium">Return rate</span>
-                <div className="my-2.5">
-                  <span className="text-2xl lg:text-[28px] font-black text-[#1A1A1A] tracking-tight">
-                    4.2%
-                  </span>
-                </div>
-                <div>
-                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FEE2E2] text-[#B91C1C]">
-                    Last 30 days
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* MIDDLE ROW: CHART + NEEDS ATTENTION */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-              {/* Left: Sales, last 7 days chart */}
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-heading font-black text-base text-[#1A1A1A]">
-                    Sales, last 7 days
-                  </h3>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#EBF5FA] text-[#0284C7]">
-                    Daily
-                  </span>
-                </div>
-
-                {/* Smooth Chart SVG with exact aesthetic */}
-                <div className="relative w-full h-44 pt-2">
-                  <svg
-                    viewBox="0 0 600 160"
-                    className="w-full h-full overflow-visible"
-                    preserveAspectRatio="none"
-                  >
-                    {/* Horizontal light grid lines */}
-                    <line x1="0" y1="30" x2="600" y2="30" stroke="#F0EAE1" strokeWidth="1" />
-                    <line x1="0" y1="80" x2="600" y2="80" stroke="#F0EAE1" strokeWidth="1" />
-                    <line x1="0" y1="130" x2="600" y2="130" stroke="#F0EAE1" strokeWidth="1" />
-
-                    {/* Gradient Area under line */}
-                    <defs>
-                      <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#D32F2F" stopOpacity="0.12" />
-                        <stop offset="100%" stopColor="#D32F2F" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
-
-                    <path
-                      d="M 30,130 C 80,120 110,110 160,115 C 210,120 250,90 310,70 C 370,100 420,80 470,60 C 520,50 560,40 590,30 L 590,140 L 30,140 Z"
-                      fill="url(#salesGrad)"
-                    />
-
-                    {/* Main Red Curve Line */}
-                    <path
-                      d="M 30,130 C 80,120 110,110 160,115 C 210,120 250,90 310,70 C 370,100 420,80 470,60 C 520,50 560,40 590,30"
-                      fill="none"
-                      stroke="#D32F2F"
-                      strokeWidth="2.7"
-                      strokeLinecap="round"
-                    />
-
-                    {/* Golden/Yellow Dots matching screenshot at day 4 & day 7 */}
-                    <circle cx="310" cy="70" r="4.5" fill="#F59E0B" stroke="#FFFFFF" strokeWidth="2" />
-                    <circle cx="590" cy="30" r="4.5" fill="#F59E0B" stroke="#FFFFFF" strokeWidth="2" />
-                  </svg>
-                </div>
-
-                {/* Day labels below chart */}
-                <div className="flex justify-between text-[11px] text-[#8A8A8A] font-medium pt-3 border-t border-[#F0EAE1]">
-                  <span>Sat</span>
-                  <span>Sun</span>
-                  <span>Mon</span>
-                  <span>Tue</span>
-                  <span>Wed</span>
-                  <span>Thu</span>
-                  <span className="font-bold text-[#D32F2F]">Today</span>
-                </div>
-              </div>
-
-              {/* Right: Needs attention */}
-              <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs flex flex-col justify-between">
-                <h3 className="font-heading font-black text-base text-[#1A1A1A] mb-3">
-                  Needs attention
-                </h3>
-
-                <div className="space-y-4 text-xs font-medium text-[#2B2B2B]">
-                  {/* Item 1 */}
-                  <div
-                    onClick={() => setActiveNav('stock')}
-                    className="flex items-center justify-between cursor-pointer hover:bg-[#FAF7F2] p-2 rounded-xl transition-colors"
-                  >
-                    <span>Low stock variations</span>
-                    <span className="w-6 h-6 rounded-full bg-[#FEF3C7] text-[#D97706] font-bold flex items-center justify-center text-xs">
-                      6
-                    </span>
-                  </div>
-
-                  {/* Item 2 */}
-                  <div
-                    onClick={() => setActiveNav('incomplete-orders')}
-                    className="flex items-center justify-between cursor-pointer hover:bg-[#FAF7F2] p-2 rounded-xl transition-colors"
-                  >
-                    <span>Incomplete orders</span>
-                    <span className="w-6 h-6 rounded-full bg-[#E0F2FE] text-[#0284C7] font-bold flex items-center justify-center text-xs">
-                      11
-                    </span>
-                  </div>
-
-                  {/* Item 3 */}
-                  <div
-                    onClick={() => setActiveNav('customers')}
-                    className="flex items-center justify-between cursor-pointer hover:bg-[#FAF7F2] p-2 rounded-xl transition-colors"
-                  >
-                    <span>High risk customers</span>
-                    <span className="w-6 h-6 rounded-full bg-[#FEE2E2] text-[#DC2626] font-bold flex items-center justify-center text-xs">
-                      3
-                    </span>
-                  </div>
-
-                  {/* Item 4 */}
-                  <div
-                    onClick={() => setActiveNav('steadfast')}
-                    className="flex items-center justify-between cursor-pointer hover:bg-[#FAF7F2] p-2 rounded-xl transition-colors"
-                  >
-                    <span>Courier sync errors</span>
-                    <span className="w-6 h-6 rounded-full bg-[#DCFCE7] text-[#16A34A] font-bold flex items-center justify-center text-xs">
-                      0
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <p className="text-[11px] text-[#8A8A8A]">All systems synchronized with Steadfast</p>
-                </div>
-              </div>
-            </div>
-
-            {/* BOTTOM SECTION: RECENT ORDERS CARD (MATCHING SCREENSHOT) */}
-            <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-1">
-                <h3 className="font-heading font-black text-base text-[#1A1A1A]">
-                  Recent orders
-                </h3>
-                <button
-                  onClick={() => setActiveNav('orders')}
-                  className="text-xs font-bold text-[#D32F2F] hover:underline cursor-pointer"
-                >
-                  View all
-                </button>
-              </div>
-
-              {/* Recent Orders Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs min-w-[540px]">
-                  <thead>
-                    <tr className="border-b border-[#EFEAE2] text-[#6B6B6B]">
-                      <th className="pb-3 font-semibold">Order</th>
-                      <th className="pb-3 font-semibold">Customer</th>
-                      <th className="pb-3 font-semibold">District</th>
-                      <th className="pb-3 font-semibold">Total</th>
-                      <th className="pb-3 font-semibold">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#EFEAE2]">
-                    {/* Render top recent orders */}
-                    {filteredOrders.slice(0, 7).map((ord, idx) => (
-                      <tr
-                        key={ord.id || ord.orderNumber || `dash-ord-${idx}`}
-                        onClick={() => setSelectedOrder(ord)}
-                        className="hover:bg-[#FAF7F2] transition-colors cursor-pointer group"
-                      >
-                        <td className="py-3.5 font-bold text-[#D32F2F] group-hover:underline">
-                          <div>{ord.orderNumber}</div>
-                          {(ord.trackingCode || ord.consignmentId) && (
-                            <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-md bg-[#E0F2FE] text-[#0369A1] font-mono font-bold text-[10px] border border-[#BAE6FD]">
-                              <Truck className="w-2.5 h-2.5 text-[#0284C7] shrink-0" />
-                              <span>{ord.trackingCode || ord.consignmentId}</span>
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 font-medium text-[#2B2B2B]">
-                          {ord.customerName}
-                        </td>
-                        <td className="py-3.5 text-[#4A4A4A]">
-                          {ord.district}
-                        </td>
-                        <td className="py-3.5 font-medium text-[#1A1A1A]">
-                          ৳{ord.totalAmount.toLocaleString()}
-                        </td>
-                        <td className="py-3.5">
-                          {renderStatusBadge(ord.status)}
-                          {(ord.trackingCode || ord.consignmentId) && (
-                            <span className="block mt-0.5 text-[10px] text-[#0369A1] font-mono font-bold">
-                              Parcel: #{ord.trackingCode || ord.consignmentId}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <DashboardView
+            orders={orders}
+            products={products}
+            onNavigateTab={handleNavChange}
+            onSelectOrder={setSelectedOrder}
+            onStatusChange={handleStatusChange}
+            onSendToSteadfast={handleSendToSteadfast}
+            userRole={userRole}
+          />
         )}
 
         {/* =====================================================================
@@ -1051,6 +669,13 @@ export default function AdminDashboardPage() {
             onSendToSteadfast={handleSendToSteadfast}
             products={products}
           />
+        )}
+
+        {/* =====================================================================
+            VIEW: SMS CAMPAIGNS (PART B7 SPECIFICATION)
+           ===================================================================== */}
+        {activeNav === 'sms-campaigns' && (
+          <SmsCampaignsManager />
         )}
 
         {/* =====================================================================
@@ -1266,6 +891,17 @@ export default function AdminDashboardPage() {
         )}
 
         {/* =====================================================================
+            VIEW: BUNDLES & GIFT SETS (PART B6)
+           ===================================================================== */}
+        {activeNav === 'bundles' && (
+          <BundlesManager
+            products={products}
+            userRole={userRole}
+            onNavigateTab={handleNavChange}
+          />
+        )}
+
+        {/* =====================================================================
             VIEW 5: STEADFAST COURIER AUTOMATION
            ===================================================================== */}
         {activeNav === 'steadfast' && (
@@ -1367,25 +1003,45 @@ export default function AdminDashboardPage() {
           <HomeSectionsEditor onSaved={refreshData} />
         )}
 
-        {/* Fallback for other sidebar sections */}
-        {!['dashboard', 'orders', 'products', 'categories', 'steadfast', 'home-sections'].includes(activeNav) && (
-          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-8 shadow-xs text-center space-y-3">
-            <span className="text-3xl">⚙️</span>
-            <h3 className="font-heading font-bold text-lg text-[#1A1A1A]">
-              {activeNav.replace('-', ' ').toUpperCase()} Section
-            </h3>
-            <p className="text-xs text-[#6B6B6B] max-w-sm mx-auto">
-              This module is scheduled for Phase 2/3. You can manage live orders, catalog products, and Steadfast courier dispatches right now.
-            </p>
-            <button
-              onClick={() => setActiveNav('dashboard')}
-              className="px-4 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold"
-            >
-              Back to Dashboard
-            </button>
-          </div>
+        {/* VIEW 7: INCOMPLETE ORDERS (PART B8) */}
+        {activeNav === 'incomplete-orders' && (
+          <IncompleteOrdersManager onRefreshOrders={refreshData} onNavigateTab={handleNavChange} />
         )}
-      </main>
+
+        {/* VIEW 8: CUSTOMERS DIRECTORY & RISK (PART B8) */}
+        {activeNav === 'customers' && (
+          <CustomersManager
+            orders={orders}
+            onSelectOrder={setSelectedOrder}
+            onNavigateTab={handleNavChange}
+          />
+        )}
+
+        {/* VIEW 9: COUPONS (PART B8) */}
+        {activeNav === 'coupons' && (
+          <CouponsManager />
+        )}
+
+        {/* VIEW 10: STOCK ADJUSTER (PART B8) */}
+        {activeNav === 'stock' && (
+          <StockManager products={products} onRefresh={refreshData} />
+        )}
+
+        {/* VIEW 11: DELIVERY CHARGES (PART B8) */}
+        {activeNav === 'delivery-charges' && (
+          <DeliveryChargesManager />
+        )}
+
+        {/* VIEW 12: STAFF AND ROLES (PART B8) */}
+        {activeNav === 'staff' && (
+          <StaffRolesManager />
+        )}
+
+        {/* VIEW 13: SYSTEM SETTINGS (PAYMENTS, SMS, BLOCKLIST, BLOG, FAQ, REPORTS) */}
+        {['payments-sms', 'block-list', 'blog', 'faq-policies', 'reports'].includes(activeNav) && (
+          <SystemSettingsManager activeTab={activeNav as any} onNavigateTab={handleNavChange} />
+        )}
+      {/* View ends */}
 
       {/* =========================================================================
           ORDER DETAIL MODAL / DRAWER (WHEN ANY ORDER ROW IS CLICKED FROM OTHER VIEWS)
@@ -1842,6 +1498,6 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
-    </div>
+    </AdminShell>
   );
 }

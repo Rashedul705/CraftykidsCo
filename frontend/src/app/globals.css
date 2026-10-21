@@ -1,46 +1,71 @@
 @import "tailwindcss";
 
 :root {
-  --background: #FFFFFF;
-  --background-off: #FAF7F2;
-  --surface-card: #FFFFFF;
-  --surface-border: #EFE9E0;
+  /* Page & Surfaces */
+  --bg-page: #FAF7F2;
+  --bg-card: #FFFFFF;
+  --border-card: #EFE9E0;
 
-  --foreground: #2B2B2B;
-  --foreground-muted: #6B6B6B;
+  /* Typography */
+  --text-main: #2B2B2B;
+  --text-secondary: #6B6B6B;
 
-  /* Playful & Trustworthy Brand Accents */
-  --coral-primary: #FF6B6B;
-  --coral-hover: #FA5252;
-  --sunny-yellow: #FFC93C;
-  --yellow-hover: #F6BA22;
-  --sky-blue: #5BC0EB;
-  --soft-green: #7BD389;
+  /* Primary Action & Links */
+  --color-primary: #D6403B;
+  --color-primary-hover: #BF3430;
+  --color-primary-price: #C23631;
 
-  --radius-card: 20px;
-  --radius-button: 9999px;
-  --shadow-soft: 0 8px 30px -4px rgba(43, 43, 43, 0.06);
-  --shadow-card-hover: 0 14px 34px -4px rgba(43, 43, 43, 0.12);
+  /* Accents (small amounts only) */
+  --color-accent-yellow: #FFC93C;
+  --color-accent-blue: #5BC0EB;
+  --color-accent-green: #4CAF7A;
+
+  /* Status Pills (Soft backgrounds with dark text, never solid bright colors) */
+  --pill-yellow-bg: #FFF3CC;
+  --pill-yellow-text: #7A4E00;
+  --pill-blue-bg: #DDF1FB;
+  --pill-blue-text: #0B5F85;
+  --pill-green-bg: #DDF3E6;
+  --pill-green-text: #1F6B43;
+  --pill-red-bg: #FDE3E1;
+  --pill-red-text: #9B2420;
+
+  /* Radii */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-input: 12px;
+  --radius-pill: 9999px;
+
+  /* Subtle card border */
+  --shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-background-off: var(--background-off);
-  --color-surface-card: var(--surface-card);
-  --color-surface-border: var(--surface-border);
-  --color-foreground: var(--foreground);
-  --color-foreground-muted: var(--foreground-muted);
+@theme {
+  --color-page: #FAF7F2;
+  --color-card: #FFFFFF;
+  --color-border: #EFE9E0;
+  --color-main: #2B2B2B;
+  --color-secondary: #6B6B6B;
+  --color-brand-primary: #D6403B;
+  --color-brand-primary-hover: #BF3430;
+  --color-brand-price: #C23631;
 
-  --color-coral: var(--coral-primary);
-  --color-coral-hover: var(--coral-hover);
-  --color-yellow: var(--sunny-yellow);
-  --color-yellow-hover: var(--yellow-hover);
-  --color-sky: var(--sky-blue);
-  --color-green: var(--soft-green);
+  --color-accent-yellow: #FFC93C;
+  --color-accent-blue: #5BC0EB;
+  --color-accent-green: #4CAF7A;
 
-  --font-heading: 'Fredoka', 'Baloo 2', 'Hind Siliguri', cursive, sans-serif;
-  --font-body: 'Nunito', 'Hind Siliguri', sans-serif;
+  --color-pill-yellow-bg: #FFF3CC;
+  --color-pill-yellow-text: #7A4E00;
+  --color-pill-blue-bg: #DDF1FB;
+  --color-pill-blue-text: #0B5F85;
+  --color-pill-green-bg: #DDF3E6;
+  --color-pill-green-text: #1F6B43;
+  --color-pill-red-bg: #FDE3E1;
+  --color-pill-red-text: #9B2420;
+
   --font-bangla: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+  --font-heading: 'Fredoka', cursive, sans-serif;
+  --font-body: 'Hind Siliguri', sans-serif;
 }
 
 html {
@@ -50,9 +75,11 @@ html {
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-body);
+  background-color: #FAF7F2;
+  color: #2B2B2B;
+  font-family: 'Hind Siliguri', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   overflow-x: hidden;
@@ -60,96 +87,119 @@ body {
   width: 100%;
 }
 
-/* Prevent mobile browsers (iOS Safari, Android Chrome) from auto-zooming in on input focus */
+/* Storefront body text at least 16px */
+.storefront-body {
+  font-size: 16px;
+}
+
+/* Admin body text at least 14px */
+.admin-body {
+  font-size: 14px;
+}
+
+/* English headings and numbers in admin use Fredoka */
+.font-fredoka {
+  font-family: 'Fredoka', cursive, sans-serif;
+}
+
+/* Mobile minimum input font size to prevent iOS auto-zoom */
 @media screen and (max-width: 640px) {
   input, select, textarea {
     font-size: 16px !important;
   }
 }
 
-h1, h2, h3, h4, .font-heading {
-  font-family: var(--font-heading);
-  letter-spacing: -0.01em;
+/* Standardized Card Style: 16px radius, #FFFFFF background, 1px border #EFE9E0, no heavy shadow */
+.card-standard {
+  background-color: #FFFFFF;
+  border: 1px solid #EFE9E0;
+  border-radius: 16px;
 }
 
-/* Playful hand-drawn crayon feel */
-.crayon-border {
-  border: 2px solid var(--surface-border);
-  border-radius: var(--radius-card);
-}
-
-.card-playful {
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-soft);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card-playful:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card-hover);
-}
-
+/* Standard Buttons: 12px radius, visible label */
 .btn-primary {
-  background-color: var(--coral-primary);
+  background-color: #D6403B;
   color: #FFFFFF;
-  font-weight: 700;
-  border-radius: var(--radius-button);
-  padding: 12px 28px;
+  font-weight: 600;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 10px 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 14px rgba(255, 107, 107, 0.35);
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  cursor: pointer;
 }
-
 .btn-primary:hover {
-  background-color: var(--coral-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.45);
+  background-color: #BF3430;
+}
+.btn-primary:active {
+  transform: scale(0.99);
 }
 
-.btn-secondary {
-  background-color: var(--sunny-yellow);
-  color: #2B2B2B;
-  font-weight: 700;
-  border-radius: var(--radius-button);
-  padding: 12px 28px;
+.btn-outline-primary {
+  background-color: #FFFFFF;
+  border: 2px solid #D6403B;
+  color: #D6403B;
+  font-weight: 600;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 10px 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 14px rgba(255, 201, 60, 0.35);
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+.btn-outline-primary:hover {
+  background-color: #FDE3E1;
 }
 
-.btn-secondary:hover {
-  background-color: var(--yellow-hover);
-  transform: translateY(-1px);
-}
-
-.badge-safety {
-  background-color: #EBF8EE;
-  color: #2D7A3E;
-  border: 1px solid #C4EDCD;
+/* Status Pills */
+.pill-yellow {
+  background-color: #FFF3CC;
+  color: #7A4E00;
   border-radius: 9999px;
   padding: 4px 12px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.badge-age {
-  background-color: #E8F7FD;
-  color: #197AA5;
-  border: 1px solid #BFE4F7;
+.pill-blue {
+  background-color: #DDF1FB;
+  color: #0B5F85;
   border-radius: 9999px;
   padding: 4px 12px;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pill-green {
+  background-color: #DDF3E6;
+  color: #1F6B43;
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pill-red {
+  background-color: #FDE3E1;
+  color: #9B2420;
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-size: 12px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;

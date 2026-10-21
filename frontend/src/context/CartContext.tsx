@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItemData } from '@/lib/store';
+import { validateCoupon } from '@/lib/coupons-store';
 
 interface CartContextType {
   items: CartItemData[];
@@ -60,21 +61,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (appliedCoupon === 'RONG10') {
-      if (subtotal >= 500) {
-        const disc = Math.min(Math.round(subtotal * 0.1), 150);
-        setDiscountAmount(disc);
-      } else {
-        setDiscountAmount(0);
-        setAppliedCoupon(null);
-      }
-    } else if (appliedCoupon === 'FREE60') {
-      if (subtotal >= 600) {
-        setDiscountAmount(60);
-      } else {
-        setDiscountAmount(0);
-        setAppliedCoupon(null);
-      }
+    const res = validateCoupon(appliedCoupon, subtotal);
+    if (res.valid) {
+      setDiscountAmount(res.discountAmount);
+    } else {
+      setDiscountAmount(0);
+      setAppliedCoupon(null);
     }
   }, [subtotal, appliedCoupon]);
 
@@ -116,26 +108,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const applyCouponCode = (code: string): { success: boolean; message: string } => {
     const clean = code.trim().toUpperCase();
-    if (clean === 'RONG10') {
-      if (subtotal < 500) {
-        return { success: false, message: 'RONG10 কুপনের জন্য কমপক্ষে ৳৫০০ টাকার অর্ডার প্রয়োজন।' };
-      }
-      setAppliedCoupon('RONG10');
-      const disc = Math.min(Math.round(subtotal * 0.1), 150);
-      setDiscountAmount(disc);
-      return { success: true, message: `অভিনন্দন! ১০% (৳${disc}) ডিসকাউন্ট যোগ হয়েছে!` };
+    const res = validateCoupon(clean, subtotal);
+
+    if (res.valid) {
+      setAppliedCoupon(clean);
+      setDiscountAmount(res.discountAmount);
+      return { success: true, message: res.message };
     }
 
-    if (clean === 'FREE60') {
-      if (subtotal < 600) {
-        return { success: false, message: 'FREE60 কুপনের জন্য কমপক্ষে ৳৬০০ টাকার অর্ডার প্রয়োজন।' };
-      }
-      setAppliedCoupon('FREE60');
-      setDiscountAmount(60);
-      return { success: true, message: 'অভিনন্দন! ৳৬০ ছাড় যোগ হয়েছে!' };
-    }
-
-    return { success: false, message: 'কুপন কোডটি সঠিক নয় বা মেয়াদোত্তীর্ণ।' };
+    return { success: false, message: res.message };
   };
 
   const removeCoupon = () => {

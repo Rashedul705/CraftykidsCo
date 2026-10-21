@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Upload,
   Plus,
@@ -14,21 +15,45 @@ import {
   Sparkles,
   HelpCircle,
   Video,
+  Copy,
+  AlertCircle,
+  Clock,
+  ArrowLeft,
+  Eye,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import { SampleCategory } from '@/lib/sample-data';
+import { BRAND_NAME } from '@/lib/brand';
+import { Button } from '@/components/ui/Button';
+import { StatusPill } from '@/components/ui/Pill';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Input, Textarea, Select, FormField } from '@/components/ui/Input';
+import {
+  TableContainer,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/Table';
+import { ConfirmDialog } from '@/components/ui/Modal';
+import { useToast } from '@/components/ui/Toast';
 
-interface AddProductFormProps {
+export interface AddProductFormProps {
   onCancel: () => void;
   onSuccess: (createdProduct: any) => void;
   categories: SampleCategory[];
   initialProduct?: any | null;
 }
 
-interface VariationRow {
+export interface VariationRow {
   id: string;
-  colorSet: string;
+  name: string;
   sku: string;
   price: number;
+  salePrice: number;
   stock: number;
   imageUrl?: string;
 }
@@ -39,9 +64,24 @@ export default function AddProductForm({
   categories,
   initialProduct,
 }: AddProductFormProps) {
+  const { success, error: toastError, warning } = useToast();
   const isEditing = Boolean(initialProduct);
 
-  // Photos & Media
+  // Field validation errors map
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Unsaved changes confirmation dialog
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  // Autosave status
+  const [lastAutosaved, setLastAutosaved] = useState<string | null>(null);
+
+  // ==========================================
+  // FORM STATES
+  // ==========================================
+
+  // 1. Photos & Video
   const [images, setImages] = useState<string[]>(() => {
     if (initialProduct?.galleryImages && initialProduct.galleryImages.length > 0) {
       return initialProduct.galleryImages;
@@ -52,10 +92,9 @@ export default function AddProductForm({
     return [];
   });
   const [videoUrl, setVideoUrl] = useState<string>(() => initialProduct?.videoUrl || '');
-  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
-  const [uploadSlotIndex, setUploadSlotIndex] = useState<number | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  // Basic Information
+  // 2. Basic Information
   const [titleBn, setTitleBn] = useState(() => initialProduct?.titleBn || '');
   const [titleEn, setTitleEn] = useState(() => initialProduct?.titleEn || initialProduct?.title || '');
   const [shortDescBn, setShortDescBn] = useState(() => initialProduct?.shortDescriptionBn || '');
@@ -63,14 +102,14 @@ export default function AddProductForm({
   const [fullDescBn, setFullDescBn] = useState(() => initialProduct?.descriptionBn || initialProduct?.description || '');
   const [whatsInTheBox, setWhatsInTheBox] = useState(() => initialProduct?.pieces || '');
 
-  // Pricing & Stock
+  // 3. Pricing and Stock
   const [regularPrice, setRegularPrice] = useState<number | ''>(
     () => initialProduct?.basePrice ?? initialProduct?.price ?? 1200
   );
   const [salePrice, setSalePrice] = useState<number | ''>(
     () => initialProduct?.baseSalePrice ?? initialProduct?.salePrice ?? 999
   );
-  const [costPerItem, setCostPerItem] = useState<number | ''>(() => initialProduct?.costPerItem || '');
+  const [costPrice, setCostPrice] = useState<number | ''>(() => initialProduct?.costPerItem || '');
   const [sku, setSku] = useState(() => initialProduct?.sku || '');
   const [stockQuantity, setStockQuantity] = useState<number | ''>(
     () => initialProduct?.stock ?? 25
@@ -79,112 +118,113 @@ export default function AddProductForm({
     () => initialProduct?.lowStockAlert ?? 5
   );
 
-  // Variations
-  const [colorOptions, setColorOptions] = useState<string[]>(() => {
+  // 4. Variations
+  const [optionGroupTitle, setOptionGroupTitle] = useState('Set Options');
+  const [optionValues, setOptionValues] = useState<string[]>(() => {
     if (initialProduct?.variations && initialProduct.variations.length > 0) {
-      const extracted = initialProduct.variations
-        .map((v: any) => v.attributes?.colorSet || v.titleEn)
-        .filter(Boolean);
-      const unique = Array.from(new Set(extracted)) as string[];
-      if (unique.length > 0) return unique;
+      return initialProduct.variations.map((v: any) => v.attributes?.colorSet || v.titleEn || v.name);
     }
-    return ['Starter Pack', 'Mega Box', 'Deluxe Gift Set'];
+    return ['12 Piece Set', '24 Piece Set', '48 Piece Deluxe Set'];
   });
-  const [newColorInput, setNewColorInput] = useState('');
-  const [isAddingColor, setIsAddingColor] = useState(false);
+  const [newOptionInput, setNewOptionInput] = useState('');
 
   const [variations, setVariations] = useState<VariationRow[]>(() => {
     if (initialProduct?.variations && initialProduct.variations.length > 0) {
       return initialProduct.variations.map((v: any, idx: number) => ({
         id: v.id || `var-${idx + 1}`,
-        colorSet: v.attributes?.colorSet || v.titleEn || `Option ${idx + 1}`,
+        name: v.attributes?.colorSet || v.titleEn || v.titleBn || `Option ${idx + 1}`,
         sku: v.sku || '',
-        price: v.salePrice || v.price || 999,
-        stock: v.stockQuantity ?? v.stock ?? 25,
+        price: Number(v.price || regularPrice || 1200),
+        salePrice: Number(v.salePrice || salePrice || 999),
+        stock: Number(v.stockQuantity ?? v.stock ?? 25),
         imageUrl: v.imageUrl || '',
       }));
     }
     return [
-      { id: 'var-1', colorSet: 'Starter Pack', sku: '', price: 999, stock: 25, imageUrl: '' },
-      { id: 'var-2', colorSet: 'Mega Box', sku: '', price: 1450, stock: 15, imageUrl: '' },
-      { id: 'var-3', colorSet: 'Deluxe Gift Set', sku: '', price: 1890, stock: 10, imageUrl: '' },
+      { id: 'var-1', name: '12 Piece Set', sku: '', price: 1200, salePrice: 999, stock: 25, imageUrl: '' },
+      { id: 'var-2', name: '24 Piece Set', sku: '', price: 1800, salePrice: 1450, stock: 15, imageUrl: '' },
+      { id: 'var-3', name: '48 Piece Deluxe Set', sku: '', price: 2400, salePrice: 1990, stock: 10, imageUrl: '' },
     ];
   });
 
-  // Shipping & Search
-  const [weight, setWeight] = useState<number | ''>(() => initialProduct?.weight || 0);
-  const [packageSize, setPackageSize] = useState(() => initialProduct?.packageSize || '');
-  const [handlingTime, setHandlingTime] = useState<number | ''>(() => initialProduct?.handlingTime || 1);
+  // 5. Shipping & Search
+  const [weightGrams, setWeightGrams] = useState<number | ''>(() => initialProduct?.weight || 350);
+  const [packageSize, setPackageSize] = useState(() => initialProduct?.packageSize || '20 x 15 x 5 cm');
   const [seoTitle, setSeoTitle] = useState(() => initialProduct?.seoTitle || initialProduct?.titleEn || '');
   const [urlSlug, setUrlSlug] = useState(() => initialProduct?.slug || '');
   const [seoDescription, setSeoDescription] = useState(() => initialProduct?.seoDescription || '');
 
-  // Publish Status
-  const [status, setStatus] = useState<'Published' | 'Draft'>(
+  // 6. Right Sidebar: Publish & Organize
+  const [publishStatus, setPublishStatus] = useState<'Published' | 'Draft'>(
     () => (initialProduct?.isActive === false ? 'Draft' : 'Published')
   );
-
-  // Organize
   const [categorySlug, setCategorySlug] = useState(
-    () => initialProduct?.categorySlug || initialProduct?.primaryCategorySlug || categories[0]?.slug || 'art-kits'
+    () => initialProduct?.categorySlug || initialProduct?.primaryCategorySlug || categories[0]?.slug || 'wax-crayons'
   );
   const [subCategory, setSubCategory] = useState(() => initialProduct?.subCategory || '');
-  const [tags, setTags] = useState<string[]>(() => initialProduct?.tags || []);
+  const [tags, setTags] = useState<string[]>(() => initialProduct?.tags || ['crayons', 'non-toxic']);
   const [tagInput, setTagInput] = useState('');
-  const [brand, setBrand] = useState(() => initialProduct?.brand || 'CraftyKidsCo');
+  const [brand, setBrand] = useState(() => initialProduct?.brand || BRAND_NAME);
 
-  // Kids Essentials
+  // 7. Right Sidebar: Kids Details
   const [safetyBadges, setSafetyBadges] = useState<string[]>(() => {
     if (initialProduct?.safetyBadges && initialProduct.safetyBadges.length > 0) {
       return initialProduct.safetyBadges.map((b: any) =>
         typeof b === 'string' ? b : b.nameEn || b.code
       );
     }
-    return ['Non-toxic'];
+    return ['100% Non-toxic', 'Food-grade Beeswax', 'Washable'];
   });
   const [targetAge, setTargetAge] = useState<string>(
     () => initialProduct?.targetAge || (initialProduct?.targetAgeMin ? `${initialProduct.targetAgeMin}+` : '2+')
   );
-  const [productBadge, setProductBadge] = useState(() => initialProduct?.badge || '');
+  const [badgeText, setBadgeText] = useState(() => initialProduct?.badge || 'New');
 
-  // Show on Store Toggles
-  const [showInNewArrivals, setShowInNewArrivals] = useState(
-    () => initialProduct?.isNewArrival ?? true
-  );
-  const [featureInTrending, setFeatureInTrending] = useState(
-    () => initialProduct?.isBestSeller ?? false
-  );
-  const [allowCashOnDelivery, setAllowCashOnDelivery] = useState(
-    () => initialProduct?.allowCashOnDelivery ?? true
-  );
-  const [requiresGiftWrap, setRequiresGiftWrap] = useState(
-    () => initialProduct?.requiresGiftWrap ?? false
-  );
+  // 8. Right Sidebar: Show on Store Toggles
+  const [showInNewArrivals, setShowInNewArrivals] = useState(() => initialProduct?.isNewArrival ?? true);
+  const [featureInTrending, setFeatureInTrending] = useState(() => initialProduct?.isBestSeller ?? true);
+  const [allowCashOnDelivery, setAllowCashOnDelivery] = useState(() => initialProduct?.allowCashOnDelivery ?? true);
+  const [showStockLeft, setShowStockLeft] = useState(() => initialProduct?.showStockLeft ?? true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Auto-fill URL Slug and SEO title when Title (English) changes
+  // Mark form as dirty when any field changes
+  const markDirty = () => setIsDirty(true);
+
+  // Auto-generate URL Slug & SEO Title from English Title
   const handleTitleEnChange = (val: string) => {
     setTitleEn(val);
+    markDirty();
     const generatedSlug = val
       .toLowerCase()
+      .trim()
       .replace(/[^\w\s-]/g, '')
       .replace(/\s+/g, '-');
     setUrlSlug(generatedSlug);
-    if (!seoTitle) {
+    if (!seoTitle || seoTitle === titleEn) {
       setSeoTitle(val);
     }
   };
 
-  // ImgBB Upload handler
-  const handleFileUpload = async (file: File, targetIndex?: number) => {
+  // Auto-generate SKU if empty
+  const getEffectiveSku = () => {
+    if (sku.trim()) return sku.trim();
+    const cleanPrefix = (urlSlug || titleEn || 'CKC')
+      .replace(/[^\w]/g, '')
+      .substring(0, 8)
+      .toUpperCase();
+    return `CKC-${cleanPrefix}-001`;
+  };
+
+  // Upload image to cloud storage interface
+  const handlePhotoUpload = async (file: File) => {
     try {
       setIsUploadingImage(true);
-      if (targetIndex !== undefined) setUploadSlotIndex(targetIndex);
+      markDirty();
 
       const formData = new FormData();
       formData.append('image', file);
-      formData.append('name', `product_${Date.now()}`);
+      formData.append('name', `craftykidsco_${Date.now()}`);
 
       const res = await fetch('/api/upload-image', {
         method: 'POST',
@@ -194,138 +234,212 @@ export default function AddProductForm({
       const data = await res.json();
       if (data.success && (data.url || data.display_url)) {
         const cdnUrl = data.url || data.display_url;
-        if (targetIndex !== undefined && targetIndex < images.length) {
-          // Replace existing slot
-          const updated = [...images];
-          updated[targetIndex] = cdnUrl;
-          setImages(updated);
-        } else {
-          // Append new image
-          setImages((prev) => (prev.length < 6 ? [...prev, cdnUrl] : prev));
-        }
+        setImages((prev) => (prev.length < 8 ? [...prev, cdnUrl] : prev));
+        success('Photo uploaded successfully.');
       } else {
-        alert(data.message || 'Image upload failed. Please try again.');
+        toastError(data.message || 'Image upload failed. Please try again.');
       }
-    } catch (err: any) {
-      alert('Error uploading image: ' + err.message);
+    } catch {
+      toastError('Connection error uploading image.');
     } finally {
       setIsUploadingImage(false);
-      setUploadSlotIndex(null);
     }
   };
 
-  // Remove photo from gallery
-  const handleRemoveImage = (indexToRemove: number) => {
-    setImages(images.filter((_, idx) => idx !== indexToRemove));
+  // Remove photo
+  const handleRemovePhoto = (idx: number) => {
+    markDirty();
+    setImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // Add tag chip on Enter key
+  // Add Variation Option Tag
+  const handleAddOptionTag = () => {
+    if (!newOptionInput.trim()) return;
+    if (!optionValues.includes(newOptionInput.trim())) {
+      setOptionValues([...optionValues, newOptionInput.trim()]);
+      markDirty();
+    }
+    setNewOptionInput('');
+  };
+
+  // Remove Variation Option Tag
+  const handleRemoveOptionTag = (val: string) => {
+    setOptionValues(optionValues.filter((v) => v !== val));
+    markDirty();
+  };
+
+  // Generate Variations Matrix Table
+  const handleGenerateVariations = () => {
+    const baseSlug = urlSlug || 'prod';
+    const baseRegular = Number(regularPrice || 1200);
+    const baseSale = Number(salePrice || regularPrice || 999);
+    const baseStock = Number(stockQuantity || 25);
+
+    const generated: VariationRow[] = optionValues.map((opt, idx) => {
+      const cleanSlug = opt.replace(/\s+/g, '-').toLowerCase();
+      return {
+        id: `var-${cleanSlug}-${Date.now()}-${idx}`,
+        name: opt,
+        sku: `${baseSlug.substring(0, 8).toUpperCase()}-${cleanSlug.toUpperCase()}`,
+        price: baseRegular,
+        salePrice: baseSale,
+        stock: baseStock,
+        imageUrl: images[0] || '',
+      };
+    });
+
+    setVariations(generated);
+    markDirty();
+    success(`Generated ${generated.length} variations successfully.`);
+  };
+
+  // Copy Price to All Variation Rows
+  const handleCopyPriceToAll = () => {
+    if (variations.length === 0) return;
+    const targetPrice = Number(salePrice || variations[0]?.salePrice || 999);
+    const targetRegular = Number(regularPrice || variations[0]?.price || 1200);
+
+    setVariations(
+      variations.map((v) => ({
+        ...v,
+        price: targetRegular,
+        salePrice: targetPrice,
+      }))
+    );
+    markDirty();
+    success(`Copied sale price (৳${targetPrice}) to all variation rows.`);
+  };
+
+  // Add Single Custom Variation Row
+  const handleAddCustomRow = () => {
+    const nextIdx = variations.length + 1;
+    setVariations([
+      ...variations,
+      {
+        id: `var-custom-${Date.now()}`,
+        name: `Option ${nextIdx}`,
+        sku: `${getEffectiveSku()}-OPT${nextIdx}`,
+        price: Number(regularPrice || 1200),
+        salePrice: Number(salePrice || 999),
+        stock: Number(stockQuantity || 20),
+        imageUrl: images[0] || '',
+      },
+    ]);
+    markDirty();
+  };
+
+  // Update Variation Row
+  const updateVariationRow = (id: string, field: keyof VariationRow, value: any) => {
+    setVariations(variations.map((v) => (v.id === id ? { ...v, [field]: value } : v)));
+    markDirty();
+  };
+
+  // Delete Variation Row
+  const deleteVariationRow = (id: string) => {
+    setVariations(variations.filter((v) => v.id !== id));
+    markDirty();
+  };
+
+  // Tag Management
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && tagInput.trim()) {
       e.preventDefault();
       if (!tags.includes(tagInput.trim())) {
         setTags([...tags, tagInput.trim()]);
+        markDirty();
       }
       setTagInput('');
     }
   };
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((t) => t !== tagToRemove));
-  };
+  // Autosave Draft every 30 seconds
+  useEffect(() => {
+    if (isEditing) return; // Do not overwrite new product draft if editing existing product
 
-  // Add Color Option
-  const handleAddColorOption = () => {
-    if (newColorInput.trim() && !colorOptions.includes(newColorInput.trim())) {
-      setColorOptions([...colorOptions, newColorInput.trim()]);
-      setNewColorInput('');
-      setIsAddingColor(false);
+    const timer = setInterval(() => {
+      if (isDirty && (titleBn || titleEn)) {
+        const draft = {
+          titleBn,
+          titleEn,
+          regularPrice,
+          salePrice,
+          categorySlug,
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        try {
+          localStorage.setItem('craftykidsco_product_draft', JSON.stringify(draft));
+          setLastAutosaved(draft.timestamp);
+        } catch {}
+      }
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, [isDirty, isEditing, titleBn, titleEn, regularPrice, salePrice, categorySlug]);
+
+  // Warn before browser unload if unsaved changes exist
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // Handle Cancel with confirmation if dirty
+  const handleCancelClick = () => {
+    if (isDirty) {
+      setShowCancelConfirm(true);
+    } else {
+      onCancel();
     }
   };
 
-  // Generate Variations Matrix
-  const handleGenerateVariations = () => {
-    const rows: VariationRow[] = [];
-    const baseSlug = urlSlug || 'prod';
-    const baseP = Number(salePrice || regularPrice || 999);
-    const baseStock = Number(stockQuantity || 25);
+  // Form Submission
+  const handleSubmit = async (submitStatus: 'Published' | 'Draft' = publishStatus) => {
+    const errors: Record<string, string> = {};
 
-    colorOptions.forEach((col, idx) => {
-      const cleanCol = col.replace(/\s+/g, '-').toLowerCase();
-      rows.push({
-        id: `var-${cleanCol}-${Date.now()}-${idx}`,
-        colorSet: col,
-        sku: `${baseSlug.substring(0, 8).toUpperCase()}-${cleanCol.toUpperCase()}`,
-        price: baseP,
-        stock: baseStock,
-        imageUrl: images[0] || '',
-      });
-    });
-
-    setVariations(rows);
-  };
-
-  // Add custom variation row directly
-  const handleAddVariationRow = () => {
-    const nextIdx = variations.length + 1;
-    const baseSlug = urlSlug || 'prod';
-    setVariations([
-      ...variations,
-      {
-        id: `var-custom-${Date.now()}`,
-        colorSet: `Option ${nextIdx}`,
-        sku: `${baseSlug.substring(0, 8).toUpperCase()}-OPT${nextIdx}`,
-        price: Number(salePrice || regularPrice || 999),
-        stock: Number(stockQuantity || 20),
-        imageUrl: images[0] || '',
-      },
-    ]);
-  };
-
-  // Update a single variation row
-  const updateVariationRow = (id: string, field: keyof VariationRow, value: any) => {
-    setVariations(
-      variations.map((v) => (v.id === id ? { ...v, [field]: value } : v))
-    );
-  };
-
-  // Submit Handler
-  const handleSubmit = async (submitStatus: 'Published' | 'Draft' = status) => {
-    if (!titleBn.trim() || !titleEn.trim()) {
-      alert('Product title in both Bangla and English is required.');
-      return;
+    if (!titleBn.trim()) {
+      errors.titleBn = 'Product title in Bangla is required (e.g., কার পেইন্টিং কিট).';
     }
-
+    if (!titleEn.trim()) {
+      errors.titleEn = 'Product title in English is required for URLs and search.';
+    }
     if (!regularPrice) {
-      alert('Please enter a regular price for the product.');
+      errors.regularPrice = 'Please enter a regular price for the product.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toastError('Please fix the highlighted required fields.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    const effectiveSlug =
-      urlSlug.trim() ||
-      titleEn
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-');
+    setFormErrors({});
+    setIsSubmitting(true);
 
-    const primaryImage =
-      images[0] || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg';
+    const effectiveSlug = urlSlug.trim() || titleEn.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    const primaryImage = images[0] || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg';
 
-    // Map variations to schema format
     const formattedVariations = variations.map((v) => ({
-      sku: v.sku,
-      titleBn: `${titleBn} (${v.colorSet})`,
-      titleEn: `${titleEn} (${v.colorSet})`,
+      sku: v.sku || `${effectiveSku}-${v.name.replace(/\s+/g, '-').toUpperCase()}`,
+      titleBn: `${titleBn} (${v.name})`,
+      titleEn: `${titleEn} (${v.name})`,
       price: Number(v.price),
-      salePrice: Number(v.price),
+      salePrice: Number(v.salePrice || v.price),
       stock: Number(v.stock),
       stockQuantity: Number(v.stock),
       imageUrl: v.imageUrl || primaryImage,
       isActive: true,
       attributes: {
-        colorSet: v.colorSet,
+        colorSet: v.name,
       },
     }));
+
+    const effectiveSku = getEffectiveSku();
 
     const payload = {
       titleBn: titleBn.trim(),
@@ -336,12 +450,12 @@ export default function AddProductForm({
       price: Number(regularPrice),
       baseSalePrice: salePrice ? Number(salePrice) : Number(regularPrice),
       salePrice: salePrice ? Number(salePrice) : Number(regularPrice),
-      costPerItem: costPerItem ? Number(costPerItem) : undefined,
-      sku: sku.trim() || `${effectiveSlug.substring(0, 10).toUpperCase()}-001`,
+      costPerItem: costPrice ? Number(costPrice) : undefined,
+      sku: effectiveSku,
       stock: Number(stockQuantity || 25),
       lowStockAlert: Number(lowStockAlert || 5),
       categorySlug,
-      category: categories.find((c) => c.slug === categorySlug)?.nameEn || 'Art Kits',
+      category: categories.find((c) => c.slug === categorySlug)?.nameEn || 'Wax Crayons',
       subCategory,
       tags,
       brand,
@@ -355,29 +469,26 @@ export default function AddProductForm({
       image: primaryImage,
       galleryImages: images.length > 0 ? images : [primaryImage],
       videoUrl: videoUrl.trim() || undefined,
-      weight: Number(weight || 0),
+      weight: Number(weightGrams || 350),
       packageSize: packageSize.trim(),
-      handlingTime: Number(handlingTime || 1),
       seoTitle: seoTitle.trim() || titleEn.trim(),
       seoDescription: seoDescription.trim() || shortDescEn.trim(),
       safetyBadges,
       targetAge,
       targetAgeMin: parseInt(targetAge.replace(/\D/g, ''), 10) || 2,
-      badge: productBadge.trim() || 'New',
+      badge: badgeText.trim() || 'New',
       isNewArrival: showInNewArrivals,
       isBestSeller: featureInTrending,
       allowCashOnDelivery,
-      requiresGiftWrap,
+      showStockLeft,
       isVariable: formattedVariations.length > 0,
       variations: formattedVariations,
       isActive: submitStatus === 'Published',
     };
 
-    const isEditing = Boolean(initialProduct);
     const targetId = initialProduct?.id || initialProduct?.slug;
 
     try {
-      setIsSubmitting(true);
       const endpoint = isEditing ? `/api/products/${targetId}` : '/api/products';
       const method = isEditing ? 'PATCH' : 'POST';
 
@@ -389,967 +500,844 @@ export default function AddProductForm({
 
       const data = await res.json();
       if (data.success) {
+        setIsDirty(false);
+        try {
+          localStorage.removeItem('craftykidsco_product_draft');
+        } catch {}
+        success(isEditing ? 'Product updated successfully.' : 'Product published successfully.');
         onSuccess(data.product || payload);
       } else {
-        alert(data.message || (isEditing ? 'Failed to update product' : 'Failed to publish product'));
+        toastError(data.message || 'Failed to save product.');
       }
-    } catch (err: any) {
-      alert(`Error ${isEditing ? 'updating' : 'creating'} product: ` + err.message);
+    } catch {
+      toastError('Connection error saving product.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Find subcategories for selected category
-  const selectedCatObj = categories.find((c) => c.slug === categorySlug);
-  const currentSubCats = selectedCatObj?.children || [];
-
   return (
-    <div className="space-y-6 pb-20 max-w-4xl mx-auto">
-      {/* =====================================================================
-          TOP BREADCRUMB & HEADER BAR
-         ===================================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6">
+      {/* Top Breadcrumb & Header Action Strip */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#EFE9E0]">
         <div>
-          <div className="flex items-center gap-2 text-xs text-[#8A8A8A] font-semibold">
-            <span>Products</span>
-            <span>/</span>
-            <span className="text-[#1A1A1A] font-bold">
-              {isEditing ? 'Edit product' : 'Add new'}
-            </span>
-          </div>
-          <h1 className="font-heading font-black text-2xl sm:text-3xl text-[#1A1A1A] mt-1">
-            {isEditing ? 'Edit product' : 'Add new product'}
-          </h1>
-          {isEditing && (
-            <p className="text-xs text-[#6B6B6B] mt-1">
-              Editing: <span className="font-bold text-[#1A1A1A]">{initialProduct.titleEn || initialProduct.titleBn || initialProduct.slug}</span>
-              <span className="text-[11px] text-[#8A8A8A] ml-1.5 font-mono">({initialProduct.slug})</span>
-            </p>
-          )}
+          <button
+            onClick={handleCancelClick}
+            className="text-xs font-semibold text-[#6B6B6B] hover:text-[#2B2B2B] flex items-center gap-1.5 mb-1 cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Products
+          </button>
+          <h2 className="text-2xl sm:text-3xl font-bold font-fredoka text-[#2B2B2B]">
+            {isEditing ? 'Edit Product' : 'Add New Product'}
+          </h2>
+          <p className="text-xs text-[#6B6B6B] mt-0.5">
+            Configure child-safe toy specifications, multi-variation pricing, and catalog tags
+          </p>
         </div>
 
-        {/* Action Buttons Top Right */}
-        <div className="flex items-center gap-2.5 self-end sm:self-auto">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2.5 rounded-xl bg-white border border-[#E5E0D8] text-xs font-bold text-[#6B6B6B] hover:text-[#1A1A1A] hover:bg-[#FAF7F2] transition-colors cursor-pointer shadow-2xs"
-          >
+        <div className="flex items-center gap-2.5">
+          <Button variant="secondary" size="sm" onClick={handleCancelClick}>
             Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSubmit('Published')}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={isSubmitting}
-            className="px-6 py-2.5 rounded-xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-2 disabled:opacity-50"
+            onClick={() => handleSubmit('Draft')}
           >
-            {isSubmitting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Check className="w-4 h-4" />
-            )}
+            Save as draft
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            isLoading={isSubmitting}
+            onClick={() => handleSubmit('Published')}
+          >
+            <Check className="w-4 h-4" />
             <span>{isEditing ? 'Save changes' : 'Publish product'}</span>
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* =====================================================================
-          CARD 1: PHOTOS AND VIDEO
-         ===================================================================== */}
-      <div className="bg-white rounded-3xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-heading font-black text-base text-[#1A1A1A]">
-            Photos and video
-          </h2>
-          <p className="text-xs text-[#8A8A8A] mt-0.5">
-            First photo is the cover. Up to 7 images. Drag to reorder.
-          </p>
+      {/* Field Errors Alert Banner */}
+      {Object.keys(formErrors).length > 0 && (
+        <div className="p-4 rounded-[16px] bg-[#FDE3E1] border border-[#F8BEBA] text-xs text-[#9B2420] space-y-1">
+          <div className="flex items-center gap-2 font-bold text-sm">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>Please correct the following errors before publishing:</span>
+          </div>
+          <ul className="list-disc list-inside space-y-0.5 pl-6">
+            {Object.values(formErrors).map((msg, idx) => (
+              <li key={idx}>{msg}</li>
+            ))}
+          </ul>
         </div>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
-          {/* Main Upload Dropzone (Left 5 cols) */}
-          <label className="md:col-span-5 rounded-2xl border-2 border-dashed border-[#E5E0D8] bg-[#FAF8F5] hover:bg-[#F5EFE6] transition-all p-6 flex flex-col items-center justify-center text-center cursor-pointer min-h-[170px] group">
-            <div className="w-12 h-12 rounded-2xl bg-white border border-[#EFEAE2] flex items-center justify-center text-[#D32F2F] shadow-2xs group-hover:scale-105 transition-transform">
-              {isUploadingImage && uploadSlotIndex === null ? (
-                <Loader2 className="w-6 h-6 animate-spin text-[#D32F2F]" />
-              ) : (
-                <Upload className="w-6 h-6" />
-              )}
-            </div>
-            <span className="font-bold text-xs text-[#1A1A1A] mt-3 block">
-              Click to upload or drag and drop
-            </span>
-            <span className="text-[10px] text-[#8A8A8A] mt-1 block">
-              PNG, JPG, WebP, up to 10MB
-            </span>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={isUploadingImage}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFileUpload(file);
-              }}
-            />
-          </label>
-
-          {/* 6 Thumbnail Slots (Right 7 cols: 3x2 grid) */}
-          <div className="md:col-span-7 grid grid-cols-3 gap-3">
-            {[0, 1, 2, 3, 4, 5].map((slotIdx) => {
-              const imgUrl = images[slotIdx];
-              return (
-                <div
-                  key={slotIdx}
-                  className="relative aspect-square rounded-2xl border border-[#EFEAE2] bg-[#FAF8F5] overflow-hidden flex flex-col items-center justify-center group"
-                >
-                  {imgUrl ? (
-                    <>
-                      <Image
-                        src={imgUrl}
-                        alt={`Photo ${slotIdx + 1}`}
-                        fill
-                        className="object-cover"
-                      />
-                      {slotIdx === 0 && (
-                        <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-[#1A1A1A]/80 text-white text-[9px] font-bold tracking-wider uppercase z-10">
-                          Cover
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(slotIdx)}
-                        className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/60 hover:bg-black text-white transition-opacity z-10 cursor-pointer"
-                        title="Remove photo"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  ) : (
-                    <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-[#F5EFE6] transition-colors p-2 text-center">
-                      {isUploadingImage && uploadSlotIndex === slotIdx ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-[#D32F2F]" />
-                      ) : (
-                        <span className="text-xs font-bold text-[#8A8A8A] flex items-center gap-1 group-hover:text-[#D32F2F]">
-                          <Plus className="w-3.5 h-3.5" /> Add
-                        </span>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={isUploadingImage}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFileUpload(file, slotIdx);
-                        }}
-                      />
-                    </label>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Video URL support */}
-        <div className="pt-2 border-t border-[#EFEAE2] flex items-center gap-2">
-          <Video className="w-4 h-4 text-[#8A8A8A]" />
-          <input
-            type="text"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="Product Short Video MP4 URL (optional, for video player demo)"
-            className="flex-1 text-xs bg-[#FAF8F5] border border-[#EFEAE2] rounded-xl px-3 py-2 focus:outline-hidden focus:border-[#D32F2F]"
-          />
-        </div>
-      </div>
-
-      {/* =====================================================================
-          CARD 2: BASIC INFORMATION
-         ===================================================================== */}
-      <div className="bg-white rounded-3xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-heading font-black text-base text-[#1A1A1A]">
-            Basic information
-          </h2>
-          <p className="text-xs text-[#8A8A8A] mt-0.5">
-            Name and description in both languages
-          </p>
-        </div>
-
-        <div className="space-y-3.5 text-xs">
-          {/* Row 1: Bangla & English Title */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">
-                Title (Bangla) <span className="text-red-500">*</span>
-              </label>
-              <input
-                required
-                value={titleBn}
-                onChange={(e) => setTitleBn(e.target.value)}
-                placeholder="যেমন: ছোটদের মোমের রঙ সেট"
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F]"
-              />
-            </div>
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">
-                Title (English) <span className="text-red-500">*</span>
-              </label>
-              <input
-                required
-                value={titleEn}
-                onChange={(e) => handleTitleEnChange(e.target.value)}
-                placeholder="e.g. Toddler Starter Painting Kit"
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F]"
-              />
-            </div>
-          </div>
-
-          {/* Row 2: Short Description (Bangla) */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">
-              Short description (Bangla)
-            </label>
-            <textarea
-              rows={2}
-              value={shortDescBn}
-              onChange={(e) => setShortDescBn(e.target.value)}
-              placeholder="এক নজরে কি কি পাবে..."
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs resize-none focus:outline-hidden focus:border-[#D32F2F]"
-            />
-          </div>
-
-          {/* Row 3: Short Description (English) */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">
-              Short description (English)
-            </label>
-            <textarea
-              rows={2}
-              value={shortDescEn}
-              onChange={(e) => setShortDescEn(e.target.value)}
-              placeholder="One or two lines about the product"
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs resize-none focus:outline-hidden focus:border-[#D32F2F]"
-            />
-          </div>
-
-          {/* Row 4: Full Description (Bangla) */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">
-              Full description (Bangla)
-            </label>
-            <textarea
-              rows={4}
-              value={fullDescBn}
-              onChange={(e) => setFullDescBn(e.target.value)}
-              placeholder="বিস্তারিত বিবরণ ও কেন এটি শিশুর জন্য বিশেষ..."
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs resize-none focus:outline-hidden focus:border-[#D32F2F]"
-            />
-          </div>
-
-          {/* Row 5: What's in the box */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">
-              What's in the box
-            </label>
-            <input
-              value={whatsInTheBox}
-              onChange={(e) => setWhatsInTheBox(e.target.value)}
-              placeholder="যেমন: ১২টি মোমের রঙ + ১টি ড্রয়িং খাতা"
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F]"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* =====================================================================
-          CARD 3: PRICING AND STOCK
-         ===================================================================== */}
-      <div className="bg-white rounded-3xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-heading font-black text-base text-[#1A1A1A]">
-            Pricing and stock
-          </h2>
-          <p className="text-xs text-[#8A8A8A] mt-0.5">
-            Set default pricing. Variations can override these.
-          </p>
-        </div>
-
-        <div className="space-y-3.5 text-xs">
-          {/* Row 1: Regular, Sale, Cost */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">
-                Regular price (৳) <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8A8A] font-bold">
-                  ৳
-                </span>
-                <input
-                  type="number"
-                  required
-                  value={regularPrice}
-                  onChange={(e) => setRegularPrice(e.target.value ? Number(e.target.value) : '')}
-                  placeholder="0"
-                  className="w-full pl-7 pr-3 py-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs font-bold focus:outline-hidden focus:border-[#D32F2F]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">
-                Sale price (৳)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8A8A] font-bold">
-                  ৳
-                </span>
-                <input
-                  type="number"
-                  value={salePrice}
-                  onChange={(e) => setSalePrice(e.target.value ? Number(e.target.value) : '')}
-                  placeholder="0"
-                  className="w-full pl-7 pr-3 py-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs font-bold focus:outline-hidden focus:border-[#D32F2F]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">
-                Cost per item (৳)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8A8A] font-bold">
-                  ৳
-                </span>
-                <input
-                  type="number"
-                  value={costPerItem}
-                  onChange={(e) => setCostPerItem(e.target.value ? Number(e.target.value) : '')}
-                  placeholder="0"
-                  className="w-full pl-7 pr-3 py-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs font-bold focus:outline-hidden focus:border-[#D32F2F]"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Row 2: SKU, Stock quantity, Low stock alert */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">SKU</label>
-              <input
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                placeholder="Auto or type"
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs font-mono focus:outline-hidden focus:border-[#D32F2F]"
-              />
-            </div>
-
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">
-                Stock quantity
-              </label>
-              <input
-                type="number"
-                value={stockQuantity}
-                onChange={(e) => setStockQuantity(e.target.value ? Number(e.target.value) : '')}
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs font-bold focus:outline-hidden focus:border-[#D32F2F]"
-              />
-            </div>
-
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">
-                Low stock alert at
-              </label>
-              <input
-                type="number"
-                value={lowStockAlert}
-                onChange={(e) => setLowStockAlert(e.target.value ? Number(e.target.value) : '')}
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs font-bold focus:outline-hidden focus:border-[#D32F2F]"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* =====================================================================
-          CARD 4: VARIATIONS
-         ===================================================================== */}
-      <div className="bg-white rounded-3xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-heading font-black text-base text-[#1A1A1A]">
-            Variations
-          </h2>
-          <p className="text-xs text-[#8A8A8A] mt-0.5">
-            Add variation options (e.g. Starter Pack, Mega Box, 24 Colors) to generate SKUs with separate pricing, stock and photo.
-          </p>
-        </div>
-
-        <div className="space-y-3.5 text-xs">
-          {/* Variation Options */}
-          <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EFEAE2] space-y-2">
-            <span className="font-bold text-[#1A1A1A] block">Variation Options (Pack Size / Edition / Colors)</span>
-            <div className="flex flex-wrap items-center gap-2">
-              {colorOptions.map((opt) => (
-                <span
-                  key={opt}
-                  className="px-3 py-1.5 rounded-xl bg-[#FDE8E8] border border-[#F8B4B4] text-[#D32F2F] font-bold text-xs flex items-center gap-1.5 shadow-2xs"
-                >
-                  <span>{opt}</span>
-                  <button
-                    type="button"
-                    onClick={() => setColorOptions(colorOptions.filter((c) => c !== opt))}
-                    className="hover:text-black cursor-pointer"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-
-              {isAddingColor ? (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={newColorInput}
-                    onChange={(e) => setNewColorInput(e.target.value)}
-                    placeholder="e.g. Starter Pack, Mega Box"
-                    className="px-2.5 py-1 text-xs rounded-xl bg-white border border-[#EFEAE2] focus:outline-hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddColorOption}
-                    className="px-2.5 py-1 rounded-xl bg-[#D32F2F] text-white font-bold text-xs cursor-pointer"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingColor(false)}
-                    className="text-[#8A8A8A] p-1 cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingColor(true)}
-                  className="px-3 py-1.5 rounded-xl bg-white border border-[#E5E0D8] text-[#6B6B6B] hover:text-[#1A1A1A] font-bold text-xs flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-3 h-3" /> Add option
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={handleAddVariationRow}
-              className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E0D8] text-[#1A1A1A] font-bold text-xs hover:bg-[#FAF8F5] transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add variation row</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleGenerateVariations}
-              className="px-4 py-2 rounded-xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-bold text-xs transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Generate variations</span>
-            </button>
-          </div>
-
-          {/* Variations Matrix Table */}
-          {variations.length > 0 && (
-            <div className="pt-2 space-y-2">
-              <div className="overflow-x-auto border border-[#EFEAE2] rounded-2xl bg-white">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#FAF8F5] border-b border-[#EFEAE2] text-[#8A8A8A] font-bold">
-                    <tr>
-                      <th className="py-2.5 px-3">Option / Name</th>
-                      <th className="py-2.5 px-3">SKU</th>
-                      <th className="py-2.5 px-3">Price (৳)</th>
-                      <th className="py-2.5 px-3">Stock</th>
-                      <th className="py-2.5 px-3">Photo</th>
-                      <th className="py-2.5 px-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#EFEAE2]">
-                    {variations.map((v) => (
-                      <tr key={v.id} className="hover:bg-[#FAF8F5]">
-                        <td className="py-2 px-3 font-bold text-[#1A1A1A]">
-                          <input
-                            value={v.colorSet}
-                            onChange={(e) => updateVariationRow(v.id, 'colorSet', e.target.value)}
-                            className="w-32 p-1.5 rounded-lg bg-[#FAF8F5] border border-[#EFEAE2] text-xs font-bold"
-                          />
-                        </td>
-                        <td className="py-2 px-3">
-                          <input
-                            value={v.sku}
-                            onChange={(e) => updateVariationRow(v.id, 'sku', e.target.value)}
-                            className="w-28 p-1.5 rounded-lg bg-[#FAF8F5] border border-[#EFEAE2] text-[11px] font-mono"
-                          />
-                        </td>
-                        <td className="py-2 px-3">
-                          <input
-                            type="number"
-                            value={v.price}
-                            onChange={(e) => updateVariationRow(v.id, 'price', Number(e.target.value))}
-                            className="w-20 p-1.5 rounded-lg bg-[#FAF8F5] border border-[#EFEAE2] text-[11px] font-bold"
-                          />
-                        </td>
-                        <td className="py-2 px-3">
-                          <input
-                            type="number"
-                            value={v.stock}
-                            onChange={(e) => updateVariationRow(v.id, 'stock', Number(e.target.value))}
-                            className="w-16 p-1.5 rounded-lg bg-[#FAF8F5] border border-[#EFEAE2] text-[11px]"
-                          />
-                        </td>
-                        <td className="py-2 px-3">
-                          {v.imageUrl ? (
-                            <img
-                              src={v.imageUrl}
-                              alt=""
-                              className="w-8 h-8 rounded-lg object-cover border border-[#EFEAE2]"
-                            />
-                          ) : (
-                            <span className="text-[10px] text-[#8A8A8A]">+ Photo</span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setVariations(variations.filter((row) => row.id !== v.id))}
-                            className="p-1 text-[#8A8A8A] hover:text-red-500 cursor-pointer"
-                            title="Remove variation"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-[10px] text-[#8A8A8A]">
-                {variations.length} variations generated. Click photo to customize per-variation image.
+      {/* =========================================================================
+          TWO-COLUMN FULL PAGE WORKSPACE
+          Left (8 cols): Form sections
+          Right (4 cols, sticky): Quick controls, publish status, badges
+         ========================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* =====================================================================
+            LEFT COLUMN (8 cols): Main Form Sections
+           ===================================================================== */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* 1. Photos & Video */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Photos and video</CardTitle>
+              <p className="text-xs text-[#6B6B6B]">
+                First photo is the cover. Up to 8 photos. Drag or click to add photos.
               </p>
-            </div>
-          )}
-        </div>
-      </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* Upload Slot */}
+                <label className="aspect-square rounded-[16px] border-2 border-dashed border-[#EFE9E0] bg-[#FAF7F2] hover:bg-[#F3EFE8] transition-colors p-4 flex flex-col items-center justify-center text-center cursor-pointer group">
+                  {isUploadingImage ? (
+                    <Loader2 className="w-6 h-6 animate-spin text-[#D6403B]" />
+                  ) : (
+                    <Upload className="w-6 h-6 text-[#6B6B6B] group-hover:scale-105 transition-transform" />
+                  )}
+                  <span className="font-semibold text-xs text-[#2B2B2B] mt-2 block">Upload photo</span>
+                  <span className="text-[10px] text-[#6B6B6B] mt-0.5 block">PNG, JPG, WebP</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={isUploadingImage}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handlePhotoUpload(file);
+                    }}
+                  />
+                </label>
 
-      {/* =====================================================================
-          CARD 5: SHIPPING AND SEARCH
-         ===================================================================== */}
-      <div className="bg-white rounded-3xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-heading font-black text-base text-[#1A1A1A]">
-            Shipping and search
-          </h2>
-        </div>
-
-        <div className="space-y-3.5 text-xs">
-          {/* Row 1: Weight, Package size, Handling time */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">
-                Weight (grams)
-              </label>
-              <input
-                type="number"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value ? Number(e.target.value) : '')}
-                placeholder="0"
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F]"
-              />
-            </div>
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">
-                Package size (cm)
-              </label>
-              <input
-                value={packageSize}
-                onChange={(e) => setPackageSize(e.target.value)}
-                placeholder="L x W x H"
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F]"
-              />
-            </div>
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">
-                Handling time (days)
-              </label>
-              <input
-                type="number"
-                value={handlingTime}
-                onChange={(e) => setHandlingTime(e.target.value ? Number(e.target.value) : '')}
-                placeholder="1"
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F]"
-              />
-            </div>
-          </div>
-
-          {/* Row 2: SEO Title & URL slug */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">SEO title</label>
-              <input
-                value={seoTitle}
-                onChange={(e) => setSeoTitle(e.target.value)}
-                placeholder="Shown on Google"
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F]"
-              />
-            </div>
-            <div>
-              <label className="font-bold text-[#1A1A1A] block mb-1">URL slug</label>
-              <input
-                value={urlSlug}
-                onChange={(e) => setUrlSlug(e.target.value)}
-                placeholder="beeswax-crayons-kit"
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs font-mono focus:outline-hidden focus:border-[#D32F2F]"
-              />
-            </div>
-          </div>
-
-          {/* Row 3: SEO Description */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">
-              SEO description
-            </label>
-            <textarea
-              rows={2}
-              value={seoDescription}
-              onChange={(e) => setSeoDescription(e.target.value)}
-              placeholder="Up to 160 characters"
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs resize-none focus:outline-hidden focus:border-[#D32F2F]"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* =====================================================================
-          CARD 6: PUBLISH
-         ===================================================================== */}
-      <div className="bg-white rounded-3xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-heading font-black text-base text-[#1A1A1A]">
-            Publish
-          </h2>
-        </div>
-
-        <div className="space-y-3.5 text-xs">
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs font-bold focus:outline-hidden focus:border-[#D32F2F] cursor-pointer"
-            >
-              <option value="Published">Published (Active on store)</option>
-              <option value="Draft">Draft (Hidden from store)</option>
-            </select>
-          </div>
-
-          <div className="space-y-2 pt-1">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleSubmit('Published')}
-              className="w-full py-3 rounded-xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Check className="w-4 h-4" />
-              )}
-              <span>{isEditing ? 'Save changes' : 'Publish product'}</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleSubmit('Draft')}
-              className="w-full py-2.5 rounded-xl bg-white border border-[#E5E0D8] text-[#1A1A1A] font-bold text-xs hover:bg-[#FAF8F5] transition-colors cursor-pointer"
-            >
-              Save as draft
-            </button>
-          </div>
-
-          <div className="pt-1 text-center">
-            <span className="text-[11px] text-[#8A8A8A] hover:text-[#D32F2F] cursor-pointer flex items-center justify-center gap-1 font-semibold">
-              <ExternalLink className="w-3 h-3" /> Preview on store
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* =====================================================================
-          CARD 7: ORGANIZE
-         ===================================================================== */}
-      <div className="bg-white rounded-3xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-heading font-black text-base text-[#1A1A1A]">
-            Organize
-          </h2>
-        </div>
-
-        <div className="space-y-3.5 text-xs">
-          {/* Category */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">Category</label>
-            <select
-              value={categorySlug}
-              onChange={(e) => setCategorySlug(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs font-bold focus:outline-hidden focus:border-[#D32F2F] cursor-pointer"
-            >
-              {categories.map((c) => (
-                <option key={c.slug} value={c.slug}>
-                  {c.nameEn} ({c.nameBn})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Sub-category */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">
-              Sub-category
-            </label>
-            <select
-              value={subCategory}
-              onChange={(e) => setSubCategory(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F] cursor-pointer"
-            >
-              <option value="">Select sub-category</option>
-              {currentSubCats.map((sub) => (
-                <option key={sub.slug} value={sub.slug}>
-                  {sub.nameEn} ({sub.nameBn})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">Tags</label>
-            <input
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={handleAddTag}
-              placeholder="Type and press enter"
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F]"
-            />
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {tags.map((t) => (
-                  <span
-                    key={t}
-                    className="px-2.5 py-1 rounded-lg bg-[#FAF8F5] border border-[#EFEAE2] text-[11px] font-medium flex items-center gap-1"
+                {/* Existing Gallery Slots */}
+                {images.map((imgUrl, idx) => (
+                  <div
+                    key={idx}
+                    className="relative aspect-square rounded-[16px] border border-[#EFE9E0] overflow-hidden bg-white group"
                   >
-                    <span>{t}</span>
+                    <Image src={imgUrl} alt={`Photo ${idx + 1}`} fill className="object-cover" />
+                    {idx === 0 && (
+                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#2B2B2B] text-white text-[9px] font-bold uppercase tracking-wider z-10">
+                        Cover
+                      </span>
+                    )}
                     <button
                       type="button"
-                      onClick={() => handleRemoveTag(t)}
-                      className="text-[#8A8A8A] hover:text-[#D32F2F]"
+                      onClick={() => handleRemovePhoto(idx)}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 text-[#9B2420] opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-white cursor-pointer z-10"
+                      aria-label="Remove photo"
                     >
-                      <X className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                  </span>
+                  </div>
                 ))}
               </div>
-            )}
-          </div>
 
-          {/* Brand */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">Brand</label>
-            <input
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder="e.g. Acme"
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F]"
-            />
-          </div>
+              {/* Video URL Field */}
+              <div className="pt-2 border-t border-[#EFE9E0]">
+                <Input
+                  id="prod-video"
+                  label="Demo video URL (optional)"
+                  value={videoUrl}
+                  onChange={(e) => {
+                    setVideoUrl(e.target.value);
+                    markDirty();
+                  }}
+                  placeholder="https://youtube.com/watch?v=... or direct MP4 link"
+                  helperText="Videos show with duration and play thumbnail in the storefront gallery"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 2. Basic Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic information</CardTitle>
+              <p className="text-xs text-[#6B6B6B]">
+                Enter product titles and descriptions in both Bangla and English
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  id="prod-title-bn"
+                  label="Title (Bangla)"
+                  value={titleBn}
+                  onChange={(e) => {
+                    setTitleBn(e.target.value);
+                    markDirty();
+                  }}
+                  placeholder="যেমন: কার পেইন্টিং কিট - ১২ পিস"
+                  error={formErrors.titleBn}
+                  required
+                />
+
+                <Input
+                  id="prod-title-en"
+                  label="Title (English)"
+                  value={titleEn}
+                  onChange={(e) => handleTitleEnChange(e.target.value)}
+                  placeholder="e.g., Car Painting Kit - 12 Piece Set"
+                  error={formErrors.titleEn}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Textarea
+                  id="prod-short-bn"
+                  label="Short description (Bangla)"
+                  value={shortDescBn}
+                  onChange={(e) => {
+                    setShortDescBn(e.target.value);
+                    markDirty();
+                  }}
+                  placeholder="পণ্যটির এক লাইনের সংক্ষেপ বিবরণ..."
+                  rows={2}
+                />
+
+                <Textarea
+                  id="prod-short-en"
+                  label="Short description (English)"
+                  value={shortDescEn}
+                  onChange={(e) => {
+                    setShortDescEn(e.target.value);
+                    markDirty();
+                  }}
+                  placeholder="One sentence summary for product cards and previews..."
+                  rows={2}
+                />
+              </div>
+
+              <Textarea
+                id="prod-full-bn"
+                label="Full description (Bangla)"
+                value={fullDescBn}
+                onChange={(e) => {
+                  setFullDescBn(e.target.value);
+                  markDirty();
+                }}
+                placeholder="পণ্যের বিস্তারিত বিবরণ: উপাদান, ব্যবহারের নিয়ম, কোন বয়সের জন্য উপযোগী..."
+                rows={4}
+              />
+
+              <Input
+                id="prod-whats-in-the-box"
+                label="What is in the box"
+                value={whatsInTheBox}
+                onChange={(e) => {
+                  setWhatsInTheBox(e.target.value);
+                  markDirty();
+                }}
+                placeholder="যেমন: ১২টি মোমের রং, ২টি আর্ট শিট, ১টি ব্রাশ"
+                helperText="Displayed in the 'বাক্সে কী আছে' tab on the storefront product page"
+              />
+            </CardContent>
+          </Card>
+
+          {/* 3. Pricing and Stock */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Pricing and stock</CardTitle>
+              <p className="text-xs text-[#6B6B6B]">
+                Default prices for products without variations. Amounts stored as integers.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Input
+                  type="number"
+                  id="prod-reg-price"
+                  label="Regular price (৳)"
+                  value={regularPrice}
+                  onChange={(e) => {
+                    setRegularPrice(e.target.value === '' ? '' : Number(e.target.value));
+                    markDirty();
+                  }}
+                  error={formErrors.regularPrice}
+                  required
+                />
+
+                <Input
+                  type="number"
+                  id="prod-sale-price"
+                  label="Sale price (৳)"
+                  value={salePrice}
+                  onChange={(e) => {
+                    setSalePrice(e.target.value === '' ? '' : Number(e.target.value));
+                    markDirty();
+                  }}
+                  helperText="Customer pays this discounted price"
+                />
+
+                <Input
+                  type="number"
+                  id="prod-cost-price"
+                  label="Cost price (private ৳)"
+                  value={costPrice}
+                  onChange={(e) => {
+                    setCostPrice(e.target.value === '' ? '' : Number(e.target.value));
+                    markDirty();
+                  }}
+                  helperText="Visible only to Admins for profit calculation"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Input
+                  id="prod-sku"
+                  label="SKU"
+                  value={sku}
+                  onChange={(e) => {
+                    setSku(e.target.value);
+                    markDirty();
+                  }}
+                  placeholder={getEffectiveSku()}
+                  helperText="Auto-generated if left blank"
+                />
+
+                <Input
+                  type="number"
+                  id="prod-stock"
+                  label="Stock quantity"
+                  value={stockQuantity}
+                  onChange={(e) => {
+                    setStockQuantity(e.target.value === '' ? '' : Number(e.target.value));
+                    markDirty();
+                  }}
+                />
+
+                <Input
+                  type="number"
+                  id="prod-low-alert"
+                  label="Low stock alert level"
+                  value={lowStockAlert}
+                  onChange={(e) => {
+                    setLowStockAlert(e.target.value === '' ? '' : Number(e.target.value));
+                    markDirty();
+                  }}
+                  helperText="Triggers warning in admin dashboard"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 4. Variations Matrix */}
+          <Card>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <CardTitle>Variations</CardTitle>
+                <p className="text-xs text-[#6B6B6B]">
+                  Create options like set sizes and age groups. Table appears with inline row editing.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={handleCopyPriceToAll}>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy price to all rows</span>
+                </Button>
+                <Button size="sm" variant="primary" onClick={handleGenerateVariations}>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Generate variations</span>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Option Values Tags Input */}
+              <div className="p-3.5 bg-[#FAF7F2] rounded-[16px] border border-[#EFE9E0] space-y-2">
+                <label className="text-xs font-semibold text-[#2B2B2B] block">
+                  Option values for {optionGroupTitle} (e.g., 12 Piece, 24 Piece)
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {optionValues.map((opt) => (
+                    <span
+                      key={opt}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[#EFE9E0] text-xs font-medium text-[#2B2B2B]"
+                    >
+                      <span>{opt}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOptionTag(opt)}
+                        className="text-[#6B6B6B] hover:text-[#9B2420]"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={newOptionInput}
+                      onChange={(e) => setNewOptionInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddOptionTag();
+                        }
+                      }}
+                      placeholder="+ Add option value"
+                      className="bg-white border border-[#EFE9E0] rounded-full px-3 py-1 text-xs text-[#2B2B2B] outline-none focus:border-[#D6403B] w-36"
+                    />
+                    <Button size="sm" variant="secondary" onClick={handleAddOptionTag}>
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Variations Table */}
+              <TableContainer>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Option</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Regular (৳)</TableHead>
+                      <TableHead>Sale (৳)</TableHead>
+                      <TableHead>Stock</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {variations.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="py-6 text-center text-[#6B6B6B]">
+                          No variations added. Click &quot;Generate variations&quot; or add a custom row.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      variations.map((v) => (
+                        <TableRow key={v.id}>
+                          <TableCell>
+                            <input
+                              type="text"
+                              value={v.name}
+                              onChange={(e) => updateVariationRow(v.id, 'name', e.target.value)}
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-semibold text-[#2B2B2B] outline-none w-36"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <input
+                              type="text"
+                              value={v.sku}
+                              onChange={(e) => updateVariationRow(v.id, 'sku', e.target.value)}
+                              placeholder={`${getEffectiveSku()}-OPT`}
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-mono text-[#6B6B6B] outline-none w-32"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <input
+                              type="number"
+                              value={v.price}
+                              onChange={(e) => updateVariationRow(v.id, 'price', Number(e.target.value))}
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-20"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <input
+                              type="number"
+                              value={v.salePrice}
+                              onChange={(e) => updateVariationRow(v.id, 'salePrice', Number(e.target.value))}
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-bold text-[#C23631] outline-none w-20"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <input
+                              type="number"
+                              value={v.stock}
+                              onChange={(e) => updateVariationRow(v.id, 'stock', Number(e.target.value))}
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-16"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <button
+                              type="button"
+                              onClick={() => deleteVariationRow(v.id)}
+                              className="p-1 rounded text-[#6B6B6B] hover:text-[#9B2420] hover:bg-[#FDE3E1] transition-colors"
+                              aria-label="Delete variation"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <div className="flex justify-end">
+                <Button size="sm" variant="ghost" onClick={handleAddCustomRow}>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add custom variation row</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 5. Shipping & Search */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Shipping and search</CardTitle>
+              <p className="text-xs text-[#6B6B6B]">
+                Package dimensions, shipping weights, and SEO metadata
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  type="number"
+                  id="prod-weight"
+                  label="Weight (grams)"
+                  value={weightGrams}
+                  onChange={(e) => {
+                    setWeightGrams(e.target.value === '' ? '' : Number(e.target.value));
+                    markDirty();
+                  }}
+                  helperText="Used for Steadfast courier parcel calculation"
+                />
+
+                <Input
+                  id="prod-package-size"
+                  label="Package size"
+                  value={packageSize}
+                  onChange={(e) => {
+                    setPackageSize(e.target.value);
+                    markDirty();
+                  }}
+                  placeholder="e.g., 20 x 15 x 5 cm"
+                />
+              </div>
+
+              <Input
+                id="prod-url-slug"
+                label="URL slug"
+                value={urlSlug}
+                onChange={(e) => {
+                  setUrlSlug(e.target.value);
+                  markDirty();
+                }}
+                helperText="Auto-generated from English title: /product/[slug]"
+              />
+
+              <Input
+                id="prod-seo-title"
+                label="SEO title"
+                value={seoTitle}
+                onChange={(e) => {
+                  setSeoTitle(e.target.value);
+                  markDirty();
+                }}
+                placeholder={titleEn}
+              />
+
+              <Textarea
+                id="prod-seo-desc"
+                label="SEO description"
+                value={seoDescription}
+                onChange={(e) => {
+                  setSeoDescription(e.target.value);
+                  markDirty();
+                }}
+                placeholder="Meta description for Google search results..."
+                rows={2}
+              />
+            </CardContent>
+          </Card>
         </div>
-      </div>
 
-      {/* =====================================================================
-          CARD 8: KIDS ESSENTIALS
-         ===================================================================== */}
-      <div className="bg-white rounded-3xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-heading font-black text-base text-[#1A1A1A]">
-            Kids essentials
-          </h2>
-        </div>
+        {/* =====================================================================
+            RIGHT SIDEBAR (4 cols, sticky top-6): Controls & Badges
+           ===================================================================== */}
+        <div className="lg:col-span-4 space-y-6 sticky top-6">
+          {/* Card 1: Publish Status */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle>Publish</CardTitle>
+                <StatusPill variant={publishStatus === 'Published' ? 'green' : 'neutral'} dot>
+                  {publishStatus}
+                </StatusPill>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {lastAutosaved && (
+                <div className="text-[11px] text-[#6B6B6B] flex items-center gap-1.5 bg-[#FAF7F2] p-2 rounded-[10px] border border-[#EFE9E0]">
+                  <Clock className="w-3.5 h-3.5 text-[#4CAF7A]" />
+                  <span>Draft autosaved at {lastAutosaved}</span>
+                </div>
+              )}
 
-        <div className="space-y-3.5 text-xs">
-          {/* Safety Badges */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1.5">
-              Safety badges
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {['Non-toxic', 'BPA free', 'Washable', 'Food-grade'].map((badge) => {
-                const active = safetyBadges.includes(badge);
-                return (
-                  <button
-                    key={badge}
-                    type="button"
-                    onClick={() => {
-                      if (active) {
-                        setSafetyBadges(safetyBadges.filter((b) => b !== badge));
-                      } else {
-                        setSafetyBadges([...safetyBadges, badge]);
-                      }
-                    }}
-                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                      active
-                        ? 'bg-[#FDE8E8] text-[#D32F2F] border border-[#F8B4B4]'
-                        : 'bg-white border border-[#E5E0D8] text-[#6B6B6B] hover:text-[#1A1A1A]'
-                    }`}
+              <div className="space-y-2">
+                <Button
+                  fullWidth
+                  variant="primary"
+                  isLoading={isSubmitting}
+                  onClick={() => handleSubmit('Published')}
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isEditing ? 'Save changes' : 'Publish product'}</span>
+                </Button>
+
+                <Button
+                  fullWidth
+                  variant="secondary"
+                  disabled={isSubmitting}
+                  onClick={() => handleSubmit('Draft')}
+                >
+                  Save as draft
+                </Button>
+              </div>
+
+              {urlSlug && (
+                <div className="pt-2 border-t border-[#EFE9E0]">
+                  <Link
+                    href={`/product/${urlSlug}`}
+                    target="_blank"
+                    className="text-xs text-[#0B5F85] hover:underline font-semibold flex items-center justify-center gap-1.5"
                   >
-                    {badge}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+                    <span>Preview on store</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Target Age */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1.5">
-              Target age
-            </label>
-            <div className="flex items-center gap-2">
-              {['1+', '2+', '3+', '5+', '8+'].map((age) => {
-                const active = targetAge === age;
-                return (
-                  <button
-                    key={age}
-                    type="button"
-                    onClick={() => setTargetAge(age)}
-                    className={`w-9 h-9 rounded-full font-bold text-xs transition-all flex items-center justify-center cursor-pointer ${
-                      active
-                        ? 'bg-[#D32F2F] text-white shadow-xs'
-                        : 'bg-white border border-[#E5E0D8] text-[#6B6B6B] hover:text-[#1A1A1A]'
-                    }`}
-                  >
-                    {age}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* Card 2: Organize */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Organize</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Select
+                id="prod-cat"
+                label="Category"
+                value={categorySlug}
+                onChange={(e) => {
+                  setCategorySlug(e.target.value);
+                  markDirty();
+                }}
+              >
+                {categories.map((c) => (
+                  <option key={c.id || c.slug} value={c.slug}>
+                    {c.nameEn || c.nameBn}
+                  </option>
+                ))}
+              </Select>
 
-          {/* Product Badge Text */}
-          <div>
-            <label className="font-bold text-[#1A1A1A] block mb-1">
-              Product badge text
-            </label>
-            <input
-              value={productBadge}
-              onChange={(e) => setProductBadge(e.target.value)}
-              placeholder="যেমন: সেরা উপহার"
-              className="w-full p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EFEAE2] text-xs focus:outline-hidden focus:border-[#D32F2F]"
-            />
-          </div>
+              <Input
+                id="prod-subcat"
+                label="Sub category (optional)"
+                value={subCategory}
+                onChange={(e) => {
+                  setSubCategory(e.target.value);
+                  markDirty();
+                }}
+                placeholder="e.g., Washable Beeswax"
+              />
+
+              <Input
+                id="prod-brand"
+                label="Brand name"
+                value={brand}
+                onChange={(e) => {
+                  setBrand(e.target.value);
+                  markDirty();
+                }}
+                placeholder={BRAND_NAME}
+              />
+
+              {/* Tag Chips */}
+              <div>
+                <label className="text-xs font-semibold text-[#2B2B2B] block mb-1.5">Tags</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {tags.map((t) => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FAF7F2] border border-[#EFE9E0] text-xs text-[#2B2B2B]"
+                    >
+                      <span>{t}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTags(tags.filter((item) => item !== t));
+                          markDirty();
+                        }}
+                        className="text-[#6B6B6B] hover:text-[#9B2420]"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <Input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleAddTag}
+                  placeholder="Type tag and press Enter"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 3: Kids Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Kids details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Select
+                id="prod-age"
+                label="Suitable age"
+                value={targetAge}
+                onChange={(e) => {
+                  setTargetAge(e.target.value);
+                  markDirty();
+                }}
+              >
+                <option value="1+">1+ বছর (Toddlers 1+)</option>
+                <option value="2+">২+ বছর (Ages 2+)</option>
+                <option value="3+">৩+ বছর (Ages 3+)</option>
+                <option value="5+">৫+ বছর (Ages 5+)</option>
+                <option value="All">সকল বয়স (All Ages)</option>
+              </Select>
+
+              <Input
+                id="prod-badge-text"
+                label="Card badge text"
+                value={badgeText}
+                onChange={(e) => {
+                  setBadgeText(e.target.value);
+                  markDirty();
+                }}
+                placeholder="New, সেরা অফার, ৫০% ছাড়"
+              />
+
+              {/* Safety Badges Checkboxes */}
+              <div>
+                <label className="text-xs font-semibold text-[#2B2B2B] block mb-2">
+                  Safety badges
+                </label>
+                <div className="space-y-2">
+                  {[
+                    '100% Non-toxic',
+                    'Food-grade Beeswax',
+                    'Washable with Water',
+                    'BPA & Lead Free',
+                  ].map((badge) => {
+                    const isChecked = safetyBadges.includes(badge);
+                    return (
+                      <label
+                        key={badge}
+                        className="flex items-center gap-2 text-xs text-[#2B2B2B] cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            if (isChecked) {
+                              setSafetyBadges(safetyBadges.filter((b) => b !== badge));
+                            } else {
+                              setSafetyBadges([...safetyBadges, badge]);
+                            }
+                            markDirty();
+                          }}
+                          className="rounded-[4px] accent-[#D6403B] cursor-pointer"
+                        />
+                        <span>{badge}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 4: Show on Store Toggles */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Show on store</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-xs">
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="font-medium text-[#2B2B2B]">New products showcase</span>
+                <input
+                  type="checkbox"
+                  checked={showInNewArrivals}
+                  onChange={(e) => {
+                    setShowInNewArrivals(e.target.checked);
+                    markDirty();
+                  }}
+                  className="rounded-[4px] accent-[#D6403B] cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="font-medium text-[#2B2B2B]">Trending now section</span>
+                <input
+                  type="checkbox"
+                  checked={featureInTrending}
+                  onChange={(e) => {
+                    setFeatureInTrending(e.target.checked);
+                    markDirty();
+                  }}
+                  className="rounded-[4px] accent-[#D6403B] cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="font-medium text-[#2B2B2B]">Allow cash on delivery</span>
+                <input
+                  type="checkbox"
+                  checked={allowCashOnDelivery}
+                  onChange={(e) => {
+                    setAllowCashOnDelivery(e.target.checked);
+                    markDirty();
+                  }}
+                  className="rounded-[4px] accent-[#D6403B] cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="font-medium text-[#2B2B2B]">Show stock left badge</span>
+                <input
+                  type="checkbox"
+                  checked={showStockLeft}
+                  onChange={(e) => {
+                    setShowStockLeft(e.target.checked);
+                    markDirty();
+                  }}
+                  className="rounded-[4px] accent-[#D6403B] cursor-pointer"
+                />
+              </label>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* =====================================================================
-          CARD 9: SHOW ON STORE (TOGGLES)
-         ===================================================================== */}
-      <div className="bg-white rounded-3xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-heading font-black text-base text-[#1A1A1A]">
-            Show on store
-          </h2>
-        </div>
-
-        <div className="divide-y divide-[#EFEAE2] text-xs">
-          {/* Toggle 1: Show in New arrivals */}
-          <div className="py-3 flex items-center justify-between">
-            <span className="font-bold text-[#1A1A1A]">Show in New arrivals</span>
-            <button
-              type="button"
-              onClick={() => setShowInNewArrivals(!showInNewArrivals)}
-              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                showInNewArrivals ? 'bg-[#D32F2F]' : 'bg-[#E5E0D8]'
-              }`}
-            >
-              <span
-                className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
-                  showInNewArrivals ? 'left-6' : 'left-1'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Toggle 2: Feature in Trending now */}
-          <div className="py-3 flex items-center justify-between">
-            <span className="font-bold text-[#1A1A1A]">Feature in Trending now</span>
-            <button
-              type="button"
-              onClick={() => setFeatureInTrending(!featureInTrending)}
-              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                featureInTrending ? 'bg-[#D32F2F]' : 'bg-[#E5E0D8]'
-              }`}
-            >
-              <span
-                className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
-                  featureInTrending ? 'left-6' : 'left-1'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Toggle 3: Allow cash on delivery */}
-          <div className="py-3 flex items-center justify-between">
-            <span className="font-bold text-[#1A1A1A]">Allow cash on delivery</span>
-            <button
-              type="button"
-              onClick={() => setAllowCashOnDelivery(!allowCashOnDelivery)}
-              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                allowCashOnDelivery ? 'bg-[#D32F2F]' : 'bg-[#E5E0D8]'
-              }`}
-            >
-              <span
-                className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
-                  allowCashOnDelivery ? 'left-6' : 'left-1'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Toggle 4: Requires gift wrap option */}
-          <div className="py-3 flex items-center justify-between">
-            <span className="font-bold text-[#1A1A1A]">Requires gift wrap option</span>
-            <button
-              type="button"
-              onClick={() => setRequiresGiftWrap(!requiresGiftWrap)}
-              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                requiresGiftWrap ? 'bg-[#D32F2F]' : 'bg-[#E5E0D8]'
-              }`}
-            >
-              <span
-                className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
-                  requiresGiftWrap ? 'left-6' : 'left-1'
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Discard Changes Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={() => {
+          setShowCancelConfirm(false);
+          setIsDirty(false);
+          onCancel();
+        }}
+        title="Discard Unsaved Changes?"
+        message="You have unsaved changes in this product form. If you leave now, your current modifications will be lost."
+        confirmLabel="Discard & leave"
+        cancelLabel="Continue editing"
+        isDestructive={true}
+      />
     </div>
   );
 }

@@ -14,6 +14,10 @@ export interface CartItemData {
   variationSku?: string;
   variationTitle?: string;
   variationTitleBn?: string;
+  isBundle?: boolean;
+  bundleItemsSummary?: string;
+  giftWrap?: boolean;
+  giftMessage?: string;
 }
 
 export interface OrderItemRecord {

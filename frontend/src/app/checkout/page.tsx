@@ -61,10 +61,40 @@ export default function CheckoutPage() {
   const deliveryCharge = isFreeDelivery ? 0 : isInsideDhaka ? 60 : 120;
   const grandTotal = Math.max(0, subtotal - discountAmount + deliveryCharge);
 
-  // Incomplete order simulated capture when phone has 11 digits
+  // Auto-save checkout details as an incomplete order as soon as a valid phone number is entered (Part A4 / B8 Spec)
+  const recordIncompleteCheckout = async (phoneToSave: string) => {
+    const cleanPhone = phoneToSave.replace(/[^\d]/g, '');
+    if (cleanPhone.length >= 11) {
+      try {
+        await fetch('/api/incomplete-orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: cleanPhone,
+            customerName: customerName.trim() || undefined,
+            district: district.split(' ')[0],
+            address: fullAddress.trim() || undefined,
+            subtotal,
+            deliveryCharge,
+            totalAmount: grandTotal,
+            items: items.map((i) => ({
+              title: i.titleBn || i.title,
+              variationTitle: i.variationTitleBn || i.variationTitle,
+              price: i.price,
+              quantity: i.quantity,
+              imageUrl: i.imageUrl,
+            })),
+          }),
+        });
+      } catch {
+        // silent auto-save
+      }
+    }
+  };
+
   const handlePhoneBlur = () => {
     if (customerPhone.length >= 11) {
-      console.log('[INCOMPLETE ORDER CAPTURED]: Phone recorded ->', customerPhone);
+      recordIncompleteCheckout(customerPhone);
     }
   };
 

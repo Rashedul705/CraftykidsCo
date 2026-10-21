@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingBag, Check, Heart, Star, Zap } from 'lucide-react';
-import { formatBDT } from '@/lib/utils';
+import { formatBDT, toBanglaDigits } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 
 export interface ProductCardProps {
@@ -22,6 +22,7 @@ export interface ProductCardProps {
   reviewCount?: number;
   imageUrl: string;
   locale?: 'bn' | 'en';
+  hasVariations?: boolean;
   onQuickAdd?: (id: string) => void;
 }
 
@@ -37,6 +38,7 @@ export function ProductCard({
   rating = 4.9,
   imageUrl,
   locale = 'bn',
+  hasVariations = false,
   onQuickAdd,
 }: ProductCardProps) {
   const router = useRouter();
@@ -44,6 +46,7 @@ export function ProductCard({
   const [added, setAdded] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
+  const isBn = locale === 'bn';
   const discountPercent = salePrice
     ? Math.round(((price - salePrice) / price) * 100)
     : 0;
@@ -54,6 +57,12 @@ export function ProductCard({
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (hasVariations) {
+      router.push(`/product/${slug}`);
+      return;
+    }
+
     addItem({
       id: `${id}-${Date.now()}`,
       productId: id,
@@ -73,6 +82,12 @@ export function ProductCard({
   const handleOrderNow = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (hasVariations) {
+      router.push(`/product/${slug}`);
+      return;
+    }
+
     addItem({
       id: `${id}-${Date.now()}`,
       productId: id,
@@ -92,15 +107,21 @@ export function ProductCard({
     setIsWishlisted(!isWishlisted);
   };
 
-  const displayBadge = badge || (discountPercent > 0 ? `-${discountPercent}%` : ageBadgeText || safetyBadgeText);
+  const displayBadge =
+    badge ||
+    (discountPercent > 0
+      ? isBn
+        ? `${toBanglaDigits(discountPercent)}% ছাড়`
+        : `-${discountPercent}%`
+      : ageBadgeText || safetyBadgeText);
 
   return (
-    <div className="group relative bg-white border border-[#EBE5DC] rounded-2xl overflow-hidden p-2.5 sm:p-3 transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-1 flex flex-col justify-between">
+    <div className="group relative bg-white border border-[#EFE9E0] rounded-2xl overflow-hidden p-2.5 sm:p-3 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between">
       {/* Top action badges */}
-      <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between pointer-events-none">
-        {/* Left Badge: Cyan / Teal Pill */}
+      <div className="absolute top-3.5 left-3.5 right-3.5 z-10 flex items-center justify-between pointer-events-none">
+        {/* Left Badge: Soft Cyan Pill */}
         {displayBadge ? (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#E0F7FA] text-[#00796B] border border-[#B2EBF2] shadow-xs pointer-events-auto">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-[#DDF1FB] text-[#0B5F85] border border-[#BEE4F7] shadow-2xs pointer-events-auto">
             {displayBadge}
           </span>
         ) : (
@@ -111,8 +132,8 @@ export function ProductCard({
         <button
           type="button"
           onClick={handleWishlist}
-          className={`w-7 h-7 rounded-full bg-white/95 border border-[#E5E0D8] flex items-center justify-center shadow-xs transition-colors pointer-events-auto cursor-pointer ${
-            isWishlisted ? 'text-[#E53935]' : 'text-[#888] hover:text-[#E53935]'
+          className={`w-7 h-7 rounded-full bg-white/95 border border-[#EFE9E0] flex items-center justify-center shadow-2xs transition-colors pointer-events-auto cursor-pointer ${
+            isWishlisted ? 'text-[#D6403B]' : 'text-[#6B6B6B] hover:text-[#D6403B]'
           }`}
           aria-label="Wishlist"
         >
@@ -121,7 +142,10 @@ export function ProductCard({
       </div>
 
       {/* Product Image Link */}
-      <Link href={`/product/${slug}`} className="block relative w-full aspect-square rounded-xl bg-[#FAF8F5] overflow-hidden mb-2.5">
+      <Link
+        href={`/product/${slug}`}
+        className="block relative w-full aspect-square rounded-xl bg-[#FAF7F2] overflow-hidden mb-2.5"
+      >
         <Image
           src={imageUrl}
           alt={title}
@@ -135,58 +159,67 @@ export function ProductCard({
       <div className="flex flex-col flex-1 justify-between">
         <div>
           {/* Subtle Rating */}
-          <div className="flex items-center gap-1 text-[11px] text-[#888] mb-1">
-            <div className="flex items-center text-[#FFB300]">
+          <div className="flex items-center gap-1 text-[11px] text-[#6B6B6B] mb-1">
+            <div className="flex items-center text-[#FFC93C]">
               <Star className="w-3 h-3 fill-current" />
             </div>
-            <span className="font-bold text-[#444]">{rating}</span>
-            <span className="text-[#AAA]">• নিরাপদ</span>
+            <span className="font-bold text-[#2B2B2B]">{rating}</span>
+            <span className="text-[#D1D5DB]">•</span>
+            <span className="text-[#1F6B43] font-medium">{isBn ? 'নিরাপদ' : 'Safe'}</span>
           </div>
 
           {/* Product Title */}
           <Link href={`/product/${slug}`} className="block">
-            <h3 className="font-heading font-bold text-xs sm:text-sm text-[#222222] group-hover:text-[#E53935] transition-colors line-clamp-2 min-h-[34px] sm:min-h-[38px] leading-snug">
+            <h3 className="font-bold text-xs sm:text-sm text-[#2B2B2B] group-hover:text-[#D6403B] transition-colors line-clamp-2 min-h-[34px] sm:min-h-[38px] leading-snug">
               {title}
             </h3>
           </Link>
         </div>
 
-        {/* Price & Two Action Buttons */}
+        {/* Price & Action Buttons */}
         <div className="mt-2.5">
           {/* Pricing */}
-          <div className="flex items-baseline gap-2 mb-2.5">
-            <span className="text-base sm:text-lg font-black text-[#E53935]">
+          <div className="flex items-baseline gap-2 mb-2">
+            <span className="text-base sm:text-lg font-extrabold text-[#C23631]">
               {formatBDT(currentPrice, { locale })}
             </span>
             {salePrice && (
-              <span className="text-xs font-semibold text-[#999999] line-through">
+              <span className="text-xs text-[#6B6B6B] line-through font-normal">
                 {formatBDT(price, { locale })}
               </span>
             )}
           </div>
 
-          {/* TWO BUTTONS: Add to Cart & Order Now */}
+          {/* TWO BUTTONS: Add to Cart & Order Now (or Choose Option if has variations) */}
           <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-            {/* Button 1: Add to Cart */}
+            {/* Button 1: Add to Cart / Choose Options */}
             <button
               type="button"
               onClick={handleAddToCart}
-              className={`py-2 px-1.5 sm:px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition-all duration-200 cursor-pointer border ${
+              className={`py-2 px-1.5 sm:px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all duration-200 cursor-pointer border ${
                 added
-                  ? 'bg-[#E8F5E9] border-[#A5D6A7] text-[#2E7D32]'
-                  : 'bg-[#FAF8F5] border-[#DFD7CC] hover:bg-[#F2ECE4] text-[#333333] active:scale-[0.98]'
+                  ? 'bg-[#DDF3E6] border-[#BDE6CE] text-[#1F6B43]'
+                  : 'bg-[#FAF7F2] border-[#EFE9E0] hover:bg-[#F2ECE4] text-[#2B2B2B] active:scale-[0.98]'
               }`}
-              title="Add to Cart"
+              title={isBn ? 'কার্টে যোগ করুন' : 'Add to Cart'}
             >
               {added ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-[#2E7D32]" />
-                  <span className="text-[11px] sm:text-xs">Added</span>
+                  <Check className="w-3.5 h-3.5 text-[#1F6B43]" />
+                  <span className="text-[11px] sm:text-xs">{isBn ? 'যোগ হয়েছে' : 'Added'}</span>
                 </>
               ) : (
                 <>
-                  <ShoppingBag className="w-3.5 h-3.5 text-[#555]" />
-                  <span className="text-[11px] sm:text-xs">Add to Cart</span>
+                  <ShoppingBag className="w-3.5 h-3.5 text-[#6B6B6B]" />
+                  <span className="text-[11px] sm:text-xs">
+                    {hasVariations
+                      ? isBn
+                        ? 'অপশন বাছুন'
+                        : 'Options'
+                      : isBn
+                      ? 'কার্টে যোগ'
+                      : 'Add to Cart'}
+                  </span>
                 </>
               )}
             </button>
@@ -195,11 +228,13 @@ export function ProductCard({
             <button
               type="button"
               onClick={handleOrderNow}
-              className="py-2 px-1.5 sm:px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition-all duration-200 cursor-pointer bg-[#E53935] hover:bg-[#D32F2F] active:scale-[0.98] text-white shadow-xs"
-              title="Order Now"
+              className="py-2 px-1.5 sm:px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all duration-200 cursor-pointer bg-[#D6403B] hover:bg-[#BF3430] active:scale-[0.98] text-white shadow-2xs"
+              title={isBn ? 'এখনই অর্ডার করুন' : 'Order Now'}
             >
               <Zap className="w-3.5 h-3.5 fill-current" />
-              <span className="text-[11px] sm:text-xs">Order Now</span>
+              <span className="text-[11px] sm:text-xs">
+                {isBn ? 'অর্ডার' : 'Order'}
+              </span>
             </button>
           </div>
         </div>
