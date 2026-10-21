@@ -34,7 +34,8 @@ export function updateDeliverySettings(updates: Partial<DeliverySettings>): Deli
 export function calculateDelivery(
   district: string | null | undefined,
   subtotal: number,
-  settings: DeliverySettings = globalDeliverySettings
+  settings: DeliverySettings = globalDeliverySettings,
+  thana?: string | null
 ): {
   isCalculated: boolean;
   charge: number;
@@ -56,6 +57,7 @@ export function calculateDelivery(
   }
 
   const d = district.toLowerCase();
+  const t = (thana || '').toLowerCase();
 
   if (isFree) {
     return {
@@ -67,17 +69,12 @@ export function calculateDelivery(
     };
   }
 
-  if (d.includes('dhaka') || d.includes('ঢাকা')) {
-    return {
-      isCalculated: true,
-      charge: settings.dhakaRate,
-      isFree: false,
-      zone: 'DHAKA',
-      descriptionBn: `ঢাকা সিটি (৳${settings.dhakaRate})`,
-    };
-  }
+  // Check if thana is explicitly a Dhaka suburb (e.g. Savar, Keraniganj, Dhamrai)
+  // or if district itself is a suburb (e.g. Gazipur, Narayanganj)
+  const isSuburb =
+    settings.suburbsDistricts.some((s) => d.includes(s.toLowerCase())) ||
+    settings.suburbsDistricts.some((s) => t.includes(s.toLowerCase()));
 
-  const isSuburb = settings.suburbsDistricts.some((s) => d.includes(s.toLowerCase()));
   if (isSuburb) {
     return {
       isCalculated: true,
@@ -85,6 +82,16 @@ export function calculateDelivery(
       isFree: false,
       zone: 'SUBURBS',
       descriptionBn: `ঢাকা উপশহর (৳${settings.suburbsRate})`,
+    };
+  }
+
+  if (d.includes('dhaka') || d.includes('ঢাকা')) {
+    return {
+      isCalculated: true,
+      charge: settings.dhakaRate,
+      isFree: false,
+      zone: 'DHAKA',
+      descriptionBn: `ঢাকা সিটি (৳${settings.dhakaRate})`,
     };
   }
 

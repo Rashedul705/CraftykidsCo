@@ -22,26 +22,9 @@ import { useCart } from '@/context/CartContext';
 import { createOrder } from '@/lib/store';
 
 import { calculateDelivery, defaultDeliverySettings, DeliverySettings } from '@/lib/delivery-store';
+import { getDistrictOptions, getThanasByDistrict } from '@/lib/bd-locations';
 
-const BANGLADESH_DISTRICTS = [
-  'Dhaka (ঢাকা)',
-  'Gazipur (গাজীপুর)',
-  'Narayanganj (নারায়ণগঞ্জ)',
-  'Chittagong (চট্টগ্রাম)',
-  'Sylhet (সিলেট)',
-  'Rajshahi (রাজশাহী)',
-  'Khulna (খুলনা)',
-  'Barisal (বরিশাল)',
-  'Rangpur (রংপুর)',
-  'Mymensingh (ময়মনসিংহ)',
-  'Cumilla (কুমিল্লা)',
-  'Bogra (বগুড়া)',
-  'Cox\'s Bazar (কক্সবাজার)',
-  'Jessore (যশোর)',
-  'Kushtia (কুষ্টিয়া)',
-  'Tangail (টাঙ্গাইল)',
-  'Other District (অন্যান্য জেলা)',
-];
+const districtOptions = getDistrictOptions();
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -50,12 +33,25 @@ export default function CheckoutPage() {
   // Form states
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [district, setDistrict] = useState(''); // Empty by default: user must choose their city!
+  const [district, setDistrict] = useState(''); // Empty by default
+  const [thana, setThana] = useState(''); // Thana / Upazila
+  const [customThana, setCustomThana] = useState('');
   const [fullAddress, setFullAddress] = useState('');
   const [customerNote, setCustomerNote] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'BKASH' | 'NAGAD'>('COD');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Dynamically compute thanas for selected district
+  const availableThanas = useMemo(() => {
+    return getThanasByDistrict(district);
+  }, [district]);
+
+  const handleDistrictChange = (newDistrict: string) => {
+    setDistrict(newDistrict);
+    setThana('');
+    setCustomThana('');
+  };
 
   // Live delivery settings loaded from admin panel
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(defaultDeliverySettings);
@@ -73,8 +69,8 @@ export default function CheckoutPage() {
 
   // Automatic delivery charge calculation based on selected district and subtotal
   const deliveryCalc = useMemo(() => {
-    return calculateDelivery(district, subtotal, deliverySettings);
-  }, [district, subtotal, deliverySettings]);
+    return calculateDelivery(district, subtotal, deliverySettings, thana);
+  }, [district, thana, subtotal, deliverySettings]);
 
   const isInsideDhaka = district.includes('Dhaka') || district.includes('ঢাকা');
   const isFreeDelivery = deliveryCalc.isFree;
@@ -145,6 +141,12 @@ export default function CheckoutPage() {
       return;
     }
 
+    const finalThana = thana === 'OTHER' ? customThana.trim() : thana.trim();
+    if (!finalThana) {
+      setErrorMessage('অনুগ্রহ করে আপনার থানা বা উপজেলা নির্বাচন করুন।');
+      return;
+    }
+
     if (items.length === 0) {
       setErrorMessage('আপনার কার্ট খালি আছে। আগে পণ্য কার্টে যোগ করুন।');
       return;
@@ -153,11 +155,12 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
+      const combinedAddress = `${fullAddress.trim()}, থানা/উপজেলা: ${finalThana}, জেলা: ${district}`;
       const payload = {
         customerName: customerName.trim(),
         customerPhone: normalizedPhone,
         district: isInsideDhaka ? 'Dhaka' : district.split(' ')[0],
-        fullAddress: fullAddress.trim(),
+        fullAddress: combinedAddress,
         customerNote: customerNote.trim() || undefined,
         paymentMethod,
         couponCode: couponCode || undefined,
@@ -325,32 +328,73 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* District */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#2B2B2B] block">
-                  জেলা নির্বাচন করুন <span className="text-[#FF6B6B]">*</span>
-                </label>
-                <select
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] text-sm focus:outline-none focus:border-[#FF6B6B] font-medium cursor-pointer"
-                >
-                  <option value="">-- জেলা নির্বাচন করুন (Select District) --</option>
-                  {BANGLADESH_DISTRICTS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
+              {/* District & Thana Responsive Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* District */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#2B2B2B] block">
+                    জেলা নির্বাচন করুন <span className="text-[#FF6B6B]">*</span>
+                  </label>
+                  <select
+                    value={district}
+                    onChange={(e) => handleDistrictChange(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] text-sm focus:outline-none focus:border-[#FF6B6B] font-medium cursor-pointer"
+                  >
+                    <option value="">-- জেলা নির্বাচন করুন (৬৪ জেলা) --</option>
+                    {districtOptions.map((d) => (
+                      <option key={d.id} value={d.label}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] text-[#6B6B6B] block">
+                    {!district ? (
+                      'ডেলিভারি চার্জ জানার জন্য জেলা নির্বাচন করুন'
+                    ) : deliveryCalc.isFree ? (
+                      <span className="text-[#1F6B43] font-bold">অভিনন্দন! ফ্রি ডেলিভারি প্রযোজ্য।</span>
+                    ) : (
+                      `ডেলিভারি চার্জ: ৳${deliveryCharge} (${deliveryCalc.descriptionBn})`
+                    )}
+                  </span>
+                </div>
+
+                {/* Thana / Upazila */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#2B2B2B] block">
+                    থানা / উপজেলা <span className="text-[#FF6B6B]">*</span>
+                  </label>
+                  <select
+                    disabled={!district}
+                    value={thana}
+                    onChange={(e) => setThana(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] text-sm focus:outline-none focus:border-[#FF6B6B] font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {!district ? '-- আগে জেলা নির্বাচন করুন --' : '-- থানা/উপজেলা নির্বাচন করুন --'}
                     </option>
-                  ))}
-                </select>
-                <span className="text-[11px] text-[#6B6B6B] block">
-                  {!district ? (
-                    'ডেলিভারি চার্জ জানার জন্য অনুগ্রহ করে আপনার জেলা নির্বাচন করুন'
-                  ) : deliveryCalc.isFree ? (
-                    <span className="text-[#1F6B43] font-bold">অভিনন্দন! আপনার অর্ডারে ফ্রি ডেলিভারি প্রযোজ্য।</span>
-                  ) : (
-                    `ডেলিভারি চার্জ: ৳${deliveryCharge} (${deliveryCalc.descriptionBn})`
+                    {availableThanas.map((th) => (
+                      <option key={th.nameEn} value={`${th.nameBn} (${th.nameEn})`}>
+                        {th.label}
+                      </option>
+                    ))}
+                    {district && (
+                      <option value="OTHER">অন্যান্য থানা / এলাকা (Other)...</option>
+                    )}
+                  </select>
+                  {thana === 'OTHER' && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="আপনার থানা বা উপজেলার নাম লিখুন..."
+                      value={customThana}
+                      onChange={(e) => setCustomThana(e.target.value)}
+                      className="w-full mt-2 px-4 py-2.5 rounded-xl bg-white border border-[#EFE9E0] text-xs focus:outline-none focus:border-[#FF6B6B]"
+                    />
                   )}
-                </span>
+                  <span className="text-[11px] text-[#6B6B6B] block">
+                    {district && !thana ? 'সঠিক ডেলিভারির জন্য থানা বেছে নিন' : ''}
+                  </span>
+                </div>
               </div>
 
               {/* Full Address */}
