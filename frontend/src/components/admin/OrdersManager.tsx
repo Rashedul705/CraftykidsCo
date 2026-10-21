@@ -26,10 +26,14 @@ import {
   ArrowRight,
   Eye,
   Calendar,
+  Tag,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 import { OrderRecord } from '@/lib/store';
 import { SampleProduct } from '@/lib/sample-data';
 import { formatBDT } from '@/lib/utils';
+import { calculateAmountToCollect, formatTaka } from '@/lib/order-calc';
 import { Button } from '@/components/ui/Button';
 import { StatusPill } from '@/components/ui/Pill';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -106,6 +110,12 @@ export default function OrdersManager({
   const [editAddressText, setEditAddressText] = useState('');
   const [isSubmittingDispatch, setIsSubmittingDispatch] = useState(false);
   const [activeDropdownRowId, setActiveDropdownRowId] = useState<string | null>(null);
+
+  // Sticker Print Modal State
+  const [isStickerModalOpen, setIsStickerModalOpen] = useState(false);
+  const [stickerModalTargets, setStickerModalTargets] = useState<OrderRecord[]>([]);
+  const [selectedStickerLayout, setSelectedStickerLayout] = useState<'100x150' | '75x50' | 'sheet4' | 'sheet8'>('100x150');
+  const [stickerStartPos, setStickerStartPos] = useState<number>(1);
 
   // Internal Notes Map (orderId -> note)
   const [internalNotes, setInternalNotes] = useState<{ [id: string]: string }>({});
@@ -328,7 +338,16 @@ export default function OrdersManager({
     try {
       setIsSubmittingDispatch(true);
       await onSendToSteadfast(order);
-      success(`Order #${order.orderNumber} dispatched to Steadfast.`);
+      success(`Order #${order.orderNumber} dispatched to Steadfast.`, {
+        title: 'স্টিডফাস্টে পার্সেল প্রস্তুত',
+        actionLabel: 'Print Sticker',
+        actionIcon: <Printer className="w-3.5 h-3.5" />,
+        onAction: () => {
+          handlePrintStickers([order], { size: '100x150' });
+        },
+        duration: 10000,
+      });
+      onRefresh();
     } catch (err: any) {
       error(err?.message || 'Failed to dispatch order to Steadfast.');
     } finally {
@@ -406,85 +425,78 @@ export default function OrdersManager({
     });
   };
 
-  // Print Invoices Helper
-  const handlePrintInvoices = (targetList: OrderRecord[]) => {
-    if (!targetList.length) return;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+  // Print Invoices Helper via server PDF route
+  const handlePrintInvoices = (targetList: OrderRecord[], options: { download?: boolean; formatHtml?: boolean } = {}) => {
+    if (!targetList.length) {
+      warning('প্রিন্ট করার জন্য কোনো অর্ডার নির্বাচন করা হয়নি।');
+      return;
+    }
+    const ids = targetList.map((o) => o.orderNumber || o.id).join(',');
+    const query = new URLSearchParams({ ids });
+    if (options.download) query.set('download', '1');
+    if (options.formatHtml) query.set('format', 'html');
+    window.open(`/api/print/invoice?${query.toString()}`, '_blank');
+  };
 
-    const invoicesHtml = targetList
-      .map(
-        (ord) => `
-      <div style="font-family: sans-serif; padding: 24px; border: 1px dashed #ccc; margin-bottom: 24px; page-break-after: always; max-width: 600px; margin: 0 auto 24px;">
-        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #D6403B; padding-bottom: 12px; margin-bottom: 16px;">
-          <div>
-            <h2 style="margin: 0; color: #D6403B; font-size: 22px;">CraftyKidsCo</h2>
-            <p style="margin: 4px 0 0; font-size: 11px; color: #666;">Child-safe Natural Crayons & Educational Toys</p>
-          </div>
-          <div style="text-align: right;">
-            <h3 style="margin: 0; font-size: 16px;">INVOICE</h3>
-            <p style="margin: 4px 0 0; font-size: 13px; font-weight: bold; color: #D6403B;">#${ord.orderNumber}</p>
-          </div>
-        </div>
+  // Open Sticker Print Modal for configuration (Thermal vs Sheet Layout)
+  const openStickerPrintModal = (targetList: OrderRecord[]) => {
+    if (!targetList.length) {
+      warning('স্টিকার প্রিন্ট করার জন্য কোনো অর্ডার নির্বাচন করা হয়নি।');
+      return;
+    }
+    setStickerModalTargets(targetList);
+    setStickerStartPos(1);
+    setIsStickerModalOpen(true);
+  };
 
-        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 16px;">
-          <div>
-            <strong>Ship to:</strong><br />
-            ${ord.customerName}<br />
-            Phone: ${ord.customerPhone}<br />
-            Address: ${ord.fullAddress}<br />
-            District: ${ord.district}
-          </div>
-          <div style="text-align: right;">
-            <strong>Order Details:</strong><br />
-            Date: ${new Date(ord.createdAt).toLocaleDateString()}<br />
-            Payment: ${ord.paymentMethod} (${ord.paymentStatus})<br />
-            ${ord.trackingCode ? `Tracking: <strong>${ord.trackingCode}</strong>` : ''}
-          </div>
-        </div>
+  // Print Stickers via server PDF route
+  const handlePrintStickers = (
+    targetList: OrderRecord[],
+    options: {
+      size?: '100x150' | '75x50';
+      sheet?: '4' | '8';
+      startPos?: number;
+      download?: boolean;
+      formatHtml?: boolean;
+    } = {}
+  ) => {
+    if (!targetList.length) {
+      warning('স্টিকার প্রিন্ট করার মতো কোনো অর্ডার নেই।');
+      return;
+    }
 
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px;">
-          <thead>
-            <tr style="background: #FAF7F2; border-bottom: 1px solid #ddd;">
-              <th style="padding: 8px; text-align: left;">Item</th>
-              <th style="padding: 8px; text-align: center;">Qty</th>
-              <th style="padding: 8px; text-align: right;">Price</th>
-              <th style="padding: 8px; text-align: right;">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${ord.items
-              .map(
-                (item) => `
-              <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 8px;">${item.title}</td>
-                <td style="padding: 8px; text-align: center;">${item.quantity}</td>
-                <td style="padding: 8px; text-align: right;">৳${item.price}</td>
-                <td style="padding: 8px; text-align: right;">৳${item.price * item.quantity}</td>
-              </tr>
-            `
-              )
-              .join('')}
-          </tbody>
-        </table>
+    const eligible = targetList.filter((o) => !!(o.consignmentId || o.trackingCode));
+    const skipped = targetList.filter((o) => !(o.consignmentId || o.trackingCode));
 
-        <div style="text-align: right; font-size: 12px; line-height: 1.6;">
-          <p style="margin: 2px 0;">Subtotal: ৳${ord.subtotal || ord.totalAmount}</p>
-          <p style="margin: 2px 0;">Delivery: ৳${ord.deliveryCharge || (ord.district === 'Dhaka' ? 60 : 120)}</p>
-          <h3 style="margin: 8px 0 0; font-size: 16px; color: #D6403B;">Amount to Collect: ৳${ord.totalAmount}</h3>
-        </div>
-      </div>
-    `
-      )
-      .join('');
+    if (skipped.length > 0) {
+      warning(
+        `${skipped.length}টি অর্ডারের কনসাইনমেন্ট আইডি নেই বলে স্টিকার প্রিন্ট থেকে বাদ দেওয়া হয়েছে: ${skipped
+          .map((o) => `#${o.orderNumber}`)
+          .join(', ')}`
+      );
+    }
 
-    printWindow.document.write(`
-      <html>
-        <head><title>Print Invoices - CraftyKidsCo</title></head>
-        <body onload="window.print()">${invoicesHtml}</body>
-      </html>
-    `);
-    printWindow.document.close();
+    if (eligible.length === 0) {
+      error('নির্বাচিত কোনো অর্ডারের কনসাইনমেন্ট আইডি নেই। আগে স্টিডফাস্ট বা কুরিয়ারে পার্সেল পাঠান।');
+      return;
+    }
+
+    const ids = eligible.map((o) => o.orderNumber || o.id).join(',');
+    const query = new URLSearchParams({ ids });
+
+    if (options.sheet) {
+      query.set('sheet', options.sheet);
+    } else {
+      query.set('size', options.size || '100x150');
+    }
+
+    if (options.startPos && options.startPos > 1) {
+      query.set('startPos', String(options.startPos));
+    }
+    if (options.download) query.set('download', '1');
+    if (options.formatHtml) query.set('format', 'html');
+
+    window.open(`/api/print/sticker?${query.toString()}`, '_blank');
   };
 
   // Export CSV Handler
@@ -932,10 +944,11 @@ export default function OrdersManager({
               variant="secondary"
               onClick={() => {
                 const targets = orders.filter((o) => selectedOrderIds.includes(o.id));
-                handlePrintInvoices(targets);
+                openStickerPrintModal(targets);
               }}
             >
-              Print packing slips
+              <Tag className="w-3.5 h-3.5" />
+              Print stickers
             </Button>
           </div>
         </div>
@@ -1071,18 +1084,25 @@ export default function OrdersManager({
 
                     {/* Total with COD or Paid Pill */}
                     <TableCell>
-                      <span className="font-bold text-xs sm:text-sm text-[#2B2B2B] block">
-                        ৳{ord.totalAmount.toLocaleString()}
-                      </span>
-                      {ord.paymentMethod === 'COD' ? (
-                        <StatusPill variant="yellow" size="sm" className="mt-1">
-                          COD
-                        </StatusPill>
-                      ) : (
-                        <StatusPill variant="green" size="sm" className="mt-1">
-                          {ord.paymentMethod === 'BKASH' ? 'bKash paid' : 'Paid'}
-                        </StatusPill>
-                      )}
+                      {(() => {
+                        const rowFin = calculateAmountToCollect(ord);
+                        return (
+                          <div>
+                            <span className="font-bold text-xs sm:text-sm text-[#2B2B2B] block">
+                              {formatTaka(rowFin.grossTotal)}
+                            </span>
+                            {rowFin.isPaid ? (
+                              <StatusPill variant="green" size="sm" className="mt-1">
+                                {ord.paymentMethod === 'BKASH' ? 'bKash paid' : 'পেইড (Paid)'}
+                              </StatusPill>
+                            ) : (
+                              <StatusPill variant="yellow" size="sm" className="mt-1">
+                                COD: {rowFin.collectDisplayBn}
+                              </StatusPill>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
 
                     {/* Status Pill */}
@@ -1184,6 +1204,27 @@ export default function OrdersManager({
                               >
                                 <Printer className="w-3.5 h-3.5 text-[#6B6B6B]" />
                                 <span>Print invoice</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setActiveDropdownRowId(null);
+                                  if (!(ord.consignmentId || ord.trackingCode)) {
+                                    warning('আগে কুরিয়ারে পাঠান। কনসাইনমেন্ট আইডি ছাড়া স্টিকার প্রিন্ট করা যাবে না।');
+                                    return;
+                                  }
+                                  openStickerPrintModal([ord]);
+                                }}
+                                className={`w-full px-3 py-2 text-left flex items-center gap-2 cursor-pointer ${
+                                  ord.consignmentId || ord.trackingCode
+                                    ? 'hover:bg-[#FAF7F2] text-[#2B2B2B]'
+                                    : 'opacity-50 text-[#888]'
+                                }`}
+                                title={!(ord.consignmentId || ord.trackingCode) ? 'আগে কুরিয়ারে পাঠান' : 'Print parcel sticker'}
+                              >
+                                <Tag className="w-3.5 h-3.5 text-[#6B6B6B]" />
+                                <span>
+                                  Print sticker {!(ord.consignmentId || ord.trackingCode) ? '(আগে পাঠান)' : ''}
+                                </span>
                               </button>
                               {ord.status !== 'CANCELLED' && (
                                 <button
@@ -1301,6 +1342,17 @@ export default function OrdersManager({
                 >
                   <Printer className="w-3.5 h-3.5" />
                   Print invoice
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!(activeOrder.consignmentId || activeOrder.trackingCode)}
+                  onClick={() => openStickerPrintModal([activeOrder])}
+                  title={!(activeOrder.consignmentId || activeOrder.trackingCode) ? 'আগে কুরিয়ারে পাঠান' : 'Print parcel sticker'}
+                >
+                  <Tag className="w-3.5 h-3.5" />
+                  Print sticker
                 </Button>
 
                 {/* Big Send to Steadfast Button */}
@@ -1512,20 +1564,40 @@ export default function OrdersManager({
                   ))}
                 </div>
 
-                <div className="p-4 bg-[#FAF7F2] border-t border-[#EFE9E0] space-y-1.5 text-xs text-[#6B6B6B]">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>৳{(activeOrder.subtotal || activeOrder.totalAmount).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Delivery charge ({activeOrder.district}):</span>
-                    <span>৳{activeOrder.deliveryCharge || (activeOrder.district === 'Dhaka' ? 60 : 120)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-sm text-[#2B2B2B] pt-2 border-t border-[#EFE9E0]">
-                    <span>Amount to collect ({activeOrder.paymentMethod}):</span>
-                    <span className="text-[#C23631]">৳{activeOrder.totalAmount.toLocaleString()}</span>
-                  </div>
-                </div>
+                {(() => {
+                  const fin = calculateAmountToCollect(activeOrder);
+                  return (
+                    <div className="p-4 bg-[#FAF7F2] border-t border-[#EFE9E0] space-y-1.5 text-xs text-[#6B6B6B]">
+                      <div className="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span className="font-semibold text-[#2B2B2B]">{formatTaka(fin.subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Delivery charge ({activeOrder.district || 'Standard'}):</span>
+                        <span className="font-semibold text-[#2B2B2B]">
+                          {fin.deliveryCharge === 0 ? 'Free (৳0)' : formatTaka(fin.deliveryCharge)}
+                        </span>
+                      </div>
+                      {fin.discount > 0 && (
+                        <div className="flex justify-between text-[#1F6B43] font-semibold">
+                          <span>Coupon discount:</span>
+                          <span>- {formatTaka(fin.discount)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-bold text-sm text-[#2B2B2B] pt-2 border-t border-[#EFE9E0]">
+                        <span>Amount to collect ({activeOrder.paymentMethod || 'COD'}):</span>
+                        <span className={fin.isPaid ? 'text-[#1F6B43]' : 'text-[#C23631]'}>
+                          {fin.collectDisplayBn}
+                        </span>
+                      </div>
+                      {fin.isPaid && (
+                        <span className="text-[11px] text-[#1F6B43] font-bold block text-right">
+                          ✓ পেইড (অগ্রিম পরিশোধিত)
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -1698,7 +1770,249 @@ export default function OrdersManager({
         />
       </Modal>
 
-      {/* 11. CONFIRM DIALOG FOR DESTRUCTIVE / BULK ACTIONS */}
+      {/* 12. STICKER PRINT MODAL (THERMAL & SHEET LAYOUTS) */}
+      <Modal
+        isOpen={isStickerModalOpen}
+        onClose={() => setIsStickerModalOpen(false)}
+        title="পার্সেল স্টিকার প্রিন্ট করুন (Print Parcel Stickers)"
+        maxWidth="lg"
+        footer={
+          <div className="flex items-center justify-between w-full flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <a
+                href={`/api/print/sticker?test=1&sheet=${selectedStickerLayout === 'sheet4' ? '4' : selectedStickerLayout === 'sheet8' ? '8' : ''}&size=${selectedStickerLayout === '75x50' ? '75x50' : '100x150'}&startPos=${stickerStartPos}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 rounded-xl border border-[#EFE9E0] hover:bg-[#FAF7F2] text-xs font-semibold text-[#6B6B6B] inline-flex items-center gap-1.5 transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#D6403B]" />
+                Test print (Alignment)
+              </a>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setIsStickerModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  const opts: any = {};
+                  if (selectedStickerLayout === 'sheet4') opts.sheet = '4';
+                  else if (selectedStickerLayout === 'sheet8') opts.sheet = '8';
+                  else opts.size = selectedStickerLayout;
+
+                  if (stickerStartPos > 1) opts.startPos = stickerStartPos;
+
+                  handlePrintStickers(stickerModalTargets, opts);
+                  setIsStickerModalOpen(false);
+                }}
+              >
+                <Printer className="w-3.5 h-3.5 mr-1" />
+                Print Stickers PDF
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-5 text-xs text-[#2B2B2B]">
+          {/* Order Summary & Eligibility */}
+          {(() => {
+            const eligible = stickerModalTargets.filter((o) => !!(o.consignmentId || o.trackingCode));
+            const skipped = stickerModalTargets.filter((o) => !(o.consignmentId || o.trackingCode));
+
+            return (
+              <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[#2B2B2B]">
+                    নির্বাচিত অর্ডার: {stickerModalTargets.length}টি
+                  </span>
+                  <span className="font-bold text-[#1F6B43]">
+                    প্রিন্টযোগ্য (কুরিয়ার আইডি যুক্ত): {eligible.length}টি
+                  </span>
+                </div>
+
+                {skipped.length > 0 && (
+                  <div className="p-2.5 rounded-xl bg-[#FFF3CC] border border-[#FFE28A] text-[#7A4E00] flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-[#B45309] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold block">
+                        {skipped.length}টি অর্ডারে কুরিয়ার কনসাইনমেন্ট আইডি নেই (বাদ দেওয়া হবে):
+                      </span>
+                      <span className="text-[11px] block mt-0.5">
+                        {skipped.map((o) => `#${o.orderNumber}`).join(', ')} — স্টিকারের জন্য আগে কুরিয়ারে পাঠান।
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 1. Layout & Printer Format Selection */}
+          <div className="space-y-2">
+            <label className="font-bold text-xs text-[#2B2B2B] block">
+              প্রিন্টার টাইপ ও স্টিকার সাইজ নির্বাচন করুন:
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label
+                className={`p-3.5 rounded-2xl border cursor-pointer flex flex-col justify-between transition-colors ${
+                  selectedStickerLayout === '100x150'
+                    ? 'border-[#D6403B] bg-[#FFF6F5] text-[#D6403B]'
+                    : 'border-[#EFE9E0] bg-white text-[#2B2B2B] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-sm">100 x 150 mm Thermal Label</span>
+                  <input
+                    type="radio"
+                    name="modalStickerLayout"
+                    value="100x150"
+                    checked={selectedStickerLayout === '100x150'}
+                    onChange={() => setSelectedStickerLayout('100x150')}
+                    className="accent-[#D6403B]"
+                  />
+                </div>
+                <span className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                  থার্মাল লেবেল প্রিন্টারের জন্য আদর্শ সাইজ (Single sticker per 100x150mm page, pure B&amp;W).
+                </span>
+              </label>
+
+              <label
+                className={`p-3.5 rounded-2xl border cursor-pointer flex flex-col justify-between transition-colors ${
+                  selectedStickerLayout === 'sheet4'
+                    ? 'border-[#D6403B] bg-[#FFF6F5] text-[#D6403B]'
+                    : 'border-[#EFE9E0] bg-white text-[#2B2B2B] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-sm">A4 Sheet: 4 Stickers (2 &times; 2)</span>
+                  <input
+                    type="radio"
+                    name="modalStickerLayout"
+                    value="sheet4"
+                    checked={selectedStickerLayout === 'sheet4'}
+                    onChange={() => setSelectedStickerLayout('sheet4')}
+                    className="accent-[#D6403B]"
+                  />
+                </div>
+                <span className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                  সাধারণ লেজার বা ইঙ্কজেট প্রিন্টারে A4 পেপার বা A6 স্টিকার শিটে ৪টি করে প্রিন্ট করুন। কাটার জন্য ড্যাশড লাইন থাকবে।
+                </span>
+              </label>
+
+              <label
+                className={`p-3.5 rounded-2xl border cursor-pointer flex flex-col justify-between transition-colors ${
+                  selectedStickerLayout === 'sheet8'
+                    ? 'border-[#D6403B] bg-[#FFF6F5] text-[#D6403B]'
+                    : 'border-[#EFE9E0] bg-white text-[#2B2B2B] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-sm">A4 Sheet: 8 Stickers (2 &times; 4)</span>
+                  <input
+                    type="radio"
+                    name="modalStickerLayout"
+                    value="sheet8"
+                    checked={selectedStickerLayout === 'sheet8'}
+                    onChange={() => setSelectedStickerLayout('sheet8')}
+                    className="accent-[#D6403B]"
+                  />
+                </div>
+                <span className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                  কমপ্যাক্ট লেবেল — প্রতি A4 পাতায় ৮টি করে স্টিকার প্রিন্ট করুন।
+                </span>
+              </label>
+
+              <label
+                className={`p-3.5 rounded-2xl border cursor-pointer flex flex-col justify-between transition-colors ${
+                  selectedStickerLayout === '75x50'
+                    ? 'border-[#D6403B] bg-[#FFF6F5] text-[#D6403B]'
+                    : 'border-[#EFE9E0] bg-white text-[#2B2B2B] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-sm">75 x 50 mm Compact Thermal</span>
+                  <input
+                    type="radio"
+                    name="modalStickerLayout"
+                    value="75x50"
+                    checked={selectedStickerLayout === '75x50'}
+                    onChange={() => setSelectedStickerLayout('75x50')}
+                    className="accent-[#D6403B]"
+                  />
+                </div>
+                <span className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                  ছোট পার্সেল বক্সের জন্য মিনি থার্মাল লেবেল।
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* 2. Sheet Start Position (for partially used sheets) */}
+          {(selectedStickerLayout === 'sheet4' || selectedStickerLayout === 'sheet8') && (
+            <div className="p-4 rounded-2xl bg-white border border-[#EFE9E0] space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-xs text-[#2B2B2B] block">
+                    কাগজের শুরু করার অবস্থান (Start Position on Sheet):
+                  </span>
+                  <span className="text-[11px] text-[#6B6B6B]">
+                    আগের ব্যবহৃত স্টিকার শিট পুনরায় ব্যবহারের জন্য খালি পজিশন বেছে নিন।
+                  </span>
+                </div>
+                <span className="font-bold text-xs text-[#D6403B] bg-[#FFF6F5] px-2.5 py-1 rounded-lg border border-[#F8BEBA]">
+                  পজিশন #{stickerStartPos} থেকে শুরু
+                </span>
+              </div>
+
+              {selectedStickerLayout === 'sheet4' ? (
+                <div className="grid grid-cols-2 gap-2 max-w-[240px] mx-auto text-center font-bold">
+                  {[1, 2, 3, 4].map((pos) => (
+                    <button
+                      key={pos}
+                      type="button"
+                      onClick={() => setStickerStartPos(pos)}
+                      className={`p-3 rounded-xl border text-xs cursor-pointer transition-colors ${
+                        stickerStartPos === pos
+                          ? 'border-[#D6403B] bg-[#D6403B] text-white shadow-xs'
+                          : 'border-[#EFE9E0] bg-[#FAF7F2] text-[#2B2B2B] hover:bg-[#EFE9E0]'
+                      }`}
+                    >
+                      পজিশন {pos}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 max-w-[240px] mx-auto text-center font-bold">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((pos) => (
+                    <button
+                      key={pos}
+                      type="button"
+                      onClick={() => setStickerStartPos(pos)}
+                      className={`p-2 rounded-xl border text-xs cursor-pointer transition-colors ${
+                        stickerStartPos === pos
+                          ? 'border-[#D6403B] bg-[#D6403B] text-white shadow-xs'
+                          : 'border-[#EFE9E0] bg-[#FAF7F2] text-[#2B2B2B] hover:bg-[#EFE9E0]'
+                      }`}
+                    >
+                      #{pos}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Thermal Printer Settings Tip */}
+          <div className="text-[11px] text-[#6B6B6B] bg-[#FAF7F2] p-3 rounded-xl border border-[#EFE9E0] leading-relaxed">
+            <strong>প্রিন্ট টিপস:</strong> ব্রাউজারের প্রিন্ট ডায়ালগে <em>&quot;Headers and footers&quot;</em> বন্ধ রাখুন এবং Scale <em>100% (Actual size)</em> রাখুন। থার্মাল প্রিন্টারে পেপারের মাপ ১০০ &times; ১৫০ মিমি সেট করুন।
+          </div>
+        </div>
+      </Modal>
+
+      {/* 13. CONFIRM DIALOG FOR DESTRUCTIVE / BULK ACTIONS */}
       <ConfirmDialog
         isOpen={confirmDialogData.isOpen}
         onClose={() => setConfirmDialogData((prev) => ({ ...prev, isOpen: false }))}

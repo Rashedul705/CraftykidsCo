@@ -569,6 +569,10 @@ export function assignCourierToOrder(orderId: string, consignmentId: string, tra
   return order;
 }
 
+export function getMemoryOrders(): OrderRecord[] {
+  return globalOrders;
+}
+
 // Global Site Settings / Home Sections in-memory store
 export let globalSiteSettings: SiteSettings = { ...defaultSiteSettings };
 

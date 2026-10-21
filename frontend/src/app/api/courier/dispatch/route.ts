@@ -5,6 +5,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { Order } from '@/models/Order';
 import { assignCourierToOrder, getOrderByIdOrNumber, OrderRecord } from '@/lib/store';
 import { getNotificationProvider } from '@/core/notification';
+import { calculateAmountToCollect } from '@/lib/order-calc';
 
 export async function POST(req: NextRequest) {
   try {
@@ -55,7 +56,9 @@ export async function POST(req: NextRequest) {
     const finalCustomerPhone = customerPhone || targetOrder?.customerPhone || '';
     const finalAddress = customerAddress || targetOrder?.fullAddress || targetOrder?.shippingAddress?.address || 'Bangladesh';
     const finalDistrict = district || targetOrder?.district || targetOrder?.shippingAddress?.district || 'Dhaka';
-    const finalCodAmount = codAmount !== undefined ? codAmount : (targetOrder?.totalAmount || 0);
+    const finalCodAmount = codAmount !== undefined
+      ? Number(codAmount)
+      : (targetOrder ? calculateAmountToCollect(targetOrder).amountToCollect : 0);
     const finalNote = customerNote || targetOrder?.customerNote || 'CraftyKidsCo Plaster Painting Kits Delivery';
 
     if (!finalCustomerPhone) {

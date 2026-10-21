@@ -14,6 +14,9 @@ export interface ToastItem {
   duration?: number;
   undoAction?: () => void;
   undoLabel?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  actionIcon?: React.ReactNode;
 }
 
 interface ToastContextType {
@@ -154,6 +157,21 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
             >
               <RotateCcw className="w-3 h-3 text-[#D6403B]" />
               {item.undoLabel || 'Undo'} ({remainingSecs}s)
+            </button>
+          </div>
+        )}
+
+        {item.onAction && (
+          <div className="mt-2.5 flex items-center gap-2">
+            <button
+              onClick={() => {
+                item.onAction?.();
+                onDismiss();
+              }}
+              className="px-3 py-1.5 text-xs font-bold bg-[#D6403B] text-white rounded-[8px] hover:bg-[#C23631] inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+            >
+              {item.actionIcon}
+              {item.actionLabel || 'Action'}
             </button>
           </div>
         )}

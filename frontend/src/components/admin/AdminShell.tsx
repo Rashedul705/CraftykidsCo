@@ -64,6 +64,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     items: [
       { id: 'steadfast', label: 'Steadfast courier', allowedRoles: ['admin'] },
       { id: 'delivery-charges', label: 'Delivery charges', allowedRoles: ['admin'] },
+      { id: 'print-settings', label: 'Print & stickers', allowedRoles: ['admin', 'order_handler'] },
       { id: 'block-list', label: 'Block list', allowedRoles: ['admin'] },
     ],
   },
@@ -143,6 +144,10 @@ export const TAB_METADATA: Record<string, { title: string; helper: string; mainA
   'delivery-charges': {
     title: 'Delivery charges',
     helper: 'Set standard delivery charges and estimated transit times by district',
+  },
+  'print-settings': {
+    title: 'Print & Stickers',
+    helper: 'Configure thermal label defaults, A4 sheet layouts, brand headers, and alignment tests',
   },
   'block-list': {
     title: 'Block list',

@@ -23,6 +23,7 @@ export async function GET() {
           testimonials: { ...defaultSiteSettings.testimonials, ...(parsed.testimonials || {}) },
           bulkOrderBanner: { ...defaultSiteSettings.bulkOrderBanner, ...(parsed.bulkOrderBanner || {}) },
           footer: { ...defaultSiteSettings.footer, ...(parsed.footer || {}) },
+          print: { ...defaultSiteSettings.print, ...(parsed.print || {}) },
           heroSlides: Array.isArray(parsed.heroSlides) && parsed.heroSlides.length > 0 ? parsed.heroSlides : defaultSiteSettings.heroSlides,
           trustBadges: Array.isArray(parsed.trustBadges) && parsed.trustBadges.length > 0 ? parsed.trustBadges : defaultSiteSettings.trustBadges,
           promoBanners: Array.isArray(parsed.promoBanners) && parsed.promoBanners.length > 0 ? parsed.promoBanners : defaultSiteSettings.promoBanners,

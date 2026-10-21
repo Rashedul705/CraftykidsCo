@@ -52,6 +52,7 @@ import { StockManager } from '@/components/admin/StockManager';
 import { DeliveryChargesManager } from '@/components/admin/DeliveryChargesManager';
 import { StaffRolesManager } from '@/components/admin/StaffRolesManager';
 import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
+import { PrintSettingsManager } from '@/components/admin/PrintSettingsManager';
 import { AdminShell, AdminRole } from '@/components/admin/AdminShell';
 import { StatusPill } from '@/components/ui/Pill';
 
@@ -69,6 +70,7 @@ const VALID_ADMIN_TABS = [
   'stock',
   'steadfast',
   'delivery-charges',
+  'print-settings',
   'block-list',
   'blog',
   'faq-policies',
@@ -1030,6 +1032,11 @@ export default function AdminDashboardPage() {
         {/* VIEW 11: DELIVERY CHARGES (PART B8) */}
         {activeNav === 'delivery-charges' && (
           <DeliveryChargesManager />
+        )}
+
+        {/* VIEW 11.5: PRINT & STICKER SETTINGS */}
+        {activeNav === 'print-settings' && (
+          <PrintSettingsManager />
         )}
 
         {/* VIEW 12: STAFF AND ROLES (PART B8) */}

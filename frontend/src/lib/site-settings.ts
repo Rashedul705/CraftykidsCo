@@ -133,6 +133,23 @@ export interface SiteSettings {
     address: string;
     copyrightText: string;
   };
+
+  // 10. Print & Thermal Sticker Settings
+  print: {
+    companyName: string;
+    tagline: string;
+    phone: string;
+    supportPhone: string;
+    whatsapp: string;
+    website: string;
+    facebookPage: string;
+    logoUrl: string;
+    returnPolicyText: string;
+    showReceiverDetails: boolean;
+    showCollectAmount: boolean;
+    showFragileTag: boolean;
+    defaultStickerSize: '100x150' | '75x50' | 'sheet4' | 'sheet8';
+  };
 }
 
 export const defaultSiteSettings: SiteSettings = {
@@ -420,5 +437,20 @@ export const defaultSiteSettings: SiteSettings = {
     email: 'support@craftykidsco.com',
     address: 'ধানমন্ডি, ঢাকা, বাংলাদেশ',
     copyrightText: '© ২০২৬ CraftyKidsCo. সর্বস্বত্ব সংরক্ষিত।',
+  },
+  print: {
+    companyName: 'CraftyKidsCo',
+    tagline: 'শিশুদের নিরাপদ প্রাকৃতিক রঙ ও শিক্ষামূলক খেলনা',
+    phone: '01711-223344',
+    supportPhone: '01711-223344',
+    whatsapp: '8801711223344',
+    website: 'craftykidsco.com',
+    facebookPage: 'fb.com/craftykidsco.bd',
+    logoUrl: '/icons/icon-192x192.png',
+    returnPolicyText: 'পণ্য পাওয়ার পর কোনো সমস্যা থাকলে ৩ দিনের মধ্যে সাপোর্ট নম্বরে যোগাযোগ করুন।',
+    showReceiverDetails: true,
+    showCollectAmount: true,
+    showFragileTag: false,
+    defaultStickerSize: '100x150',
   },
 };

@@ -654,11 +654,9 @@ export function DashboardView({
                           <button
                             type="button"
                             onClick={() =>
-                              alert(
-                                `PRINT PACKING SLIP:\nOrder: ${ord.orderNumber}\nCustomer: ${ord.customerName}\nTotal: ৳${ord.totalAmount}`
-                              )
+                              window.open(`/api/print/invoice?ids=${ord.orderNumber || ord.id}`, '_blank')
                             }
-                            className="px-3 py-1.5 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] text-[11px] font-bold border border-[#EFE9E0] transition-colors flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] text-[11px] font-bold border border-[#EFE9E0] transition-colors flex items-center gap-1 cursor-pointer"
                           >
                             <Printer className="w-3 h-3" />
                             <span>Print</span>
