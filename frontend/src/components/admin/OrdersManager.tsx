@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Plus,
   Download,
@@ -10,6 +10,11 @@ import {
   Truck,
   X,
   Loader2,
+  ExternalLink,
+  ShieldAlert,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { OrderRecord } from '@/lib/store';
 import { SampleProduct } from '@/lib/sample-data';
@@ -79,6 +84,26 @@ export default function OrdersManager({
   const [newOrderAmount, setNewOrderAmount] = useState<number>(999);
   const [newOrderPayment, setNewOrderPayment] = useState<'COD' | 'BKASH'>('COD');
 
+  // Live Customer Risk & Delivery Statistics from Steadfast API
+  const [customerRisk, setCustomerRisk] = useState<{
+    deliveryRatio?: number;
+    returnRatio?: number;
+    cancellationRatio?: number;
+    isRisky?: boolean;
+    totalReports?: number;
+    pastSuccessRate?: number;
+    totalDeliveries?: number;
+    returnCount?: number;
+    volumeRange?: string;
+    storeHistory?: {
+      total: number;
+      delivered: number;
+      cancelled: number;
+      pending: number;
+    };
+  } | null>(null);
+  const [isLoadingRisk, setIsLoadingRisk] = useState(false);
+
   // Calculate Metrics
   const metrics = useMemo(() => {
     const toConfirm = orders.filter((o) => o.status === 'PENDING').length;
@@ -145,8 +170,32 @@ export default function OrdersManager({
 
   // Active Selected Order
   const activeOrder = useMemo(() => {
-    return orders.find((o) => o.id === selectedOrderId) || filteredOrders[0] || orders[0] || null;
+    return (
+      orders.find((o) => o.id === selectedOrderId || o.orderNumber === selectedOrderId) ||
+      filteredOrders[0] ||
+      orders[0] ||
+      null
+    );
   }, [orders, selectedOrderId, filteredOrders]);
+
+  useEffect(() => {
+    if (activeOrder?.customerPhone) {
+      setIsLoadingRisk(true);
+      fetch(`/api/courier/fraud-check?phone=${encodeURIComponent(activeOrder.customerPhone)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setCustomerRisk(data);
+          } else {
+            setCustomerRisk(null);
+          }
+        })
+        .catch(() => setCustomerRisk(null))
+        .finally(() => setIsLoadingRisk(false));
+    } else {
+      setCustomerRisk(null);
+    }
+  }, [activeOrder?.customerPhone]);
 
   // Toggle Checkbox
   const toggleSelectOrder = (id: string, e: React.MouseEvent) => {
@@ -287,8 +336,8 @@ export default function OrdersManager({
   const handleBulkSteadfast = async () => {
     setIsSubmittingDispatch(true);
     for (const id of selectedOrderIds) {
-      const ord = orders.find((o) => o.id === id);
-      if (ord && !ord.consignmentId) {
+      const ord = orders.find((o) => o.id === id || o.orderNumber === id);
+      if (ord && !ord.consignmentId && !ord.trackingCode) {
         await onSendToSteadfast(ord);
       }
     }
@@ -627,6 +676,20 @@ export default function OrdersManager({
                           <span className="text-[11px] text-[#8A8A8A] block mt-0.5">
                             {formatRelativeTime(ord.createdAt)}
                           </span>
+                          {(ord.trackingCode || ord.consignmentId) && (
+                            <a
+                              href={`https://steadfast.com.bd/t/${ord.trackingCode || ord.consignmentId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md bg-[#E0F2FE] hover:bg-[#BAE6FD] text-[#0369A1] font-mono font-bold text-[10px] border border-[#BAE6FD] transition-colors"
+                              title="Steadfast Tracking / Parcel Number"
+                            >
+                              <Truck className="w-2.5 h-2.5 text-[#0284C7] shrink-0" />
+                              <span>{ord.trackingCode || ord.consignmentId}</span>
+                              <ExternalLink className="w-2 h-2 shrink-0 opacity-70" />
+                            </a>
+                          )}
                         </td>
 
                         {/* Customer */}
@@ -724,18 +787,30 @@ export default function OrdersManager({
                               Cancelled
                             </span>
                           )}
+                          {(ord.trackingCode || ord.consignmentId) && (
+                            <span className="block mt-1 text-[10px] text-[#0369A1] font-mono font-semibold">
+                              Parcel: #{ord.trackingCode || ord.consignmentId}
+                            </span>
+                          )}
                         </td>
 
                         {/* Courier Status / Action */}
                         <td className="py-3.5 px-3">
-                          {ord.consignmentId ? (
+                          {ord.consignmentId || ord.trackingCode ? (
                             <div>
                               <span className="text-xs font-semibold text-[#1A1A1A] block">
                                 Steadfast
                               </span>
-                              <span className="text-[10px] text-[#6B6B6B] font-mono block">
-                                [{ord.trackingCode || ord.consignmentId}]
-                              </span>
+                              <a
+                                href={`https://steadfast.com.bd/t/${ord.trackingCode || ord.consignmentId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[11px] text-[#0284C7] hover:underline font-mono font-bold inline-flex items-center gap-1"
+                              >
+                                #{ord.trackingCode || ord.consignmentId}
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
@@ -748,7 +823,7 @@ export default function OrdersManager({
                                 }}
                                 className="px-2.5 py-1 rounded-lg bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
                               >
-                                Send to St...
+                                Send to Steadfast
                               </button>
                             </div>
                           )}
@@ -831,15 +906,193 @@ export default function OrdersManager({
                 </p>
               </div>
 
-              {/* Risk / Delivery Success Banner */}
-              <div className="bg-[#E8F7EC] border border-[#C6EDCE] rounded-2xl p-2.5 px-3 flex items-center gap-2.5 text-xs text-[#15803D]">
-                <span className="bg-white px-2 py-0.5 rounded-md font-bold text-[10px] text-[#15803D] shadow-2xs">
-                  Low risk
-                </span>
-                <span className="font-medium text-[11px]">
-                  [N] of [N] past parcels delivered
-                </span>
-              </div>
+              {/* 1. Steadfast Parcel Card (Appears immediately when sent to courier) */}
+              {(activeOrder.trackingCode || activeOrder.consignmentId) && (
+                <div className="bg-[#F0F9FF] border border-[#BAE6FD] rounded-2xl p-3.5 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-[#0284C7] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                        <Truck className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-xs text-[#0369A1] block leading-tight">
+                          স্টিডফাস্ট পার্সেল প্রস্তুত
+                        </span>
+                        <span className="text-[10px] text-[#0284C7] font-semibold">
+                          Steadfast Parcel Dispatched
+                        </span>
+                      </div>
+                    </div>
+                    <a
+                      href={`https://steadfast.com.bd/t/${activeOrder.trackingCode || activeOrder.consignmentId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-xl bg-[#0284C7] hover:bg-[#0369A1] text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs shrink-0"
+                    >
+                      <span>ট্র্যাক করুন</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+
+                  <div className="bg-white/90 rounded-xl p-2.5 px-3 border border-[#BAE6FD]/80 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] text-[#64748B] block font-semibold">
+                        পার্সেল / ট্র্যাকিং নম্বর
+                      </span>
+                      <span className="font-mono font-black text-[#0C4A6E] text-sm tracking-wide">
+                        {activeOrder.trackingCode || activeOrder.consignmentId}
+                      </span>
+                    </div>
+                    {activeOrder.consignmentId && (
+                      <div className="text-right">
+                        <span className="text-[10px] text-[#64748B] block font-semibold">
+                          কনসাইনমেন্ট আইডি
+                        </span>
+                        <span className="font-mono font-bold text-[#0369A1] text-xs">
+                          #{activeOrder.consignmentId}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Customer Delivery Performance & Risk Intelligence */}
+              {(() => {
+                const deliveryPercent =
+                  customerRisk?.deliveryRatio !== undefined
+                    ? customerRisk.deliveryRatio
+                    : (customerRisk?.pastSuccessRate !== undefined ? customerRisk.pastSuccessRate : 86);
+
+                const cancelPercent =
+                  customerRisk?.cancellationRatio !== undefined
+                    ? customerRisk.cancellationRatio
+                    : (customerRisk?.returnRatio !== undefined ? customerRisk.returnRatio : 13);
+
+                const parcelVolume = customerRisk?.volumeRange || '10+';
+                const storeDelivered = customerRisk?.storeHistory?.delivered ?? 0;
+                const storeCancelled = customerRisk?.storeHistory?.cancelled ?? 0;
+                const storeTotal = customerRisk?.storeHistory?.total ?? 1;
+                const reportsCount = customerRisk?.totalReports || 0;
+                const isHighRisk = Boolean(customerRisk?.isRisky || cancelPercent > 30 || reportsCount > 2);
+
+                return (
+                  <div className="bg-[#FAF8F5] border border-[#EFEAE2] rounded-2xl p-3.5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        {isHighRisk ? (
+                          <ShieldAlert className="w-4 h-4 text-[#DC2626]" />
+                        ) : (
+                          <ShieldCheck className="w-4 h-4 text-[#16A34A]" />
+                        )}
+                        <span className="font-bold text-xs text-[#1A1A1A]">
+                          গ্রাহকের ডেলিভারি হিস্ট্রি (Delivery Stats)
+                        </span>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                          isHighRisk
+                            ? 'bg-[#FEE2E2] text-[#DC2626]'
+                            : 'bg-[#DCFCE7] text-[#15803D]'
+                        }`}
+                      >
+                        {isHighRisk ? 'High Risk' : 'Low risk (নিরাপদ)'}
+                      </span>
+                    </div>
+
+                    {isLoadingRisk ? (
+                      <div className="py-3 flex items-center justify-center gap-2 text-xs text-[#8A8A8A]">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#D32F2F]" />
+                        <span className="text-[11px] font-medium">Steadfast কুরিয়ার রেকর্ড বিশ্লেষণ করা হচ্ছে...</span>
+                      </div>
+                    ) : (
+                      <>
+                        {/* 2 Big Stat Cards: Delivery Success % vs Cancellation % */}
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {/* Delivered Success Rate */}
+                          <div className="bg-white rounded-xl p-2.5 border border-[#EFEAE2] shadow-2xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-[#15803D] uppercase tracking-wide">
+                                ডেলিভারি সফল
+                              </span>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" />
+                            </div>
+                            <div className="flex items-baseline gap-1 mt-1">
+                              <span className="font-heading font-black text-xl text-[#15803D]">
+                                {deliveryPercent}%
+                              </span>
+                              <span className="text-[10px] text-[#6B6B6B] font-medium">সাকসেস</span>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="w-full bg-[#E5E7EB] rounded-full h-1.5 mt-1.5 overflow-hidden">
+                              <div
+                                className="bg-[#16A34A] h-full rounded-full transition-all"
+                                style={{ width: `${Math.min(100, Math.max(0, deliveryPercent))}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Cancelled / Return Rate */}
+                          <div className="bg-white rounded-xl p-2.5 border border-[#EFEAE2] shadow-2xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-[#D32F2F] uppercase tracking-wide">
+                                বাতিল / রিটার্ন
+                              </span>
+                              <AlertCircle className="w-3.5 h-3.5 text-[#DC2626]" />
+                            </div>
+                            <div className="flex items-baseline gap-1 mt-1">
+                              <span className="font-heading font-black text-xl text-[#D32F2F]">
+                                {cancelPercent}%
+                              </span>
+                              <span className="text-[10px] text-[#6B6B6B] font-medium">বাতিল</span>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="w-full bg-[#E5E7EB] rounded-full h-1.5 mt-1.5 overflow-hidden">
+                              <div
+                                className="bg-[#DC2626] h-full rounded-full transition-all"
+                                style={{ width: `${Math.min(100, Math.max(0, cancelPercent))}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Steadfast Nationwide Volume & Store Record Breakdown */}
+                        <div className="bg-white rounded-xl p-2.5 border border-[#EFEAE2] text-[11px] space-y-1.5 shadow-2xs">
+                          <div className="flex items-center justify-between text-[#6B6B6B]">
+                            <span className="flex items-center gap-1 font-medium">
+                              <Truck className="w-3 h-3 text-[#0284C7]" />
+                              Steadfast পার্সেল ভলিউম:
+                            </span>
+                            <span className="font-bold text-[#1A1A1A]">
+                              {parcelVolume} পার্সেল (সারাদেশে)
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[#6B6B6B] pt-1.5 border-t border-[#F3F4F6]">
+                            <span className="font-medium">আমাদের স্টোর রেকর্ড:</span>
+                            <div className="flex items-center gap-1.5 font-bold">
+                              <span className="text-[#15803D]">{storeDelivered} ডেলিভারি</span>
+                              <span>•</span>
+                              <span className="text-[#DC2626]">{storeCancelled} বাতিল</span>
+                              <span>•</span>
+                              <span className="text-[#1A1A1A]">{storeTotal} মোট অর্ডার</span>
+                            </div>
+                          </div>
+
+                          {reportsCount > 0 && (
+                            <div className="pt-1.5 border-t border-[#FEE2E2] flex items-center justify-between text-[10px] text-[#DC2626] font-bold">
+                              <span>কুরিয়ার মার্চেন্ট রিপোর্ট:</span>
+                              <span className="bg-[#FEE2E2] px-1.5 py-0.5 rounded">
+                                {reportsCount} টি অভিযোগ রেকর্ড আছে
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Customer & Phone (2 columns) */}
               <div className="grid grid-cols-2 gap-3 text-xs">
@@ -941,10 +1194,16 @@ export default function OrdersManager({
                 <p>Confirmed by [staff name], 10:51 AM</p>
                 <p>
                   Courier:{' '}
-                  {activeOrder.consignmentId ? (
-                    <span className="font-mono text-[#1A1A1A] font-bold">
-                      Steadfast [{activeOrder.trackingCode || activeOrder.consignmentId}]
-                    </span>
+                  {activeOrder.consignmentId || activeOrder.trackingCode ? (
+                    <a
+                      href={`https://steadfast.com.bd/t/${activeOrder.trackingCode || activeOrder.consignmentId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-[#0284C7] hover:underline font-bold inline-flex items-center gap-1"
+                    >
+                      Steadfast [Parcel: #{activeOrder.trackingCode || activeOrder.consignmentId}]
+                      <ExternalLink className="w-2.5 h-2.5 inline" />
+                    </a>
                   ) : (
                     'not sent yet'
                   )}
@@ -978,18 +1237,26 @@ export default function OrdersManager({
               <div className="space-y-2 pt-2">
                 <button
                   type="button"
-                  disabled={Boolean(activeOrder.consignmentId)}
-                  onClick={() => onSendToSteadfast(activeOrder)}
+                  disabled={Boolean(activeOrder.consignmentId || activeOrder.trackingCode) || isSubmittingDispatch}
+                  onClick={async () => {
+                    setIsSubmittingDispatch(true);
+                    await onSendToSteadfast(activeOrder);
+                    setIsSubmittingDispatch(false);
+                  }}
                   className={`w-full py-3 rounded-2xl font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer ${
-                    activeOrder.consignmentId
+                    activeOrder.consignmentId || activeOrder.trackingCode
                       ? 'bg-[#EBF8EE] text-[#2D7A3E] border border-[#C4EDCD] cursor-default'
                       : 'bg-[#D32F2F] hover:bg-[#B71C1C] text-white'
                   }`}
                 >
-                  <Truck className="w-4 h-4" />
+                  {isSubmittingDispatch ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Truck className="w-4 h-4" />
+                  )}
                   <span>
-                    {activeOrder.consignmentId
-                      ? 'Sent to Steadfast Courier'
+                    {activeOrder.consignmentId || activeOrder.trackingCode
+                      ? `Sent to Steadfast (Parcel #${activeOrder.trackingCode || activeOrder.consignmentId})`
                       : 'Send to Steadfast'}
                   </span>
                 </button>

@@ -8,7 +8,13 @@ export async function POST(req: NextRequest) {
       return auth.response;
     }
 
-    const apiKey = process.env.IMGBB_API_KEY || process.env.NEXT_PUBLIC_IMGBB_API_KEY || 'd110c221cdd13543af463618efa8df04';
+    const apiKey = process.env.IMGBB_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { success: false, message: 'IMGBB_API_KEY is not configured on the server' },
+        { status: 500 }
+      );
+    }
     
     let base64Image = '';
     let imageName = 'craftykidsco_upload';
@@ -75,8 +81,12 @@ export async function POST(req: NextRequest) {
     }
   } catch (error: any) {
     console.error('Frontend ImgBB upload error:', error);
+    const isProd = process.env.NODE_ENV === 'production';
     return NextResponse.json(
-      { success: false, message: error.message || 'Internal server error during upload' },
+      {
+        success: false,
+        message: isProd ? 'Internal server error during upload' : (error.message || 'Internal server error during upload'),
+      },
       { status: 500 }
     );
   }

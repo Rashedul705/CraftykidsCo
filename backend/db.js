@@ -46,8 +46,8 @@ function getDBStatus() {
     state: readyState === 1 ? 'connected' : 'disconnected',
     readyState,
     statusText: readyState === 1 ? 'Connected' : readyState === 2 ? 'Connecting' : 'Disconnected',
-    host: mongoose.connection.host || 'cluster0.bjsv7px.mongodb.net',
-    database: mongoose.connection.name || 'craftykidsco'
+    host: mongoose.connection.host || null,
+    database: mongoose.connection.name || null
   };
 }
 

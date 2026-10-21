@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/craftykidsco';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 /**
  * Global is used here to maintain a cached connection across hot reloads
@@ -25,6 +25,10 @@ if (!global.mongooseCache) {
 export async function connectToDatabase(): Promise<typeof mongoose> {
   if (cached.conn && cached.conn.connection.readyState === 1) {
     return cached.conn;
+  }
+
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI environment variable is missing.');
   }
 
   if (!cached.promise) {

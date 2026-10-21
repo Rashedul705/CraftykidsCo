@@ -14,38 +14,82 @@ export class SteadfastCourierProvider implements ICourierProvider {
   constructor() {
     this.apiKey = process.env.STEADFAST_API_KEY || '';
     this.secretKey = process.env.STEADFAST_SECRET_KEY || '';
-    this.baseUrl = process.env.STEADFAST_BASE_URL || 'https://portal.steadfast.courier/api/v1';
+    this.baseUrl = process.env.STEADFAST_BASE_URL || 'https://portal.packzy.com/api/v1';
   }
 
+  /**
+   * Normalize Bangladeshi phone number to 11 digits (e.g., 01712345678)
+   */
+  private normalizePhone(phone: string): string {
+    let cleaned = (phone || '').replace(/\D/g, '');
+    if (cleaned.startsWith('880')) {
+      cleaned = cleaned.substring(2);
+    } else if (cleaned.startsWith('88')) {
+      cleaned = cleaned.substring(2);
+    }
+    return cleaned;
+  }
+
+  /**
+   * Create Consignment with Steadfast Courier
+   */
   async createConsignment(payload: CourierConsignmentPayload): Promise<CourierConsignmentResult> {
+    if (!this.apiKey || !this.secretKey) {
+      return {
+        success: false,
+        courier: 'STEADFAST',
+        consignmentId: '',
+        trackingCode: '',
+        message: 'Steadfast Courier API credentials (STEADFAST_API_KEY / STEADFAST_SECRET_KEY) are not configured.',
+      };
+    }
+
     try {
+      const recipientPhone = this.normalizePhone(payload.customerPhone);
+      const codAmount = Math.max(0, Math.round(Number(payload.codAmount) || 0));
+      const invoiceNumber = String(payload.orderNumber || payload.orderId);
+
+      const requestBody = {
+        invoice: invoiceNumber,
+        recipient_name: (payload.customerName || 'Customer').substring(0, 100),
+        recipient_phone: recipientPhone,
+        recipient_address: payload.customerAddress || 'Dhaka, Bangladesh',
+        cod_amount: codAmount,
+        note: payload.customerNote || 'CraftyKidsCo Plaster Painting Kits Delivery',
+      };
+
       const response = await fetch(`${this.baseUrl}/create_order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Api-Key': this.apiKey,
           'Secret-Key': this.secretKey,
         },
-        body: JSON.stringify({
-          invoice: payload.orderNumber,
-          recipient_name: payload.customerName,
-          recipient_phone: payload.customerPhone,
-          recipient_address: payload.customerAddress,
-          cod_amount: payload.codAmount,
-          note: payload.customerNote || 'Kids Art & Toy Delivery',
-        }),
+        body: JSON.stringify(requestBody),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
-      if (data.status === 200 && data.consignment) {
+      if (response.ok && data && (data.status === 200 || data.status === '200') && data.consignment) {
         return {
           success: true,
           courier: 'STEADFAST',
           consignmentId: String(data.consignment.consignment_id),
-          trackingCode: data.consignment.tracking_code,
+          trackingCode: String(data.consignment.tracking_code),
+          courierCharge: Number(data.consignment.delivery_fee || 0),
           rawResponse: data,
         };
+      }
+
+      let errorMessage = data?.message || 'Failed to create Steadfast consignment';
+      if (data?.errors) {
+        const errorDetails = Object.entries(data.errors)
+          .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+          .join('; ');
+        if (errorDetails) {
+          errorMessage = `${errorMessage} (${errorDetails})`;
+        }
       }
 
       return {
@@ -53,11 +97,11 @@ export class SteadfastCourierProvider implements ICourierProvider {
         courier: 'STEADFAST',
         consignmentId: '',
         trackingCode: '',
-        message: data.message || 'Failed to create Steadfast consignment',
+        message: errorMessage,
         rawResponse: data,
       };
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = err instanceof Error ? err.message : 'Unknown network error communicating with Steadfast';
       return {
         success: false,
         courier: 'STEADFAST',
@@ -68,24 +112,47 @@ export class SteadfastCourierProvider implements ICourierProvider {
     }
   }
 
+  /**
+   * Check Real-time Consignment Delivery Status
+   */
   async checkStatus(trackingCodeOrConsignmentId: string): Promise<CourierStatusResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/status_by_trackingcode/${trackingCodeOrConsignmentId}`, {
+      const target = encodeURIComponent((trackingCodeOrConsignmentId || '').trim());
+      let response = await fetch(`${this.baseUrl}/status_by_trackingcode/${target}`, {
         method: 'GET',
         headers: {
+          'Accept': 'application/json',
           'Api-Key': this.apiKey,
           'Secret-Key': this.secretKey,
         },
       });
 
-      const data = await response.json();
+      // Fallback: If not found and target is purely numeric, try consignment ID endpoint
+      if (!response.ok && /^\d+$/.test(target)) {
+        response = await fetch(`${this.baseUrl}/status_by_cid/${target}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Api-Key': this.apiKey,
+            'Secret-Key': this.secretKey,
+          },
+        });
+      }
+
+      const data = await response.json().catch(() => null);
       let status: CourierStatusResult['status'] = 'IN_REVIEW';
 
-      const courierStatus = (data.delivery_status || '').toLowerCase();
+      const courierStatus = (data?.delivery_status || '').toLowerCase();
       if (courierStatus.includes('delivered')) status = 'DELIVERED';
       else if (courierStatus.includes('cancelled')) status = 'CANCELLED';
       else if (courierStatus.includes('returned')) status = 'RETURNED';
-      else if (courierStatus.includes('transit') || courierStatus.includes('shipped')) status = 'SHIPPED';
+      else if (
+        courierStatus.includes('transit') ||
+        courierStatus.includes('shipped') ||
+        courierStatus.includes('pending')
+      ) {
+        status = 'SHIPPED';
+      }
 
       return {
         consignmentId: trackingCodeOrConsignmentId,
@@ -102,21 +169,97 @@ export class SteadfastCourierProvider implements ICourierProvider {
     }
   }
 
-  async checkCustomerRisk(phone: string): Promise<{ pastSuccessRate: number; isRisky: boolean; totalDeliveries: number; returnCount: number }> {
-    // Steadfast provides fraud check API endpoint
+  /**
+   * Check Customer Delivery Success / Fraud Risk using Steadfast score endpoint
+   */
+  async checkCustomerRisk(phone: string): Promise<{
+    pastSuccessRate: number;
+    isRisky: boolean;
+    totalDeliveries: number;
+    returnCount: number;
+    returnRatio?: number;
+    deliveryRatio?: number;
+    cancellationRatio?: number;
+    totalReports?: number;
+    volumeRange?: string;
+  }> {
     try {
-      const response = await fetch(`${this.baseUrl}/fraud_check/${phone}`, {
-        headers: { 'Api-Key': this.apiKey, 'Secret-Key': this.secretKey },
+      const cleanPhone = this.normalizePhone(phone);
+      if (!cleanPhone || cleanPhone.length < 10) {
+        return { pastSuccessRate: 100, isRisky: false, totalDeliveries: 0, returnCount: 0 };
+      }
+
+      const response = await fetch(`${this.baseUrl}/fraud_check/score/${cleanPhone}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Api-Key': this.apiKey,
+          'Secret-Key': this.secretKey,
+        },
       });
-      const data = await response.json();
-      return {
-        pastSuccessRate: data.success_rate || 90,
-        isRisky: (data.return_rate || 0) > 30,
-        totalDeliveries: data.total_orders || 0,
-        returnCount: data.total_returns || 0,
-      };
+
+      const data = await response.json().catch(() => null);
+
+      if (data && (data.status === 200 || data.delivery_ratio !== undefined)) {
+        const deliveryRatio = Number(data.delivery_ratio || 0);
+        const returnRatio = Number(data.return_ratio || 0);
+        const cancellationRatio = Number(data.cancellation_ratio || 0);
+        const totalReports = Number(data.total_reports || 0);
+
+        // High risk if return ratio > 30% or cancellation ratio > 50% with past reports
+        const isRisky = returnRatio > 30 || (cancellationRatio > 50 && totalReports > 0);
+
+        return {
+          pastSuccessRate: deliveryRatio > 0 ? deliveryRatio : Math.max(0, 100 - returnRatio),
+          isRisky,
+          totalDeliveries: Number(data.delivered_count || 0),
+          returnCount: Number(data.cancelled_count || 0),
+          returnRatio,
+          deliveryRatio,
+          cancellationRatio,
+          totalReports,
+          volumeRange: data.volume_range || '',
+        };
+      }
+
+      return { pastSuccessRate: 100, isRisky: false, totalDeliveries: 0, returnCount: 0 };
     } catch {
       return { pastSuccessRate: 100, isRisky: false, totalDeliveries: 0, returnCount: 0 };
+    }
+  }
+
+  /**
+   * Get Current Steadfast Account COD Balance
+   */
+  async getBalance(): Promise<{ success: boolean; balance: number; currency: string; message?: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/get_balance`, {
+        headers: {
+          'Accept': 'application/json',
+          'Api-Key': this.apiKey,
+          'Secret-Key': this.secretKey,
+        },
+      });
+      const data = await response.json().catch(() => null);
+      if (data && (data.status === 200 || data.current_balance !== undefined)) {
+        return {
+          success: true,
+          balance: Number(data.current_balance || 0),
+          currency: 'BDT',
+        };
+      }
+      return {
+        success: false,
+        balance: 0,
+        currency: 'BDT',
+        message: data?.message || 'Failed to fetch balance from Steadfast',
+      };
+    } catch (err: unknown) {
+      return {
+        success: false,
+        balance: 0,
+        currency: 'BDT',
+        message: err instanceof Error ? err.message : 'Balance fetch error',
+      };
     }
   }
 }

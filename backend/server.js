@@ -1,4 +1,5 @@
 require('dotenv').config();
+const config = require('./config');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -10,14 +11,34 @@ const Order = require('./models/Order');
 const SiteSettings = require('./models/SiteSettings');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || 'localhost';
+const PORT = config.PORT;
+const HOST = config.HOST;
 
 // Connect to MongoDB Atlas
 connectDB().catch((err) => console.error('MongoDB auto-connect notice:', err.message));
 
-// Enable CORS and JSON parsing
-app.use(cors());
+// Enable CORS with configurable origins and strict production enforcement
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser requests (e.g. mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (config.corsOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      // In development mode, also permit localhost/127.0.0.1 on any port
+      if (!config.isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+      const err = new Error(`Origin ${origin} is not allowed by CORS policy`);
+      err.status = 403;
+      return callback(err);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
@@ -1249,7 +1270,15 @@ app.post('/api/orders', async (req, res) => {
 // 6. Image Upload Endpoint (ImgBB Cloud Storage API)
 app.post('/api/upload-image', async (req, res) => {
   try {
-    const apiKey = process.env.IMGBB_API_KEY || 'd110c221cdd13543af463618efa8df04';
+    const apiKey = config.IMGBB_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({
+        success: false,
+        message: config.isProduction
+          ? 'Image upload service is not configured'
+          : 'IMGBB_API_KEY environment variable is not configured',
+      });
+    }
     let { image, name, expiration } = req.body || {};
 
     if (!image) {
@@ -2048,21 +2077,38 @@ app.get('/api/status', (req, res) => {
     database: {
       connected: dbStatus.connected,
       state: dbStatus.state,
-      name: dbStatus.database,
-      host: dbStatus.host
+      name: config.isProduction ? 'craftykidsco' : dbStatus.database,
+      host: config.isProduction ? (dbStatus.connected ? 'configured' : 'unavailable') : dbStatus.host,
     },
     services: {
       imgbb: {
-        configured: Boolean(process.env.IMGBB_API_KEY),
-        status: 'active'
-      }
+        configured: Boolean(config.IMGBB_API_KEY),
+        status: config.IMGBB_API_KEY ? 'active' : 'unconfigured',
+      },
     },
     uptime: `${Math.floor(process.uptime())}s`,
     timestamp: new Date().toISOString(),
   });
 });
 
+// Central error handling middleware - prevents leaking stack traces or internal secrets in production
+app.use((err, req, res, next) => {
+  console.error('[Backend Error]', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  const status = err.status || 500;
+  const isProd = config.isProduction;
+  res.status(status).json({
+    success: false,
+    message: isProd
+      ? (status === 403 ? 'Access forbidden by CORS policy' : 'An internal server error occurred')
+      : (err.message || 'Internal server error'),
+    ...(isProd ? {} : { stack: err.stack }),
+  });
+});
 
 app.listen(PORT, HOST, () => {
-  console.log(`Crafty Kids Co. Mock API Server running on http://${HOST}:${PORT}`);
+  console.log(`Crafty Kids Co. API Server running on http://${HOST}:${PORT}`);
 });
+

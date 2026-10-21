@@ -33,5 +33,16 @@ export interface ICourierProvider {
   name: string;
   createConsignment(payload: CourierConsignmentPayload): Promise<CourierConsignmentResult>;
   checkStatus(trackingCodeOrConsignmentId: string): Promise<CourierStatusResult>;
-  checkCustomerRisk(phone: string): Promise<{ pastSuccessRate: number; isRisky: boolean; totalDeliveries: number; returnCount: number }>;
+  checkCustomerRisk(phone: string): Promise<{
+    pastSuccessRate: number;
+    isRisky: boolean;
+    totalDeliveries: number;
+    returnCount: number;
+    returnRatio?: number;
+    deliveryRatio?: number;
+    cancellationRatio?: number;
+    totalReports?: number;
+    volumeRange?: string;
+  }>;
+  getBalance?(): Promise<{ success: boolean; balance: number; currency: string; message?: string }>;
 }

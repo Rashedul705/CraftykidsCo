@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/models/User';
+import { getJwtSecretKey } from './config';
 
 export const ADMIN_COOKIE_NAME = 'crafty_admin_token';
 
@@ -14,13 +15,8 @@ export interface AdminTokenPayload {
   userId?: string;
 }
 
-function getJwtSecretKey(): Uint8Array {
-  const secret = process.env.JWT_SECRET || 'dev-secret-jwt-key-change-in-production-123456';
-  return new TextEncoder().encode(secret);
-}
-
 /**
- * Sign an admin JWT session token with a 7-day expiration
+ * Sign an admin JWT session token with a 7-day expiration and HS256 algorithm
  */
 export async function signAdminToken(payload: AdminTokenPayload): Promise<string> {
   const secretKey = getJwtSecretKey();
@@ -32,13 +28,15 @@ export async function signAdminToken(payload: AdminTokenPayload): Promise<string
 }
 
 /**
- * Verify an admin JWT token
+ * Verify an admin JWT token with strict HS256 algorithm enforcement
  */
 export async function verifyAdminToken(token: string): Promise<AdminTokenPayload | null> {
   try {
     if (!token) return null;
     const secretKey = getJwtSecretKey();
-    const { payload } = await jwtVerify(token, secretKey);
+    const { payload } = await jwtVerify(token, secretKey, {
+      algorithms: ['HS256'],
+    });
     if (payload.role !== 'ADMIN') return null;
     return payload as unknown as AdminTokenPayload;
   } catch {
@@ -166,30 +164,17 @@ export async function validateAdminCredentials(
     console.warn('Notice: MongoDB check during admin login failed or disconnected:', dbErr);
   }
 
-  // 2. Fallback to Environment Variables & Initial Super Admin Credentials
-  const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@craftykidsco.com').toLowerCase().trim();
-  const envAdminPassword = process.env.ADMIN_PASSWORD || 'craftykids2026';
+  // 2. Validate against Environment Variables if configured (no hardcoded passwords or emails)
+  const envAdminEmail = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.toLowerCase().trim() : null;
+  const envAdminPassword = process.env.ADMIN_PASSWORD;
 
-  const recognizedAdmins = [
-    envAdminEmail,
-    'admin@craftykidsco.com',
-    'owner@craftykidsco.com',
-    'admin@rongdhonukids.com',
-  ];
-
-  const acceptedPasswords = [
-    envAdminPassword,
-    'craftykids2026',
-    'admin123',
-  ];
-
-  if (recognizedAdmins.includes(cleanEmail) && acceptedPasswords.includes(password)) {
+  if (envAdminEmail && envAdminPassword && cleanEmail === envAdminEmail && password === envAdminPassword) {
     return {
       success: true,
       user: {
         email: cleanEmail,
         role: 'ADMIN',
-        name: cleanEmail === envAdminEmail ? 'Super Admin' : 'Admin Operations',
+        name: 'Super Admin',
       },
     };
   }

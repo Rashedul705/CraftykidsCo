@@ -38,7 +38,6 @@ import {
 } from '@/lib/store';
 import { SampleProduct, SampleCategory } from '@/lib/sample-data';
 import { formatBDT } from '@/lib/utils';
-import { getCourierProvider } from '@/core/courier';
 import { HomeSectionsEditor } from '@/components/admin/HomeSectionsEditor';
 import CategoriesAttributesEditor from '@/components/admin/CategoriesAttributesEditor';
 import AddProductForm from '@/components/admin/AddProductForm';
@@ -224,38 +223,88 @@ export default function AdminDashboardPage() {
     setTimeout(() => setActionFeedback(null), 3000);
   };
 
-  // 1-Click Steadfast dispatch
+  // Steadfast Balance & Courier States
+  const [steadfastBalance, setSteadfastBalance] = useState<number | null>(null);
+  const [isFetchingSteadfastBalance, setIsFetchingSteadfastBalance] = useState(false);
+
+  const fetchSteadfastBalance = async () => {
+    try {
+      setIsFetchingSteadfastBalance(true);
+      const resp = await fetch('/api/courier/balance');
+      const data = await resp.json();
+      if (data.success && data.balance !== undefined) {
+        setSteadfastBalance(data.balance);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsFetchingSteadfastBalance(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeNav === 'steadfast') {
+      fetchSteadfastBalance();
+    }
+  }, [activeNav]);
+
+  // 1-Click Steadfast live dispatch via backend API
   const handleSendToSteadfast = async (order: OrderRecord) => {
-    setActionFeedback(`স্টিডফাস্টে কনসাইনমেন্ট পাঠানো হচ্ছে...`);
-    const courier = getCourierProvider();
+    setActionFeedback(`স্টিডফাস্ট লাইভ সার্ভারে কনসাইনমেন্ট পাঠানো হচ্ছে...`);
 
     try {
-      const res = await courier.createConsignment({
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        customerName: order.customerName,
-        customerPhone: order.customerPhone,
-        customerAddress: order.fullAddress,
-        district: order.district,
-        codAmount: order.totalAmount,
-        customerNote: order.customerNote,
+      const resp = await fetch('/api/courier/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          customerAddress: order.fullAddress,
+          district: order.district,
+          codAmount: order.totalAmount,
+          customerNote: order.customerNote,
+        }),
       });
 
+      const res = await resp.json();
+
       if (res.success) {
-        const updated = assignCourierToOrder(order.id, res.consignmentId, res.trackingCode);
-        if (updated) {
-          refreshData();
-          setSelectedOrder({ ...updated });
-          setActionFeedback(
-            `সাফল্য! স্টিডফাস্ট ট্র্যাকিং কোড: ${res.trackingCode} (ID: ${res.consignmentId})`
-          );
-        }
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === order.id || o.orderNumber === order.orderNumber
+              ? {
+                  ...o,
+                  courier: 'STEADFAST',
+                  consignmentId: res.consignmentId,
+                  trackingCode: res.trackingCode,
+                  status: 'SHIPPED',
+                }
+              : o
+          )
+        );
+
+        assignCourierToOrder(order.id, res.consignmentId, res.trackingCode);
+        setSelectedOrder({
+          ...order,
+          courier: 'STEADFAST',
+          consignmentId: res.consignmentId,
+          trackingCode: res.trackingCode,
+          status: 'SHIPPED',
+        });
+        await refreshData();
+        setActionFeedback(
+          `সাফল্য! স্টিডফাস্ট পার্সেল ট্র্যাকিং নম্বর: ${res.trackingCode} (Consignment: #${res.consignmentId})`
+        );
+        fetchSteadfastBalance();
       } else {
-        setActionFeedback(`ব্যর্থ: ${res.message}`);
+        setActionFeedback(`ব্যর্থ: ${res.message || 'স্টিডফাস্ট কনসাইনমেন্ট তৈরি করা যায়নি'}`);
       }
     } catch {
       setActionFeedback('কুরিয়ার রিকুয়েস্টে সমস্যা হয়েছে।');
     }
+    setTimeout(() => setActionFeedback(null), 5000);
   };
 
   // Handle image upload to ImgBB
@@ -957,7 +1006,13 @@ export default function AdminDashboardPage() {
                         className="hover:bg-[#FAF7F2] transition-colors cursor-pointer group"
                       >
                         <td className="py-3.5 font-bold text-[#D32F2F] group-hover:underline">
-                          {ord.orderNumber}
+                          <div>{ord.orderNumber}</div>
+                          {(ord.trackingCode || ord.consignmentId) && (
+                            <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-md bg-[#E0F2FE] text-[#0369A1] font-mono font-bold text-[10px] border border-[#BAE6FD]">
+                              <Truck className="w-2.5 h-2.5 text-[#0284C7] shrink-0" />
+                              <span>{ord.trackingCode || ord.consignmentId}</span>
+                            </span>
+                          )}
                         </td>
                         <td className="py-3.5 font-medium text-[#2B2B2B]">
                           {ord.customerName}
@@ -970,6 +1025,11 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="py-3.5">
                           {renderStatusBadge(ord.status)}
+                          {(ord.trackingCode || ord.consignmentId) && (
+                            <span className="block mt-0.5 text-[10px] text-[#0369A1] font-mono font-bold">
+                              Parcel: #{ord.trackingCode || ord.consignmentId}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -1209,37 +1269,88 @@ export default function AdminDashboardPage() {
             VIEW 5: STEADFAST COURIER AUTOMATION
            ===================================================================== */}
         {activeNav === 'steadfast' && (
-          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
-              <h3 className="font-heading font-black text-base text-[#1A1A1A]">
-                Steadfast Courier Integration & COD Reconciliation
-              </h3>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#E8F5E9] text-[#2E7D32]">
-                Mock Courier Ready
-              </span>
+          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EFEAE2] gap-3">
+              <div>
+                <h3 className="font-heading font-black text-base text-[#1A1A1A]">
+                  Steadfast Courier Integration &amp; COD Reconciliation
+                </h3>
+                <p className="text-xs text-[#6B6B6B] mt-0.5">
+                  অফিসিয়াল Steadfast Live Gateway (Packzy API v1) এর সাথে সংযুক্ত।
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#E8F5E9] text-[#2E7D32] border border-[#C8E6C9]">
+                  <span className="w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse"></span>
+                  <span>Steadfast Live Connected</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#F3F4F6] text-[#1F2937] border border-[#E5E7EB]">
+                  <span>ব্যালেন্স: ৳{steadfastBalance !== null ? steadfastBalance.toLocaleString() : '...'}</span>
+                  <button
+                    onClick={fetchSteadfastBalance}
+                    disabled={isFetchingSteadfastBalance}
+                    title="ব্যালেন্স রিফ্রেশ করুন"
+                    className="hover:text-[#D32F2F] cursor-pointer text-xs"
+                  >
+                    🔄
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <p className="text-xs text-[#6B6B6B]">
-              Confirmed orders can be dispatched to Steadfast with one click. Consignment IDs and tracking codes are automatically synced.
-            </p>
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EFEAE2]">
+                <span className="text-[11px] text-[#6B6B6B] block">মোট অর্ডার</span>
+                <strong className="text-lg font-heading font-black text-[#1A1A1A]">{orders.length}</strong>
+              </div>
+              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EFEAE2]">
+                <span className="text-[11px] text-[#6B6B6B] block">Steadfast ডিসপ্যাচড</span>
+                <strong className="text-lg font-heading font-black text-[#0369A1]">
+                  {orders.filter((o) => o.consignmentId).length}
+                </strong>
+              </div>
+              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EFEAE2]">
+                <span className="text-[11px] text-[#6B6B6B] block">ডিসপ্যাচ পেন্ডিং</span>
+                <strong className="text-lg font-heading font-black text-[#D32F2F]">
+                  {orders.filter((o) => !o.consignmentId).length}
+                </strong>
+              </div>
+            </div>
 
             <div className="divide-y divide-[#EFEAE2]">
               {orders.map((ord, idx) => (
-                <div key={ord.id || ord.orderNumber || `stf-ord-${idx}`} className="py-3 flex items-center justify-between text-xs">
+                <div key={ord.id || ord.orderNumber || `stf-ord-${idx}`} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-3">
                   <div>
-                    <span className="font-bold text-[#D32F2F] block">{ord.orderNumber} - {ord.customerName}</span>
-                    <span className="text-[#6B6B6B]">{ord.district} | COD: ৳{ord.totalAmount}</span>
+                    <span className="font-bold text-[#D32F2F] block text-sm">
+                      {ord.orderNumber} &bull; {ord.customerName}
+                    </span>
+                    <span className="text-[#6B6B6B] block mt-0.5">
+                      {ord.customerPhone} &bull; {ord.district} &bull; COD: ৳{ord.totalAmount}
+                    </span>
+                    <span className="text-[11px] text-[#8A8A8A] block mt-0.5">
+                      {ord.fullAddress}
+                    </span>
                   </div>
 
-                  <div>
+                  <div className="flex items-center gap-2">
                     {ord.consignmentId ? (
-                      <span className="px-3 py-1 rounded-full bg-[#E0F2FE] text-[#0369A1] font-bold">
-                        Dispatched ({ord.trackingCode})
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`https://steadfast.com.bd/t/${ord.trackingCode || ord.consignmentId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-[#E0F2FE] text-[#0369A1] font-bold hover:bg-[#BAE6FD] transition-colors inline-flex items-center gap-1.5"
+                          title="Steadfast লাইভ ট্র্যাকিং পেজ দেখুন"
+                        >
+                          <span>ট্র্যাকিং: {ord.trackingCode}</span>
+                          <span className="text-[10px]">↗</span>
+                        </a>
+                      </div>
                     ) : (
                       <button
                         onClick={() => handleSendToSteadfast(ord)}
-                        className="px-3 py-1.5 rounded-xl bg-[#D32F2F] text-white font-bold hover:bg-[#B71C1C] cursor-pointer"
+                        className="px-4 py-2 rounded-xl bg-[#D32F2F] text-white font-bold hover:bg-[#B71C1C] cursor-pointer shadow-xs transition-colors"
                       >
                         Send to Steadfast
                       </button>
@@ -1335,12 +1446,42 @@ export default function AdminDashboardPage() {
             {/* Steadfast 1-Click Dispatch */}
             <div className="pt-2 space-y-2">
               <span className="font-bold text-xs text-[#2B2B2B] block">Courier Action (Steadfast):</span>
-              {selectedOrder.consignmentId ? (
-                <div className="p-3 rounded-2xl bg-[#E0F2FE] border border-[#BEE3F8] text-xs text-[#0369A1] space-y-1">
-                  <span className="font-bold block">Consignment Created</span>
-                  <p className="font-mono text-xs">
-                    ID: {selectedOrder.consignmentId} | Tracking: {selectedOrder.trackingCode}
-                  </p>
+              {selectedOrder.consignmentId || selectedOrder.trackingCode ? (
+                <div className="p-3.5 rounded-2xl bg-[#E0F2FE] border border-[#BAE6FD] text-xs text-[#0369A1] space-y-2 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold flex items-center gap-1.5 text-xs text-[#0369A1]">
+                      <Truck className="w-3.5 h-3.5 text-[#0284C7]" />
+                      স্টিডফাস্ট পার্সেল প্রস্তুত (Dispatched)
+                    </span>
+                    <a
+                      href={`https://steadfast.com.bd/t/${selectedOrder.trackingCode || selectedOrder.consignmentId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-[11px] text-[#0284C7] hover:underline inline-flex items-center gap-1"
+                    >
+                      ট্র্যাক করুন <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  </div>
+                  <div className="bg-white/80 p-2.5 rounded-xl border border-[#BAE6FD]/80 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-[#64748B] block font-semibold">
+                        পার্সেল / ট্র্যাকিং কোড
+                      </span>
+                      <span className="font-mono text-sm font-black text-[#0C4A6E]">
+                        {selectedOrder.trackingCode || selectedOrder.consignmentId}
+                      </span>
+                    </div>
+                    {selectedOrder.consignmentId && (
+                      <div className="text-right">
+                        <span className="text-[10px] text-[#64748B] block font-semibold">
+                          কনসাইনমেন্ট
+                        </span>
+                        <span className="text-[10px] text-[#0284C7] font-mono font-bold block">
+                          #{selectedOrder.consignmentId}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <button
