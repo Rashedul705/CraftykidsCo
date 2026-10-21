@@ -22,31 +22,35 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItemData[]>([
-    {
-      id: 'prod-crayons-24-CRAYON-24',
-      productId: 'prod-crayons-24',
-      productSlug: 'craftykidsco-natural-wax-crayons-24-shades',
-      title: 'CraftyKidsCo Natural Wax Crayons - 24 Shade Box',
-      titleBn: 'CraftyKidsCo ন্যাচারাল মোমের রঙ - ২৪ শেড',
-      imageUrl: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=600&q=80',
-      price: 299,
-      quantity: 1,
-      variationSku: 'CRAYON-24',
-      variationTitle: '24 Colors Classic Box',
-      variationTitleBn: '২৪ রঙের ক্লাসিক সেট',
-    },
-    {
-      id: 'prod-triangular-12',
-      productId: 'prod-triangular-12',
-      productSlug: 'toddler-triangular-grip-crayons-12',
-      title: 'Toddler Triangular Grip Chunky Crayons 12 Set',
-      titleBn: 'টডলার ট্রায়াঙ্গুলার গ্রিপ মোম ১২ রঙ',
-      imageUrl: 'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=600&q=80',
-      price: 220,
-      quantity: 1,
-    },
-  ]);
+  const [items, setItems] = useState<CartItemData[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load cart from localStorage on mount (clearing any old hardcoded demo items)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('craftykidsco_cart');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          // Remove legacy hardcoded dummy demo items if present
+          const validItems = parsed.filter(
+            (it) => it.id !== 'prod-crayons-24-CRAYON-24' && it.id !== 'prod-triangular-12'
+          );
+          setItems(validItems);
+        }
+      }
+    } catch {}
+    setIsLoaded(true);
+  }, []);
+
+  // Save cart to localStorage whenever items change
+  useEffect(() => {
+    if (isLoaded) {
+      try {
+        localStorage.setItem('craftykidsco_cart', JSON.stringify(items));
+      } catch {}
+    }
+  }, [items, isLoaded]);
 
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
@@ -104,6 +108,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
     setAppliedCoupon(null);
     setDiscountAmount(0);
+    try {
+      localStorage.removeItem('craftykidsco_cart');
+    } catch {}
   };
 
   const applyCouponCode = (code: string): { success: boolean; message: string } => {
