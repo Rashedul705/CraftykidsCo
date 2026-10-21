@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Truck, CheckCircle, Save, ShieldAlert, Sparkles, MapPin } from 'lucide-react';
 import { StatusPill } from '@/components/ui/Pill';
 
@@ -13,14 +13,44 @@ export function DeliveryChargesManager() {
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  // Fetch current live rates on mount
+  useEffect(() => {
+    fetch('/api/delivery-charges')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings) {
+          setDhakaRate(data.settings.dhakaRate);
+          setSuburbsRate(data.settings.suburbsRate);
+          setOutsideDhakaRate(data.settings.outsideDhakaRate);
+          setFreeShippingThreshold(data.settings.freeDeliveryThreshold);
+          setCodFee(data.settings.codFee);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      // Simulate or save to site-settings
-      await new Promise((r) => setTimeout(r, 600));
-      setFeedback('Delivery rates and free shipping threshold updated successfully!');
-      setTimeout(() => setFeedback(null), 3000);
+      const res = await fetch('/api/delivery-charges', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dhakaRate,
+          suburbsRate,
+          outsideDhakaRate,
+          freeDeliveryThreshold: freeShippingThreshold,
+          codFee,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedback('ডেলিভারি চার্জ সফলভাবে আপডেট হয়েছে! (Delivery rates updated)');
+      } else {
+        setFeedback('Failed: ' + (data.message || 'Could not update rates'));
+      }
+      setTimeout(() => setFeedback(null), 3500);
     } catch {
       setFeedback('Failed to update delivery rates');
     } finally {

@@ -21,6 +21,8 @@ import { formatBDT, normalizeBDPhone } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { createOrder } from '@/lib/store';
 
+import { calculateDelivery, defaultDeliverySettings, DeliverySettings } from '@/lib/delivery-store';
+
 const BANGLADESH_DISTRICTS = [
   'Dhaka (ঢাকা)',
   'Gazipur (গাজীপুর)',
@@ -48,18 +50,37 @@ export default function CheckoutPage() {
   // Form states
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [district, setDistrict] = useState('Dhaka (ঢাকা)');
+  const [district, setDistrict] = useState(''); // Empty by default: user must choose their city!
   const [fullAddress, setFullAddress] = useState('');
   const [customerNote, setCustomerNote] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'BKASH' | 'NAGAD'>('COD');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Automatic delivery charge calculation based on district and subtotal
-  const isInsideDhaka = district.includes('Dhaka');
-  const isFreeDelivery = subtotal >= 1000;
-  const deliveryCharge = isFreeDelivery ? 0 : isInsideDhaka ? 60 : 120;
-  const grandTotal = Math.max(0, subtotal - discountAmount + deliveryCharge);
+  // Live delivery settings loaded from admin panel
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(defaultDeliverySettings);
+
+  React.useEffect(() => {
+    fetch('/api/delivery-charges')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings) {
+          setDeliverySettings(data.settings);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Automatic delivery charge calculation based on selected district and subtotal
+  const deliveryCalc = useMemo(() => {
+    return calculateDelivery(district, subtotal, deliverySettings);
+  }, [district, subtotal, deliverySettings]);
+
+  const isInsideDhaka = district.includes('Dhaka') || district.includes('ঢাকা');
+  const isFreeDelivery = deliveryCalc.isFree;
+  const isDeliveryCalculated = deliveryCalc.isCalculated;
+  const deliveryCharge = deliveryCalc.charge;
+  const grandTotal = Math.max(0, subtotal - discountAmount + (isDeliveryCalculated ? deliveryCharge : 0));
 
   // Auto-save checkout details as an incomplete order as soon as a valid phone number is entered (Part A4 / B8 Spec)
   const recordIncompleteCheckout = async (phoneToSave: string) => {
@@ -116,6 +137,11 @@ export default function CheckoutPage() {
 
     if (!fullAddress.trim() || fullAddress.length < 8) {
       setErrorMessage('অনুগ্রহ করে সম্পূর্ণ ঠিকানা (বাসা/রোড/এলাকা) বিস্তারিত লিখুন।');
+      return;
+    }
+
+    if (!district || district.trim() === '') {
+      setErrorMessage('অনুগ্রহ করে ডেলিভারি চার্জ হিসাব করার জন্য আপনার জেলা নির্বাচন করুন।');
       return;
     }
 
@@ -309,6 +335,7 @@ export default function CheckoutPage() {
                   onChange={(e) => setDistrict(e.target.value)}
                   className="w-full px-4 py-3 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] text-sm focus:outline-none focus:border-[#FF6B6B] font-medium cursor-pointer"
                 >
+                  <option value="">-- জেলা নির্বাচন করুন (Select District) --</option>
                   {BANGLADESH_DISTRICTS.map((d) => (
                     <option key={d} value={d}>
                       {d}
@@ -316,9 +343,13 @@ export default function CheckoutPage() {
                   ))}
                 </select>
                 <span className="text-[11px] text-[#6B6B6B] block">
-                  {isInsideDhaka
-                    ? 'ঢাকার ভেতরে ডেলিভারি চার্জ মাত্র ৳৬০'
-                    : 'ঢাকার বাইরে ডেলিভারি চার্জ মাত্র ৳১২০'}
+                  {!district ? (
+                    'ডেলিভারি চার্জ জানার জন্য অনুগ্রহ করে আপনার জেলা নির্বাচন করুন'
+                  ) : deliveryCalc.isFree ? (
+                    <span className="text-[#1F6B43] font-bold">অভিনন্দন! আপনার অর্ডারে ফ্রি ডেলিভারি প্রযোজ্য।</span>
+                  ) : (
+                    `ডেলিভারি চার্জ: ৳${deliveryCharge} (${deliveryCalc.descriptionBn})`
+                  )}
                 </span>
               </div>
 
@@ -454,15 +485,19 @@ export default function CheckoutPage() {
                   <span className="font-bold text-[#2B2B2B]">৳{subtotal}</span>
                 </div>
 
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span>ডেলিভারি চার্জ:</span>
-                  <span className="font-bold text-[#2B2B2B]">
-                    {isFreeDelivery ? (
-                      <span className="text-[#2D7A3E]">ফ্রি (৳০)</span>
+                  <div>
+                    {!isDeliveryCalculated ? (
+                      <span className="text-[11px] font-bold text-[#D6403B] bg-[#FDE3E1] px-2.5 py-0.5 rounded-full">
+                        জেলা নির্বাচন করুন
+                      </span>
+                    ) : isFreeDelivery ? (
+                      <span className="font-bold text-[#1F6B43]">ফ্রি (৳০)</span>
                     ) : (
-                      `৳${deliveryCharge}`
+                      <span className="font-bold text-[#2B2B2B]">৳{deliveryCharge}</span>
                     )}
-                  </span>
+                  </div>
                 </div>
 
                 {discountAmount > 0 && (
@@ -473,7 +508,14 @@ export default function CheckoutPage() {
                 )}
 
                 <div className="pt-3 border-t border-[#EFE9E0] flex justify-between items-baseline text-sm font-black text-[#2B2B2B]">
-                  <span>সর্বমোট প্রদেয়:</span>
+                  <div>
+                    <span className="block text-[#2B2B2B]">সর্বমোট প্রদেয়:</span>
+                    {!isDeliveryCalculated && (
+                      <span className="text-[10px] text-[#6B6B6B] font-normal block">
+                        (ডেলিভারি চার্জ জেলা নির্বাচনের পর যুক্ত হবে)
+                      </span>
+                    )}
+                  </div>
                   <span className="text-3xl text-[#FF6B6B]">৳{grandTotal}</span>
                 </div>
               </div>

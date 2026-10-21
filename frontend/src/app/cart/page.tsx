@@ -38,11 +38,22 @@ export default function CartPage() {
   const [couponInput, setCouponInput] = useState('');
   const [couponFeedback, setCouponFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [locale, setLocale] = useState<'bn' | 'en'>('bn');
+  const [deliverySettings, setDeliverySettings] = useState({ freeDeliveryThreshold: 1000 });
 
-  // Delivery estimation (Dhaka standard ৳60 or Free if subtotal >= 1000)
-  const isFreeDelivery = subtotal >= 1000;
-  const estimatedDelivery = isFreeDelivery ? 0 : 60;
-  const grandTotal = Math.max(0, subtotal - discountAmount + estimatedDelivery);
+  React.useEffect(() => {
+    fetch('/api/delivery-charges')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings) {
+          setDeliverySettings(data.settings);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Delivery estimation based on live threshold
+  const isFreeDelivery = subtotal >= (deliverySettings.freeDeliveryThreshold || 1000);
+  const grandTotal = Math.max(0, subtotal - discountAmount);
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,15 +223,17 @@ export default function CartPage() {
                     <span className="font-bold text-[#2B2B2B]">৳{subtotal}</span>
                   </div>
 
-                  <div className="flex justify-between">
-                    <span>ডেলিভারি চার্জ (আনুমানিক):</span>
-                    <span className="font-bold text-[#2B2B2B]">
+                  <div className="flex justify-between items-center">
+                    <span>ডেলিভারি চার্জ:</span>
+                    <div>
                       {isFreeDelivery ? (
-                        <span className="text-[#2D7A3E]">ফ্রি (৳০)</span>
+                        <span className="font-bold text-[#1F6B43]">ফ্রি (৳০)</span>
                       ) : (
-                        `৳${estimatedDelivery}`
+                        <span className="text-[11px] font-semibold text-[#6B6B6B] bg-[#FAF7F2] border border-[#EFE9E0] px-2 py-0.5 rounded-full">
+                          চেকআউটে নির্ধারিত হবে
+                        </span>
                       )}
-                    </span>
+                    </div>
                   </div>
 
                   {discountAmount > 0 && (
@@ -231,7 +244,14 @@ export default function CartPage() {
                   )}
 
                   <div className="pt-3 border-t border-[#EFE9E0] flex justify-between items-baseline text-sm font-black text-[#2B2B2B]">
-                    <span>সর্বমোট প্রদেয়:</span>
+                    <div>
+                      <span className="block text-[#2B2B2B]">সর্বমোট প্রদেয়:</span>
+                      {!isFreeDelivery && (
+                        <span className="text-[10px] text-[#6B6B6B] font-normal block">
+                          (ডেলিভারি চার্জ চেকআউটে যুক্ত হবে)
+                        </span>
+                      )}
+                    </div>
                     <span className="text-2xl text-[#FF6B6B]">৳{grandTotal}</span>
                   </div>
                 </div>
