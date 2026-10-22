@@ -50,14 +50,28 @@ export class MockCourierProvider implements ICourierProvider {
     };
   }
 
-  async checkCustomerRisk(phone: string): Promise<{ pastSuccessRate: number; isRisky: boolean; totalDeliveries: number; returnCount: number }> {
+  async checkCustomerRisk(phone: string): Promise<{
+    pastSuccessRate: number;
+    isRisky: boolean;
+    totalDeliveries: number;
+    returnCount: number;
+    totalParcels?: number;
+    hasHistory?: boolean;
+  }> {
     // High-risk mock if phone ends in '0000'
     const isMockRisky = phone.endsWith('0000');
+    const totalParcels = isMockRisky ? 8 : 25;
+    const totalDeliveries = isMockRisky ? 5 : 24;
+    const returnCount = isMockRisky ? 3 : 1;
+    const pastSuccessRate = Math.round((totalDeliveries / totalParcels) * 100);
+
     return {
-      pastSuccessRate: isMockRisky ? 40 : 96,
+      hasHistory: true,
+      totalParcels,
+      totalDeliveries,
+      returnCount,
+      pastSuccessRate,
       isRisky: isMockRisky,
-      totalDeliveries: isMockRisky ? 5 : 24,
-      returnCount: isMockRisky ? 3 : 1,
     };
   }
 }

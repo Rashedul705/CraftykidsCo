@@ -38,11 +38,14 @@ export interface ICourierProvider {
     isRisky: boolean;
     totalDeliveries: number;
     returnCount: number;
+    totalParcels?: number;
+    hasHistory?: boolean;
     returnRatio?: number;
     deliveryRatio?: number;
     cancellationRatio?: number;
     totalReports?: number;
     volumeRange?: string;
+    volumeBand?: string;
   }>;
   getBalance?(): Promise<{ success: boolean; balance: number; currency: string; message?: string }>;
 }

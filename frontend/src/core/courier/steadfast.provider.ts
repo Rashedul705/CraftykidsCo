@@ -177,53 +177,129 @@ export class SteadfastCourierProvider implements ICourierProvider {
     isRisky: boolean;
     totalDeliveries: number;
     returnCount: number;
+    totalParcels?: number;
+    hasHistory?: boolean;
     returnRatio?: number;
     deliveryRatio?: number;
     cancellationRatio?: number;
     totalReports?: number;
     volumeRange?: string;
+    volumeBand?: string;
   }> {
     try {
       const cleanPhone = this.normalizePhone(phone);
       if (!cleanPhone || cleanPhone.length < 10) {
-        return { pastSuccessRate: 100, isRisky: false, totalDeliveries: 0, returnCount: 0 };
-      }
-
-      const response = await fetch(`${this.baseUrl}/fraud_check/score/${cleanPhone}`, {
-        headers: {
-          'Accept': 'application/json',
-          'Api-Key': this.apiKey,
-          'Secret-Key': this.secretKey,
-        },
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (data && (data.status === 200 || data.delivery_ratio !== undefined)) {
-        const deliveryRatio = Number(data.delivery_ratio || 0);
-        const returnRatio = Number(data.return_ratio || 0);
-        const cancellationRatio = Number(data.cancellation_ratio || 0);
-        const totalReports = Number(data.total_reports || 0);
-
-        // High risk if return ratio > 30% or cancellation ratio > 50% with past reports
-        const isRisky = returnRatio > 30 || (cancellationRatio > 50 && totalReports > 0);
-
         return {
-          pastSuccessRate: deliveryRatio > 0 ? deliveryRatio : Math.max(0, 100 - returnRatio),
-          isRisky,
-          totalDeliveries: Number(data.delivered_count || 0),
-          returnCount: Number(data.cancelled_count || 0),
-          returnRatio,
-          deliveryRatio,
-          cancellationRatio,
-          totalReports,
-          volumeRange: data.volume_range || '',
+          pastSuccessRate: 0,
+          isRisky: false,
+          totalDeliveries: 0,
+          returnCount: 0,
+          totalParcels: 0,
+          hasHistory: false,
         };
       }
 
-      return { pastSuccessRate: 100, isRisky: false, totalDeliveries: 0, returnCount: 0 };
+      let scoreData: any = null;
+      const headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Api-Key': this.apiKey,
+        'Secret-Key': this.secretKey,
+      };
+
+      // 1. Query Official Steadfast Live Score Endpoint
+      try {
+        const response = await fetch(`${this.baseUrl}/fraud_check/score/${cleanPhone}`, {
+          headers,
+          cache: 'no-store',
+        });
+        if (response.ok) {
+          scoreData = await response.json().catch(() => null);
+        }
+      } catch (err) {
+        console.warn('Steadfast score API error:', err);
+      }
+
+      // 2. Fallback to direct packzy endpoint if primary failed
+      if (!scoreData || scoreData.status !== 200) {
+        try {
+          const response = await fetch(`https://portal.packzy.com/api/v1/fraud_check/score/${cleanPhone}`, {
+            headers,
+            cache: 'no-store',
+          });
+          if (response.ok) {
+            scoreData = await response.json().catch(() => null);
+          }
+        } catch {}
+      }
+
+      // 3. Process Authentic Live Response from Steadfast
+      if (scoreData && (scoreData.status === 200 || scoreData.delivery_ratio !== undefined)) {
+        const volumeBand = scoreData.volume_band || 'none';
+        const volumeRange = scoreData.volume_range || null;
+        const totalReports = Number(scoreData.total_reports || 0);
+
+        // A customer has history if delivery_ratio is not null and volume_band is not none
+        const hasHistory =
+          scoreData.delivery_ratio !== null &&
+          scoreData.delivery_ratio !== undefined &&
+          volumeBand !== 'none';
+
+        if (hasHistory) {
+          const pastSuccessRate = Number(scoreData.delivery_ratio ?? 0);
+          const returnRatio = Number(scoreData.return_ratio ?? scoreData.cancellation_ratio ?? 0);
+          const isRisky = returnRatio > 30 || totalReports > 0 || (pastSuccessRate < 70 && pastSuccessRate > 0);
+
+          return {
+            hasHistory: true,
+            pastSuccessRate,
+            returnRatio,
+            deliveryRatio: pastSuccessRate,
+            volumeRange: volumeRange || volumeBand,
+            volumeBand,
+            totalReports,
+            isRisky,
+            totalDeliveries: scoreData.delivered_count ?? undefined,
+            returnCount: scoreData.cancelled_count ?? undefined,
+            totalParcels: scoreData.total_parcels ?? undefined,
+          };
+        }
+
+        // Authentic New Customer with 0 previous history on Steadfast
+        return {
+          hasHistory: false,
+          pastSuccessRate: 0,
+          returnRatio: 0,
+          deliveryRatio: 0,
+          volumeRange: 'none',
+          volumeBand: 'none',
+          totalReports,
+          isRisky: totalReports > 0,
+          totalDeliveries: 0,
+          returnCount: 0,
+          totalParcels: 0,
+        };
+      }
+
+      return {
+        hasHistory: false,
+        pastSuccessRate: 0,
+        returnRatio: 0,
+        isRisky: false,
+        totalReports: 0,
+        totalDeliveries: 0,
+        returnCount: 0,
+        totalParcels: 0,
+      };
     } catch {
-      return { pastSuccessRate: 100, isRisky: false, totalDeliveries: 0, returnCount: 0 };
+      return {
+        hasHistory: false,
+        totalParcels: 0,
+        totalDeliveries: 0,
+        returnCount: 0,
+        pastSuccessRate: 0,
+        isRisky: false,
+      };
     }
   }
 

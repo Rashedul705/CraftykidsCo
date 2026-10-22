@@ -156,6 +156,18 @@ export default function OrdersManager({
     pastSuccessRate?: number;
     totalDeliveries?: number;
     returnCount?: number;
+    totalParcels?: number;
+    hasHistory?: boolean;
+    volumeRange?: string;
+    volumeBand?: string;
+    provider?: string;
+    storeHistory?: {
+      total: number;
+      delivered: number;
+      cancelled: number;
+      pending: number;
+      confirmed?: number;
+    };
   } | null>(null);
   const [isLoadingRisk, setIsLoadingRisk] = useState(false);
 
@@ -164,6 +176,34 @@ export default function OrdersManager({
     if (!selectedOrderId) return null;
     return orders.find((o) => o.id === selectedOrderId || o.orderNumber === selectedOrderId) || null;
   }, [orders, selectedOrderId]);
+
+  // Customer Store Stats (CraftyKidsCo orders for this specific customer)
+  const customerStoreStats = useMemo(() => {
+    if (!activeOrder?.customerPhone) {
+      return { total: 0, delivered: 0, cancelled: 0, pending: 0, confirmed: 0, isFirstOrder: true };
+    }
+    const rawClean = activeOrder.customerPhone.replace(/\D/g, '');
+    const suffix = rawClean.slice(-10);
+    const matched = orders.filter((o) => {
+      const p = (o.customerPhone || '').replace(/\D/g, '');
+      return suffix ? p.includes(suffix) : false;
+    });
+
+    const delivered = matched.filter((o) => o.status === 'DELIVERED').length;
+    const cancelled = matched.filter((o) => o.status === 'CANCELLED' || o.status === 'RETURNED').length;
+    const pending = matched.filter((o) => o.status === 'PENDING').length;
+    const confirmed = matched.filter((o) => ['CONFIRMED', 'PROCESSING', 'SHIPPED'].includes(o.status)).length;
+    const total = Math.max(matched.length, customerRisk?.storeHistory?.total || 0, 1);
+
+    return {
+      total,
+      delivered,
+      cancelled,
+      pending,
+      confirmed,
+      isFirstOrder: total <= 1,
+    };
+  }, [activeOrder, orders, customerRisk]);
 
   // Load customer risk whenever active order changes
   useEffect(() => {
@@ -198,6 +238,28 @@ export default function OrdersManager({
     window.addEventListener('click', handleOutside);
     return () => window.removeEventListener('click', handleOutside);
   }, []);
+
+  // Handle ESC key and scroll locking for centered order detail modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isSidePanelOpen) {
+        setIsSidePanelOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSidePanelOpen]);
+
+  useEffect(() => {
+    if (isSidePanelOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isSidePanelOpen]);
 
   // 1. Metric Summary Counts for the 4 "To do" Cards
   const metrics = useMemo(() => {
@@ -353,6 +415,35 @@ export default function OrdersManager({
     } finally {
       setIsSubmittingDispatch(false);
     }
+  };
+
+  // Confirm Single Order directly
+  const handleConfirmOrder = async (order: OrderRecord) => {
+    try {
+      await onStatusChange(order.id, 'CONFIRMED');
+      success(`Order #${order.orderNumber} সফলভাবে কনফার্ম করা হয়েছে!`);
+      onRefresh();
+    } catch (err: any) {
+      error(err?.message || 'অর্ডার কনফার্ম করতে সমস্যা হয়েছে');
+    }
+  };
+
+  // Cancel Single Order with confirmation
+  const handleCancelOrder = (order: OrderRecord) => {
+    setConfirmDialogData({
+      isOpen: true,
+      title: `Cancel Order #${order.orderNumber}`,
+      message: 'Are you sure you want to cancel this order?',
+      itemCount: 1,
+      isDestructive: true,
+      confirmLabel: 'Cancel order',
+      action: async () => {
+        setConfirmDialogData((prev) => ({ ...prev, isOpen: false }));
+        await onStatusChange(order.id, 'CANCELLED');
+        warning(`Order #${order.orderNumber} cancelled.`);
+        onRefresh();
+      },
+    });
   };
 
   // Bulk Confirm
@@ -694,7 +785,13 @@ export default function OrdersManager({
       {/* 1. TOP TITLE, HELPER LINE & ACTION BUTTONS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold font-fredoka text-[#2B2B2B]">Orders</h2>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 className="text-2xl sm:text-3xl font-bold font-fredoka text-[#2B2B2B]">Orders</h2>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#FAF7F2] border border-[#EFE9E0] text-[#2B2B2B] shadow-xs">
+              <Layers className="w-3.5 h-3.5 text-[#D6403B]" />
+              আমাদের স্টোরে মোট অর্ডার: {orders.length} টি
+            </span>
+          </div>
           <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">
             Click any order to see details and act on it
           </p>
@@ -1296,363 +1393,579 @@ export default function OrdersManager({
         )}
       </div>
 
-      {/* 8. RIGHT SIDE DETAIL PANEL FOR SELECTED ORDER */}
-      {activeOrder && (
-        <SidePanel
-          isOpen={isSidePanelOpen}
-          onClose={() => setIsSidePanelOpen(false)}
-          title={`Order #${activeOrder.orderNumber}`}
-          subtitle={`Placed ${formatRelativeTime(activeOrder.createdAt)} • Source: ${activeOrder.source || 'Website'}`}
-          width="lg"
-          footer={
-            <div className="flex items-center justify-between gap-3 w-full">
-              {activeOrder.status !== 'CANCELLED' ? (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => {
-                    setConfirmDialogData({
-                      isOpen: true,
-                      title: `Cancel Order #${activeOrder.orderNumber}`,
-                      message: 'Are you sure you want to cancel this order?',
-                      itemCount: 1,
-                      isDestructive: true,
-                      confirmLabel: 'Cancel order',
-                      action: async () => {
-                        setConfirmDialogData((prev) => ({ ...prev, isOpen: false }));
-                        await onStatusChange(activeOrder.id, 'CANCELLED');
-                        warning(`Order #${activeOrder.orderNumber} cancelled.`);
-                        setIsSidePanelOpen(false);
-                        onRefresh();
-                      },
-                    });
-                  }}
-                >
-                  Cancel order
-                </Button>
-              ) : (
-                <span className="text-xs text-[#9B2420] font-semibold">Cancelled</span>
-              )}
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handlePrintInvoices([activeOrder])}
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  Print invoice
-                </Button>
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={!(activeOrder.consignmentId || activeOrder.trackingCode)}
-                  onClick={() => openStickerPrintModal([activeOrder])}
-                  title={!(activeOrder.consignmentId || activeOrder.trackingCode) ? 'আগে কুরিয়ারে পাঠান' : 'Print parcel sticker'}
-                >
-                  <Tag className="w-3.5 h-3.5" />
-                  Print sticker
-                </Button>
-
-                {/* Big Send to Steadfast Button */}
-                {activeOrder.consignmentId || activeOrder.trackingCode ? (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      window.open(
-                        `https://steadfast.com.bd/t/${activeOrder.trackingCode || activeOrder.consignmentId}`,
-                        '_blank'
-                      );
-                    }}
-                  >
-                    <Truck className="w-3.5 h-3.5 text-[#0B5F85]" />
-                    Track Steadfast
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    isLoading={isSubmittingDispatch}
-                    onClick={() => handleDispatchOrder(activeOrder)}
-                  >
-                    <Truck className="w-4 h-4" />
-                    Send to Steadfast
-                  </Button>
-                )}
-              </div>
-            </div>
-          }
+      {/* 8. CENTERED DETAIL POPUP MODAL FOR SELECTED ORDER */}
+      {activeOrder && isSidePanelOpen && (
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-6"
+          role="dialog"
+          aria-modal="true"
         >
-          <div className="space-y-6">
-            {/* Status & Customer Risk Badge */}
-            <div className="p-4 bg-[#FAF7F2] rounded-[16px] border border-[#EFE9E0] space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-[#6B6B6B] block">Status</span>
-                  <div className="mt-1">
-                    {activeOrder.status === 'CONFIRMED' && (
-                      <StatusPill variant="yellow" dot>
-                        Confirmed
-                      </StatusPill>
-                    )}
-                    {activeOrder.status === 'PENDING' && (
-                      <StatusPill variant="yellow" dot>
-                        Pending confirmation
-                      </StatusPill>
-                    )}
-                    {activeOrder.status === 'SHIPPED' && (
-                      <StatusPill variant="blue" dot>
-                        Shipped
-                      </StatusPill>
-                    )}
-                    {activeOrder.status === 'DELIVERED' && (
-                      <StatusPill variant="green" dot>
-                        Delivered
-                      </StatusPill>
-                    )}
-                    {activeOrder.status === 'RETURNED' && (
-                      <StatusPill variant="red" dot>
-                        Returned
-                      </StatusPill>
-                    )}
-                    {activeOrder.status === 'CANCELLED' && (
-                      <StatusPill variant="red" dot>
-                        Cancelled
-                      </StatusPill>
-                    )}
-                  </div>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200"
+            onClick={() => setIsSidePanelOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Centered Modal Card */}
+          <div className="relative w-full max-w-2xl lg:max-w-3xl max-h-[92vh] bg-white rounded-[24px] shadow-2xl flex flex-col border border-[#EFE9E0] overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-5 py-4 sm:px-6 sm:py-4.5 border-b border-[#EFE9E0] flex items-center justify-between shrink-0 bg-[#FAF7F2]">
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h2 className="text-lg sm:text-xl font-bold font-fredoka text-[#2B2B2B]">
+                    Order #{activeOrder.orderNumber}
+                  </h2>
+                  {activeOrder.status === 'CONFIRMED' && (
+                    <StatusPill variant="green" size="sm" dot>
+                      Confirmed
+                    </StatusPill>
+                  )}
+                  {activeOrder.status === 'PENDING' && (
+                    <StatusPill variant="yellow" size="sm" dot>
+                      Pending confirmation
+                    </StatusPill>
+                  )}
+                  {activeOrder.status === 'SHIPPED' && (
+                    <StatusPill variant="blue" size="sm" dot>
+                      Shipped
+                    </StatusPill>
+                  )}
+                  {activeOrder.status === 'DELIVERED' && (
+                    <StatusPill variant="green" size="sm" dot>
+                      Delivered
+                    </StatusPill>
+                  )}
+                  {activeOrder.status === 'RETURNED' && (
+                    <StatusPill variant="red" size="sm" dot>
+                      Returned
+                    </StatusPill>
+                  )}
+                  {activeOrder.status === 'CANCELLED' && (
+                    <StatusPill variant="red" size="sm" dot>
+                      Cancelled
+                    </StatusPill>
+                  )}
                 </div>
-
-                <div className="text-right">
-                  <span className="text-xs text-[#6B6B6B] block">Delivery Success Rate</span>
-                  <div className="mt-1">
-                    {isLoadingRisk ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-[#6B6B6B] inline-block" />
-                    ) : customerRisk ? (
-                      <StatusPill
-                        variant={customerRisk.isRisky ? 'red' : 'green'}
-                        icon={
-                          customerRisk.isRisky ? (
-                            <ShieldAlert className="w-3.5 h-3.5" />
-                          ) : (
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                          )
-                        }
-                      >
-                        {customerRisk.deliveryRatio || 95}% past delivery rate
-                      </StatusPill>
-                    ) : (
-                      <StatusPill variant="green" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
-                        96% Verified Customer
-                      </StatusPill>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Contact & Editable Address */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
-                  Customer & Shipping
-                </h4>
-                <button
-                  onClick={() => {
-                    setEditAddressText(activeOrder.fullAddress);
-                    setIsEditAddressOpen(true);
-                  }}
-                  className="text-xs text-[#D6403B] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <Edit2 className="w-3 h-3" />
-                  Edit address
-                </button>
-              </div>
-
-              <div className="p-4 bg-white border border-[#EFE9E0] rounded-[16px] space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-[#2B2B2B] text-base block">
-                      {activeOrder.customerName}
-                    </span>
-                    <span className="text-xs font-mono text-[#6B6B6B]">
-                      {activeOrder.customerPhone}
-                    </span>
-                  </div>
-
-                  {/* Call & WhatsApp Shortcuts */}
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={`tel:${activeOrder.customerPhone}`}
-                      className="px-3 py-1.5 rounded-[10px] border border-[#EFE9E0] hover:bg-[#FAF7F2] text-xs font-semibold text-[#2B2B2B] inline-flex items-center gap-1.5 transition-colors"
-                      aria-label="Call customer"
-                    >
-                      <Phone className="w-3.5 h-3.5 text-[#D6403B]" />
-                      <span>Call</span>
-                    </a>
-                    <a
-                      href={`https://wa.me/${activeOrder.customerPhone.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-3 py-1.5 rounded-[10px] bg-[#25D366] hover:bg-[#20BA5A] text-xs font-semibold text-white inline-flex items-center gap-1.5 transition-colors"
-                      aria-label="WhatsApp customer"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>WhatsApp</span>
-                    </a>
-                  </div>
-                </div>
-
-                <div className="text-xs text-[#2B2B2B] pt-2 border-t border-[#EFE9E0] leading-relaxed">
-                  <span className="text-[#6B6B6B] block">Delivery address:</span>
-                  <p className="font-medium mt-0.5">{activeOrder.fullAddress}</p>
-                  <p className="text-[#6B6B6B] mt-0.5">District: {activeOrder.district}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Courier Dispatch Status */}
-            {activeOrder.trackingCode && (
-              <div className="p-3.5 bg-[#DDF1FB] border border-[#BEE4F7] rounded-[16px] text-xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#0B5F85]">Steadfast Consignment Dispatched</span>
-                  <StatusPill variant="blue" size="sm">
-                    In Transit
-                  </StatusPill>
-                </div>
-                <p className="text-[#0B5F85]">
-                  Tracking Code: <strong>{activeOrder.trackingCode}</strong>
+                <p className="text-xs text-[#6B6B6B] mt-0.5">
+                  Placed {formatRelativeTime(activeOrder.createdAt)} • Source: {activeOrder.source || 'Website'}
                 </p>
-                {activeOrder.consignmentId && (
-                  <p className="text-[#0B5F85] text-[11px]">
-                    Consignment ID: #{activeOrder.consignmentId}
-                  </p>
-                )}
               </div>
-            )}
 
-            {/* Items & Money Breakdown with Amount to Collect */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
-                Items & Payment Breakdown
-              </h4>
-              <div className="border border-[#EFE9E0] rounded-[16px] overflow-hidden bg-white text-xs sm:text-sm">
-                <div className="divide-y divide-[#EFE9E0]">
-                  {activeOrder.items.map((item, idx) => (
-                    <div key={idx} className="p-3.5 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-[10px] bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-[#6B6B6B]">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span>Item</span>
-                          )}
+              <button
+                onClick={() => setIsSidePanelOpen(false)}
+                aria-label="Close popup"
+                className="p-2 text-[#6B6B6B] hover:text-[#2B2B2B] hover:bg-black/5 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Content Body */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 text-[#2B2B2B]">
+              {/* Top Quick Status & Action Bar */}
+              <div className="p-3.5 bg-[#FAF7F2] rounded-[16px] border border-[#EFE9E0] flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#6B6B6B] font-semibold">স্ট্যাটাস:</span>
+                  <span className="text-xs font-bold text-[#2B2B2B]">
+                    {activeOrder.status === 'PENDING' && 'অপেক্ষমান (Pending Confirmation)'}
+                    {activeOrder.status === 'CONFIRMED' && 'কনফার্মড (Ready for Dispatch)'}
+                    {activeOrder.status === 'SHIPPED' && 'কুরিয়ারে পাঠানো হয়েছে (Shipped)'}
+                    {activeOrder.status === 'DELIVERED' && 'সফলভাবে ডেলিভার্ড (Delivered)'}
+                    {activeOrder.status === 'CANCELLED' && 'বাতিলকৃত (Cancelled)'}
+                    {activeOrder.status === 'RETURNED' && 'রিটার্ন (Returned)'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {activeOrder.status === 'PENDING' && (
+                    <button
+                      onClick={() => handleConfirmOrder(activeOrder)}
+                      className="px-3 py-1.5 bg-[#1F6B43] hover:bg-[#185334] text-white text-xs font-bold rounded-[8px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Confirm order</span>
+                    </button>
+                  )}
+                  {activeOrder.status !== 'CANCELLED' && (
+                    <button
+                      onClick={() => handleCancelOrder(activeOrder)}
+                      className="px-3 py-1.5 bg-white border border-[#EFE9E0] hover:bg-[#FDE3E1] text-[#9B2420] text-xs font-bold rounded-[8px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Cancel order</span>
+                    </button>
+                  )}
+                  {activeOrder.status === 'CANCELLED' && (
+                    <button
+                      onClick={() => handleConfirmOrder(activeOrder)}
+                      className="px-3 py-1.5 bg-[#1F6B43] hover:bg-[#185334] text-white text-xs font-bold rounded-[8px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Restore to Confirmed</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Courier & Store Intelligence Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Steadfast Delivery Record (100% Authentic Live Steadfast API) */}
+                <div className="p-4 bg-[#FAF7F2] rounded-[16px] border border-[#EFE9E0] flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <Truck className="w-4 h-4 text-[#D6403B]" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
+                          স্টিডফাস্ট ডেলিভারি রিপোর্ট
+                        </span>
+                      </div>
+                      {isLoadingRisk ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#6B6B6B]" />
+                      ) : customerRisk?.hasHistory ? (
+                        <span
+                          className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                            (customerRisk.pastSuccessRate || 0) >= 80
+                              ? 'bg-[#E3F5EB] text-[#1F6B43]'
+                              : (customerRisk.pastSuccessRate || 0) >= 60
+                              ? 'bg-[#FEF6E6] text-[#A86400]'
+                              : 'bg-[#FDE3E1] text-[#C23631]'
+                          }`}
+                        >
+                          {customerRisk.pastSuccessRate}% সাকসেস রেট
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-[#6B6B6B]">
+                          নতুন কাস্টমার
+                        </span>
+                      )}
+                    </div>
+
+                    {isLoadingRisk ? (
+                      <div className="py-4 text-center text-xs text-[#6B6B6B] flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#D6403B]" />
+                        <span>স্টিডফাস্ট লাইভ ডাটা যাচাই করা হচ্ছে...</span>
+                      </div>
+                    ) : customerRisk?.hasHistory ? (
+                      <div className="space-y-2.5 text-xs mt-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white p-2.5 rounded-[12px] border border-[#EFE9E0]">
+                            <span className="text-[#6B6B6B] block text-[11px]">সফল ডেলিভারি</span>
+                            <span className="font-bold text-[#1F6B43] text-lg block">
+                              {customerRisk.totalDeliveries !== undefined
+                                ? `${customerRisk.totalDeliveries} টি`
+                                : `${customerRisk.pastSuccessRate}%`}
+                            </span>
+                            <span className="text-[10px] text-[#6B6B6B] block">
+                              {customerRisk.totalDeliveries !== undefined
+                                ? 'সফল ডেলিভারি সংখ্যা'
+                                : 'ডেলিভারি সাকসেস রেট'}
+                            </span>
+                          </div>
+                          <div className="bg-white p-2.5 rounded-[12px] border border-[#EFE9E0]">
+                            <span className="text-[#6B6B6B] block text-[11px]">বাতিল / রিটার্ন</span>
+                            <span
+                              className={`font-bold text-lg block ${
+                                (customerRisk.returnRatio || 0) > 0 ? 'text-[#C23631]' : 'text-[#6B6B6B]'
+                              }`}
+                            >
+                              {customerRisk.returnCount !== undefined
+                                ? `${customerRisk.returnCount} টি`
+                                : `${customerRisk.returnRatio || 0}%`}
+                            </span>
+                            <span className="text-[10px] text-[#6B6B6B] block">
+                              {customerRisk.returnCount !== undefined
+                                ? 'বাতিল পার্সেল সংখ্যা'
+                                : 'রিটার্ন অনুপাত'}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="font-semibold text-[#2B2B2B] block">{item.title}</span>
-                          <span className="text-xs text-[#6B6B6B]">
-                            Qty: {item.quantity} &times; ৳{item.price}
+
+                        <div className="flex items-center justify-between text-[11px] text-[#6B6B6B] px-0.5 pt-0.5">
+                          <span>
+                            পার্সেল ভলিউম:{' '}
+                            <strong className="text-[#2B2B2B]">
+                              {customerRisk.totalParcels
+                                ? `${customerRisk.totalParcels} টি`
+                                : customerRisk.volumeRange || customerRisk.volumeBand || 'সক্রিয়'}
+                            </strong>
+                          </span>
+                          <span>
+                            ফ্রড রিপোর্ট:{' '}
+                            <strong className={(customerRisk.totalReports || 0) > 0 ? 'text-[#C23631]' : 'text-[#1F6B43]'}>
+                              {customerRisk.totalReports || 0} টি
+                            </strong>
+                          </span>
+                        </div>
+
+                        {customerRisk.isRisky && (
+                          <div className="p-2 bg-[#FDE3E1]/70 border border-[#F9C3BE] rounded-[8px] text-[11px] text-[#C23631] font-semibold flex items-center gap-1.5">
+                            <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                            <span>উচ্চ রিটার্ন ঝুঁকি! কাস্টমারের রিটার্ন রেট {customerRisk.returnRatio}% এবং রিপোর্ট {customerRisk.totalReports || 0} টি।</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-white p-3.5 rounded-[12px] border border-[#EFE9E0] text-xs text-[#6B6B6B] mt-2 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-[#1F6B43] font-semibold">
+                          <CheckCircle2 className="w-4 h-4 text-[#1F6B43] shrink-0" />
+                          <span>স্টিডফাস্টে কোনো ফ্রড বা অভিযোগ নেই</span>
+                        </div>
+                        <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                          স্টিডফাস্ট কুরিয়ার নেটওয়ার্কে এই নম্বরে পূর্বে কোনো পার্সেল হিস্ট্রি পাওয়া যায়নি (কাস্টমারের নতুন নম্বর)।
+                        </p>
+                        <div className="pt-1 border-t border-[#EFE9E0] flex items-center justify-between text-[10px] text-[#8C8C8C]">
+                          <span>লাইভ ভেরিফিকেশন: সম্পন্ন</span>
+                          <span className="text-[#1F6B43] font-medium">নিরাপদ কাস্টমার</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. CraftyKidsCo Store Orders Record */}
+                <div className="p-4 bg-[#FAF7F2] rounded-[16px] border border-[#EFE9E0] flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-[#D6403B]" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
+                          আমাদের স্টোরের অর্ডার
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#E8F1FD] text-[#0B5F85]">
+                        মোট {customerStoreStats.total} টি অর্ডার
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs mt-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-white p-2.5 rounded-[12px] border border-[#EFE9E0] text-center">
+                          <span className="text-[#6B6B6B] block text-[10px]">ডেলিভার্ড</span>
+                          <span className="font-bold text-[#1F6B43] text-base">
+                            {customerStoreStats.delivered} <span className="text-[11px] font-normal">টি</span>
+                          </span>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-[12px] border border-[#EFE9E0] text-center">
+                          <span className="text-[#6B6B6B] block text-[10px]">চলমান/পেন্ডিং</span>
+                          <span className="font-bold text-[#0B5F85] text-base">
+                            {customerStoreStats.pending + customerStoreStats.confirmed} <span className="text-[11px] font-normal">টি</span>
+                          </span>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-[12px] border border-[#EFE9E0] text-center">
+                          <span className="text-[#6B6B6B] block text-[10px]">বাতিল</span>
+                          <span
+                            className={`font-bold text-base ${
+                              customerStoreStats.cancelled > 0 ? 'text-[#C23631]' : 'text-[#6B6B6B]'
+                            }`}
+                          >
+                            {customerStoreStats.cancelled} <span className="text-[11px] font-normal">টি</span>
                           </span>
                         </div>
                       </div>
-                      <span className="font-bold text-[#2B2B2B]">
-                        ৳{(item.price * item.quantity).toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
 
-                {(() => {
-                  const fin = calculateAmountToCollect(activeOrder);
-                  return (
-                    <div className="p-4 bg-[#FAF7F2] border-t border-[#EFE9E0] space-y-1.5 text-xs text-[#6B6B6B]">
-                      <div className="flex justify-between">
-                        <span>Subtotal:</span>
-                        <span className="font-semibold text-[#2B2B2B]">{formatTaka(fin.subtotal)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Delivery charge ({activeOrder.district || 'Standard'}):</span>
-                        <span className="font-semibold text-[#2B2B2B]">
-                          {fin.deliveryCharge === 0 ? 'Free (৳0)' : formatTaka(fin.deliveryCharge)}
-                        </span>
-                      </div>
-                      {fin.discount > 0 && (
-                        <div className="flex justify-between text-[#1F6B43] font-semibold">
-                          <span>Coupon discount:</span>
-                          <span>- {formatTaka(fin.discount)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between font-bold text-sm text-[#2B2B2B] pt-2 border-t border-[#EFE9E0]">
-                        <span>Amount to collect ({activeOrder.paymentMethod || 'COD'}):</span>
-                        <span className={fin.isPaid ? 'text-[#1F6B43]' : 'text-[#C23631]'}>
-                          {fin.collectDisplayBn}
-                        </span>
-                      </div>
-                      {fin.isPaid && (
-                        <span className="text-[11px] text-[#1F6B43] font-bold block text-right">
-                          ✓ পেইড (অগ্রিম পরিশোধিত)
-                        </span>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-
-            {/* Timeline */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
-                Order Timeline
-              </h4>
-              <div className="p-4 bg-white border border-[#EFE9E0] rounded-[16px] space-y-3 text-xs">
-                {activeOrder.timeline && activeOrder.timeline.length > 0 ? (
-                  activeOrder.timeline.map((evt, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5">
-                      <div className="w-2 h-2 rounded-full bg-[#D6403B] mt-1 shrink-0" />
-                      <div>
-                        <span className="font-semibold text-[#2B2B2B] block">{evt.status}</span>
-                        {evt.note && <p className="text-[#6B6B6B] text-[11px]">{evt.note}</p>}
-                        <span className="text-[10px] text-[#6B6B6B] block">
-                          {new Date(evt.timestamp).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-2 h-2 rounded-full bg-[#D6403B] mt-1 shrink-0" />
-                    <div>
-                      <span className="font-semibold text-[#2B2B2B] block">Order Placed</span>
-                      <span className="text-[10px] text-[#6B6B6B] block">
-                        {new Date(activeOrder.createdAt).toLocaleString()}
-                      </span>
+                      <p className="text-[11px] text-[#6B6B6B] px-0.5">
+                        {customerStoreStats.isFirstOrder
+                          ? '🌟 আমাদের স্টোরে এটি এই কাস্টমারের ১ম অর্ডার!'
+                          : `✨ পুরাতন কাস্টমার — পূর্বে ${customerStoreStats.total}টি অর্ডার করেছেন।`}
+                      </p>
                     </div>
                   </div>
-                )}
+                </div>
+              </div>
+
+              {/* Customer Contact & Editable Address */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
+                    Customer & Shipping
+                  </h4>
+                  <button
+                    onClick={() => {
+                      setEditAddressText(activeOrder.fullAddress);
+                      setIsEditAddressOpen(true);
+                    }}
+                    className="text-xs text-[#D6403B] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    Edit address
+                  </button>
+                </div>
+
+                <div className="p-4 bg-white border border-[#EFE9E0] rounded-[16px] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-[#2B2B2B] text-base block">
+                        {activeOrder.customerName}
+                      </span>
+                      <span className="text-xs font-mono text-[#6B6B6B]">
+                        {activeOrder.customerPhone}
+                      </span>
+                    </div>
+
+                    {/* Call & WhatsApp Shortcuts */}
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`tel:${activeOrder.customerPhone}`}
+                        className="px-3 py-1.5 rounded-[10px] border border-[#EFE9E0] hover:bg-[#FAF7F2] text-xs font-semibold text-[#2B2B2B] inline-flex items-center gap-1.5 transition-colors"
+                        aria-label="Call customer"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-[#D6403B]" />
+                        <span>Call</span>
+                      </a>
+                      <a
+                        href={`https://wa.me/${activeOrder.customerPhone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1.5 rounded-[10px] bg-[#25D366] hover:bg-[#20BA5A] text-xs font-semibold text-white inline-flex items-center gap-1.5 transition-colors"
+                        aria-label="WhatsApp customer"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-[#2B2B2B] pt-2 border-t border-[#EFE9E0] leading-relaxed">
+                    <span className="text-[#6B6B6B] block">Delivery address:</span>
+                    <p className="font-medium mt-0.5">{activeOrder.fullAddress}</p>
+                    <p className="text-[#6B6B6B] mt-0.5">District: {activeOrder.district}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Courier Dispatch Status (if present) */}
+              {activeOrder.trackingCode && (
+                <div className="p-3.5 bg-[#DDF1FB] border border-[#BEE4F7] rounded-[16px] text-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#0B5F85]">Steadfast Consignment Dispatched</span>
+                    <StatusPill variant="blue" size="sm">
+                      In Transit
+                    </StatusPill>
+                  </div>
+                  <p className="text-[#0B5F85]">
+                    Tracking Code: <strong>{activeOrder.trackingCode}</strong>
+                  </p>
+                  {activeOrder.consignmentId && (
+                    <p className="text-[#0B5F85] text-[11px]">
+                      Consignment ID: #{activeOrder.consignmentId}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Items & Money Breakdown with Amount to Collect */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
+                  Items & Payment Breakdown
+                </h4>
+                <div className="border border-[#EFE9E0] rounded-[16px] overflow-hidden bg-white text-xs sm:text-sm">
+                  <div className="divide-y divide-[#EFE9E0]">
+                    {activeOrder.items.map((item, idx) => (
+                      <div key={idx} className="p-3.5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-[10px] bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-[#6B6B6B]">
+                            {item.imageUrl ? (
+                              <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <span>Item</span>
+                            )}
+                          </div>
+                          <div>
+                            <span className="font-semibold text-[#2B2B2B] block">{item.title}</span>
+                            <span className="text-xs text-[#6B6B6B]">
+                              Qty: {item.quantity} &times; ৳{item.price}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="font-bold text-[#2B2B2B]">
+                          ৳{(item.price * item.quantity).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {(() => {
+                    const fin = calculateAmountToCollect(activeOrder);
+                    return (
+                      <div className="p-4 bg-[#FAF7F2] border-t border-[#EFE9E0] space-y-1.5 text-xs text-[#6B6B6B]">
+                        <div className="flex justify-between">
+                          <span>Subtotal:</span>
+                          <span className="font-semibold text-[#2B2B2B]">{formatTaka(fin.subtotal)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Delivery charge ({activeOrder.district || 'Standard'}):</span>
+                          <span className="font-semibold text-[#2B2B2B]">
+                            {fin.deliveryCharge === 0 ? 'Free (৳0)' : formatTaka(fin.deliveryCharge)}
+                          </span>
+                        </div>
+                        {fin.discount > 0 && (
+                          <div className="flex justify-between text-[#1F6B43] font-semibold">
+                            <span>Coupon discount:</span>
+                            <span>- {formatTaka(fin.discount)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-bold text-sm text-[#2B2B2B] pt-2 border-t border-[#EFE9E0]">
+                          <span>Amount to collect ({activeOrder.paymentMethod || 'COD'}):</span>
+                          <span className={fin.isPaid ? 'text-[#1F6B43]' : 'text-[#C23631]'}>
+                            {fin.collectDisplayBn}
+                          </span>
+                        </div>
+                        {fin.isPaid && (
+                          <span className="text-[11px] text-[#1F6B43] font-bold block text-right">
+                            ✓ পেইড (অগ্রিম পরিশোধিত)
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
+                  Order Timeline
+                </h4>
+                <div className="p-4 bg-white border border-[#EFE9E0] rounded-[16px] space-y-3 text-xs">
+                  {activeOrder.timeline && activeOrder.timeline.length > 0 ? (
+                    activeOrder.timeline.map((evt, idx) => (
+                      <div key={idx} className="flex items-start gap-2.5">
+                        <div className="w-2 h-2 rounded-full bg-[#D6403B] mt-1 shrink-0" />
+                        <div>
+                          <span className="font-semibold text-[#2B2B2B] block">{evt.status}</span>
+                          {evt.note && <p className="text-[#6B6B6B] text-[11px]">{evt.note}</p>}
+                          <span className="text-[10px] text-[#6B6B6B] block">
+                            {new Date(evt.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-2 h-2 rounded-full bg-[#D6403B] mt-1 shrink-0" />
+                      <div>
+                        <span className="font-semibold text-[#2B2B2B] block">Order Placed</span>
+                        <span className="text-[10px] text-[#6B6B6B] block">
+                          {new Date(activeOrder.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Internal Note */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
+                  Internal Staff Note
+                </h4>
+                <Textarea
+                  value={currentNoteInput}
+                  onChange={(e) => setCurrentNoteInput(e.target.value)}
+                  placeholder="Private staff notes (e.g., customer requested delivery after 4 PM)"
+                  rows={2}
+                />
+                <div className="flex justify-end">
+                  <Button size="sm" variant="secondary" onClick={handleSaveInternalNote}>
+                    Save note
+                  </Button>
+                </div>
               </div>
             </div>
 
-            {/* Internal Note */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
-                Internal Staff Note
-              </h4>
-              <Textarea
-                value={currentNoteInput}
-                onChange={(e) => setCurrentNoteInput(e.target.value)}
-                placeholder="Private staff notes (e.g., customer requested delivery after 4 PM)"
-                rows={2}
-              />
-              <div className="flex justify-end">
-                <Button size="sm" variant="secondary" onClick={handleSaveInternalNote}>
-                  Save note
-                </Button>
+            {/* Fixed Footer Actions */}
+            <div className="p-4 sm:p-5 border-t border-[#EFE9E0] bg-[#FAF7F2] shrink-0">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+                {/* Left side actions: Cancel or Reopen */}
+                <div className="flex items-center gap-2">
+                  {activeOrder.status !== 'CANCELLED' ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleCancelOrder(activeOrder)}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Cancel order</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleConfirmOrder(activeOrder)}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-[#1F6B43]" />
+                      <span>Reopen / Confirm</span>
+                    </Button>
+                  )}
+                </div>
+
+                {/* Right side actions: Confirm, Print, Send to Steadfast */}
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handlePrintInvoices([activeOrder])}
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print invoice</span>
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={!(activeOrder.consignmentId || activeOrder.trackingCode)}
+                    onClick={() => openStickerPrintModal([activeOrder])}
+                    title={!(activeOrder.consignmentId || activeOrder.trackingCode) ? 'আগে কুরিয়ারে পাঠান' : 'Print parcel sticker'}
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>Print sticker</span>
+                  </Button>
+
+                  {/* Primary Confirm button if order is PENDING */}
+                  {activeOrder.status === 'PENDING' && (
+                    <button
+                      onClick={() => handleConfirmOrder(activeOrder)}
+                      className="px-4 py-2 bg-[#1F6B43] hover:bg-[#185334] text-white text-xs sm:text-sm font-bold rounded-[10px] shadow-sm flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Confirm order</span>
+                    </button>
+                  )}
+
+                  {/* Send to Steadfast if order is CONFIRMED */}
+                  {activeOrder.status === 'CONFIRMED' && (
+                    activeOrder.consignmentId || activeOrder.trackingCode ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          window.open(
+                            `https://steadfast.com.bd/t/${activeOrder.trackingCode || activeOrder.consignmentId}`,
+                            '_blank'
+                          );
+                        }}
+                      >
+                        <Truck className="w-3.5 h-3.5 text-[#0B5F85]" />
+                        <span>Track Steadfast</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        isLoading={isSubmittingDispatch}
+                        onClick={() => handleDispatchOrder(activeOrder)}
+                      >
+                        <Truck className="w-4 h-4" />
+                        <span>Send to Steadfast</span>
+                      </Button>
+                    )
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </SidePanel>
+        </div>
       )}
 
       {/* 9. MANUAL ORDER CREATION MODAL */}

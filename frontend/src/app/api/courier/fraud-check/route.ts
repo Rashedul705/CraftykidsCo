@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const riskData = await courier.checkCustomerRisk(phone);
 
     // Query CraftyKidsCo store history for this customer phone
-    let storeHistory = { total: 0, delivered: 0, cancelled: 0, pending: 0 };
+    let storeHistory = { total: 0, delivered: 0, cancelled: 0, pending: 0, confirmed: 0 };
     try {
       await connectToDatabase();
       const cleanDigits = phone.replace(/\D/g, '');
@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
           total: storeOrders.length,
           delivered: storeOrders.filter((o: any) => o.status === 'DELIVERED').length,
           cancelled: storeOrders.filter((o: any) => o.status === 'CANCELLED' || o.status === 'RETURNED').length,
-          pending: storeOrders.filter((o: any) => ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'].includes(o.status)).length,
+          pending: storeOrders.filter((o: any) => o.status === 'PENDING').length,
+          confirmed: storeOrders.filter((o: any) => ['CONFIRMED', 'PROCESSING', 'SHIPPED'].includes(o.status)).length,
         };
       }
     } catch (dbErr) {
@@ -61,7 +62,8 @@ export async function GET(req: NextRequest) {
               total: memOrders.length,
               delivered: memOrders.filter((o) => o.status === 'DELIVERED').length,
               cancelled: memOrders.filter((o) => o.status === 'CANCELLED' || o.status === 'RETURNED').length,
-              pending: memOrders.filter((o) => ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'].includes(o.status)).length,
+              pending: memOrders.filter((o) => o.status === 'PENDING').length,
+              confirmed: memOrders.filter((o) => ['CONFIRMED', 'PROCESSING', 'SHIPPED'].includes(o.status)).length,
             };
           }
         }
