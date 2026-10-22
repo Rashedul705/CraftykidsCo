@@ -43,7 +43,7 @@ import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { BRAND_CONFIG } from '@/lib/brand';
 import { getProductBySlug, getAllProducts } from '@/lib/store';
-import { SampleProduct, getProductMedia, ProductVideo } from '@/lib/sample-data';
+import { SampleProduct, getProductMedia, ProductVideo, getVideoEmbedInfo } from '@/lib/sample-data';
 import { formatBDT, toBanglaDigits } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 
@@ -124,146 +124,7 @@ function getEffectiveVariations(product: SampleProduct) {
   if (product.variations && product.variations.length > 0) {
     return product.variations;
   }
-  const base = product.baseSalePrice || product.basePrice || 990;
-  const original = product.basePrice || Math.round(base * 1.25);
-  const img = product.imageUrl || '';
-  const gallery = product.galleryImages || [];
-  const slug = product.slug || '';
-
-  if (slug.includes('fruit')) {
-    return [
-      {
-        sku: 'SWEET-FRUIT-STARTER',
-        titleBn: 'স্টার্টার প্যাক (৬টি ফল + ৪টি রঙ + ১ ব্রাশ)',
-        titleEn: 'Starter Pack (6 Fruits + 4 Colors + 1 Brush)',
-        price: 1200,
-        salePrice: 990,
-        stock: 35,
-        imageUrl: img,
-        badge: 'জনপ্রিয়',
-      },
-      {
-        sku: 'SWEET-FRUIT-MEGA',
-        titleBn: 'মেগা আর্ট বক্স (১২টি ফল + ৮টি রঙ + ২ ব্রাশ + প্যালেট)',
-        titleEn: 'Mega Art Box (12 Fruits + 8 Colors + 2 Brushes + Palette)',
-        price: 1800,
-        salePrice: 1450,
-        stock: 18,
-        imageUrl: gallery[1] || img,
-        badge: 'সেরা অফার',
-      },
-      {
-        sku: 'SWEET-FRUIT-DELUXE',
-        titleBn: 'ডিলাক্স গিফট বক্স (১৮টি ফল + ১২ রঙ + ৪ ব্রাশ)',
-        titleEn: 'Deluxe Family Gift Box (18 Fruits + 12 Colors + 4 Brushes)',
-        price: 2400,
-        salePrice: 1890,
-        stock: 5,
-        imageUrl: gallery[2] || img,
-        badge: '৳৫১০ সাশ্রয়',
-      },
-    ];
-  }
-
-  if (slug.includes('paint') || slug.includes('kit') || product.categorySlug === 'art-kits') {
-    return [
-      {
-        sku: `${product.slug.slice(0, 8).toUpperCase()}-STARTER`,
-        titleBn: '১২ পিস সেট (১২টি শেপ + ৬টি রঙ + ১ ব্রাশ)',
-        titleEn: '12 Piece Set (12 Shapes + 6 Colors + 1 Brush)',
-        price: original,
-        salePrice: base,
-        stock: 30,
-        imageUrl: img,
-        badge: 'জনপ্রিয়',
-      },
-      {
-        sku: `${product.slug.slice(0, 8).toUpperCase()}-MEGA`,
-        titleBn: '২৪ পিস মেগা বক্স (২৪টি শেপ + ১২টি রঙ + ২ ব্রাশ)',
-        titleEn: '24 Piece Mega Box (24 Shapes + 12 Colors + 2 Brushes)',
-        price: Math.round(original * 1.5),
-        salePrice: Math.round(base * 1.45),
-        stock: 15,
-        imageUrl: gallery[1] || img,
-        badge: 'সেরা অফার',
-      },
-      {
-        sku: `${product.slug.slice(0, 8).toUpperCase()}-DELUXE`,
-        titleBn: '৩৬ পিস ডিলাক্স গিফট সেট (সম্পূর্ণ কালেকশন)',
-        titleEn: '36 Piece Deluxe Gift Box (Complete Collection Set)',
-        price: Math.round(original * 2.0),
-        salePrice: Math.round(base * 1.85),
-        stock: 6,
-        imageUrl: gallery[2] || img,
-        badge: 'অতিরিক্ত ছাড়',
-      },
-    ];
-  }
-
-  if (slug.includes('crayon') || product.categorySlug === 'wax-crayons') {
-    return [
-      {
-        sku: 'CRAYON-12',
-        titleBn: '১২ রঙের স্টার্টার প্যাক (১২টি চকচকে মোমের রঙ)',
-        titleEn: '12 Colors Starter Pack (12 Wax Crayons)',
-        price: original,
-        salePrice: base,
-        stock: 45,
-        imageUrl: img,
-      },
-      {
-        sku: 'CRAYON-24',
-        titleBn: '২৪ রঙের ক্লাসিক বক্স (২৪টি প্রাকৃতিক মোমের শেড)',
-        titleEn: '24 Colors Classic Box (24 Natural Shades)',
-        price: Math.round(original * 1.7),
-        salePrice: Math.round(base * 1.6),
-        stock: 6,
-        imageUrl: gallery[1] || img,
-        badge: 'জনপ্রিয়',
-      },
-      {
-        sku: 'CRAYON-36',
-        titleBn: '৩৬ রঙের মেগা কালেকশন (৩৬টি প্রিমিয়াম রঙ + বক্স)',
-        titleEn: '36 Colors Mega Artist Collection (36 Colors + Box)',
-        price: Math.round(original * 2.3),
-        salePrice: Math.round(base * 2.1),
-        stock: 25,
-        imageUrl: gallery[2] || img,
-      },
-    ];
-  }
-
-  return [
-    {
-      sku: `${product.slug.slice(0, 8).toUpperCase()}-STD`,
-      titleBn: 'স্ট্যান্ডার্ড প্যাক (১টি মূল সেট)',
-      titleEn: 'Standard Pack (1 Unit)',
-      price: original,
-      salePrice: base,
-      stock: 40,
-      imageUrl: img,
-    },
-    {
-      sku: `${product.slug.slice(0, 8).toUpperCase()}-COMBO-2`,
-      titleBn: '২-প্যাক সুপার সেভার কম্বো (২টি সেট + গিফট)',
-      titleEn: '2-Pack Super Saver Combo (2 Units + Gift)',
-      price: Math.round(original * 1.9),
-      salePrice: Math.round(base * 1.8),
-      stock: 18,
-      imageUrl: gallery[1] || img,
-      badge: 'সেরা সাশ্রয়',
-    },
-    {
-      sku: `${product.slug.slice(0, 8).toUpperCase()}-GIFT-3`,
-      titleBn: '৩-প্যাক ফ্যামিলি মেগা সেট (৩টি সম্পূর্ণ সেট)',
-      titleEn: '3-Pack Family Mega Gift Set (3 Complete Sets)',
-      price: Math.round(original * 2.8),
-      salePrice: Math.round(base * 2.5),
-      stock: 7,
-      imageUrl: gallery[2] || img,
-      badge: 'মাত্র ৭টি বাকি',
-    },
-  ];
+  return [];
 }
 
 function ProductContent() {
@@ -274,24 +135,41 @@ function ProductContent() {
   const { addItem } = useCart();
 
   const allProducts = getAllProducts();
-  const initialProduct: SampleProduct = getProductBySlug(slug) || allProducts[0];
-  const [product, setProduct] = useState<SampleProduct>(initialProduct);
+  const initialProduct: SampleProduct | null = getProductBySlug(slug) || null;
+  const [product, setProduct] = useState<SampleProduct | null>(initialProduct);
+  const [isLoading, setIsLoading] = useState<boolean>(!initialProduct);
+  const [notFound, setNotFound] = useState<boolean>(false);
 
   // Sync when slug changes or fetch latest from DB
   useEffect(() => {
+    let isMounted = true;
     const memProd = getProductBySlug(slug);
     if (memProd) {
       setProduct(memProd);
+      setIsLoading(false);
     }
-    let isMounted = true;
     fetch(`/api/products/${slug}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Not found');
+        return res.json();
+      })
       .then((data) => {
-        if (isMounted && data?.success && data?.product) {
-          setProduct((prev) => ({ ...prev, ...data.product }));
+        if (isMounted) {
+          if (data?.success && data?.product) {
+            setProduct(data.product);
+            setNotFound(false);
+          } else if (!memProd) {
+            setNotFound(true);
+          }
+          setIsLoading(false);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (isMounted) {
+          if (!memProd) setNotFound(true);
+          setIsLoading(false);
+        }
+      });
     return () => {
       isMounted = false;
     };
@@ -299,24 +177,27 @@ function ProductContent() {
 
   // Media: Images + Videos
   const { images: galleryImages, videos: productVideos } = useMemo(() => {
+    if (!product) return { images: [], videos: [] };
     return getProductMedia(product);
   }, [product]);
 
   // Gallery Active Image & Video Modal
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
+  const [overrideHeroImage, setOverrideHeroImage] = useState<string | null>(null);
   const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
   const [activeVideoModal, setActiveVideoModal] = useState<ProductVideo | null>(null);
 
-  // Variations list
+  // Variations list - Only products that explicitly have variations
   const variations = useMemo(() => {
-    if (product.variations && product.variations.length > 0) {
+    if (product?.variations && product.variations.length > 0) {
       return product.variations;
     }
-    return getEffectiveVariations(product);
+    return [];
   }, [product]);
 
   // Default to first available option
   const firstAvailableIndex = useMemo(() => {
+    if (variations.length === 0) return 0;
     const idx = variations.findIndex((v) => (v.stock ?? 1) > 0);
     return idx !== -1 ? idx : 0;
   }, [variations]);
@@ -327,18 +208,19 @@ function ProductContent() {
   useEffect(() => {
     setSelectedVariationIndex(firstAvailableIndex);
     setVariationError(null);
+    setOverrideHeroImage(null);
   }, [firstAvailableIndex, slug]);
 
-  const currentVariation = variations[selectedVariationIndex] || variations[0];
+  const currentVariation = variations.length > 0 ? (variations[selectedVariationIndex] || variations[0]) : null;
 
   // Price calculations
   const currentPrice = currentVariation
     ? currentVariation.salePrice || currentVariation.price
-    : product.baseSalePrice || product.basePrice;
+    : product?.salePrice || product?.baseSalePrice || product?.price || product?.basePrice || 0;
 
   const currentOriginalPrice = currentVariation
     ? currentVariation.price
-    : product.basePrice;
+    : product?.price || product?.basePrice || currentPrice;
 
   const discountPercent =
     currentOriginalPrice > currentPrice
@@ -346,7 +228,7 @@ function ProductContent() {
       : 0;
 
   // Stock status
-  const currentStock = currentVariation ? currentVariation.stock ?? 20 : 20;
+  const currentStock = currentVariation ? (currentVariation.stock ?? 20) : (product?.stock ?? 20);
   const isOutOfStock = currentStock <= 0;
   const isLowStock = currentStock > 0 && currentStock <= 10;
 
@@ -361,33 +243,39 @@ function ProductContent() {
   // Recently Viewed state
   const [recentlyViewed, setRecentlyViewed] = useState<SampleProduct[]>([]);
 
-  // When variation changes, update active image if variation has custom image
+  // When variation changes, update active hero image to that variation's photo
   const handleSelectVariation = (idx: number) => {
     const chosen = variations[idx];
-    if ((chosen?.stock ?? 1) <= 0) return; // cannot select out of stock option
+    if (!chosen || (chosen.stock ?? 1) <= 0) return; // cannot select out of stock option
 
     setSelectedVariationIndex(idx);
     setVariationError(null);
 
-    if (chosen?.imageUrl) {
+    if (chosen.imageUrl) {
+      setOverrideHeroImage(chosen.imageUrl);
       const foundIdx = galleryImages.findIndex((img) => img === chosen.imageUrl);
       if (foundIdx !== -1) {
         setActiveImageIndex(foundIdx);
       }
+    } else {
+      setOverrideHeroImage(null);
     }
   };
 
   // Next / Prev Image Navigation
   const handlePrevImage = () => {
+    setOverrideHeroImage(null);
     setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1));
   };
 
   const handleNextImage = () => {
+    setOverrideHeroImage(null);
     setActiveImageIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0));
   };
 
   // Track Recently Viewed & Meta pixel
   useEffect(() => {
+    if (!product) return;
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('ckc_recently_viewed');
@@ -413,11 +301,11 @@ function ProductContent() {
         });
       }
     }
-  }, [product.slug, currentPrice, product.titleEn, product.categorySlug]);
+  }, [product?.slug, currentPrice, product?.titleEn, product?.categorySlug]);
 
   // Add to Cart handler
   const handleAddToCart = () => {
-    if (isOutOfStock) return;
+    if (!product || isOutOfStock) return;
 
     addItem({
       id: currentVariation
@@ -442,7 +330,7 @@ function ProductContent() {
 
   // Direct Buy Now handler -> Adds to Cart & Routes directly to Checkout
   const handleBuyNow = () => {
-    if (isOutOfStock) return;
+    if (!product || isOutOfStock) return;
 
     addItem({
       id: currentVariation
@@ -500,14 +388,15 @@ function ProductContent() {
 
   // Related products
   const relatedProducts = useMemo(() => {
+    if (!product) return [];
     return allProducts
       .filter((p) => p.slug !== product.slug)
       .slice(0, 4);
-  }, [allProducts, product.slug]);
+  }, [allProducts, product?.slug]);
 
   // Selected variation short name for live total
   const selectedParsed = useMemo(() => {
-    if (!currentVariation) return { name: 'স্ট্যান্ডার্ড প্যাক', included: '' };
+    if (!currentVariation || !product) return { name: 'স্ট্যান্ডার্ড প্যাক', included: '' };
     return parseVariationDetails(
       currentVariation.titleBn,
       currentVariation.titleEn,
@@ -516,7 +405,43 @@ function ProductContent() {
       (currentVariation as any).detail || (currentVariation as any).whatsInIt || (currentVariation as any).descriptionBn || (currentVariation as any).attributes?.detail,
       (currentVariation as any).name || (currentVariation as any).attributes?.colorSet
     );
-  }, [currentVariation, product.titleBn, product.titleEn]);
+  }, [currentVariation, product?.titleBn, product?.titleEn]);
+
+  if (isLoading || !product) {
+    if (notFound) {
+      return (
+        <div className="min-h-screen flex flex-col bg-[#FAF7F2]">
+          <Header />
+          <div className="flex-1 flex flex-col items-center justify-center py-24 px-4 text-center">
+            <h2 className="text-3xl font-extrabold text-[#2B2B2B] mb-3">পণ্যটি পাওয়া যায়নি</h2>
+            <p className="text-lg text-[#666666] mb-8 max-w-md">আপনি যে পণ্যটি খুঁজছেন তা মুছে ফেলা হয়েছে বা লিংকটি সঠিক নয়।</p>
+            <Link href="/shop" className="px-8 py-3.5 rounded-full bg-[#D6403B] text-white font-bold text-base hover:bg-[#BF3430] transition-colors shadow-sm">
+              সকল পণ্য দেখুন
+            </Link>
+          </div>
+          <Footer />
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-screen flex flex-col bg-[#FAF7F2]">
+        <Header />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 w-full animate-pulse">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-7 aspect-square bg-[#EFE9E0] rounded-3xl" />
+            <div className="lg:col-span-5 space-y-5">
+              <div className="h-10 bg-[#EFE9E0] rounded-xl w-3/4" />
+              <div className="h-6 bg-[#EFE9E0] rounded-lg w-1/2" />
+              <div className="h-14 bg-[#EFE9E0] rounded-xl w-1/3" />
+              <div className="h-44 bg-[#EFE9E0] rounded-2xl" />
+              <div className="h-14 bg-[#EFE9E0] rounded-2xl" />
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   // Structured data
   const productSchema = {
@@ -613,7 +538,7 @@ function ProductContent() {
             {/* Main Stage Image (Never empty black box, never autoplay) */}
             <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shadow-inner group flex items-center justify-center">
               <Image
-                src={galleryImages[activeImageIndex] || product.imageUrl}
+                src={overrideHeroImage || galleryImages[activeImageIndex] || product.imageUrl}
                 alt={product.titleBn}
                 fill
                 priority
@@ -674,9 +599,12 @@ function ProductContent() {
                   <button
                     key={`img-${idx}`}
                     type="button"
-                    onClick={() => setActiveImageIndex(idx)}
+                    onClick={() => {
+                      setOverrideHeroImage(null);
+                      setActiveImageIndex(idx);
+                    }}
                     className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-[#FAF7F2] border-2 transition-all cursor-pointer flex-shrink-0 group ${
-                      isActive
+                      isActive && !overrideHeroImage
                         ? 'border-[#D6403B] shadow-sm ring-2 ring-[#D6403B]/20 scale-95'
                         : 'border-[#EFE9E0] hover:border-[#D6403B]/60 opacity-80 hover:opacity-100'
                     }`}
@@ -775,13 +703,13 @@ function ProductContent() {
               </span>
             </div>
 
-            {/* 2. Title in Bangla (large), English title below in grey */}
+            {/* 2. Title in Bangla (large, easy to read), English title below in grey */}
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-[#2B2B2B] leading-snug">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#2B2B2B] leading-tight">
                 {product.titleBn}
               </h1>
               {product.titleEn && (
-                <p className="text-sm text-[#6B6B6B] mt-1 font-medium">
+                <p className="text-sm sm:text-base text-[#6B6B6B] mt-1.5 font-medium">
                   {product.titleEn}
                 </p>
               )}
@@ -789,7 +717,7 @@ function ProductContent() {
 
             {/* 3. Rating row: stars, average, "N টি রিভিউ দেখুন" link that scrolls to reviews */}
             {(product.reviewCount || 48) > 0 && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <div className="flex items-center gap-2 text-sm sm:text-base">
                 <div className="flex items-center text-[#FFC93C]">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className="w-4 h-4 fill-current text-[#FFC93C]" />
@@ -811,13 +739,13 @@ function ProductContent() {
               </div>
             )}
 
-            {/* 4. Compact price: large sale price in red, old price struck through, no big box */}
+            {/* 4. Compact price: large sale price in red, old price struck through */}
             <div className="flex items-baseline gap-3 pt-1">
-              <span className="text-3xl sm:text-4xl font-extrabold text-[#C23631]">
+              <span className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#C23631]">
                 {formatBDT(currentPrice, { locale: 'bn' })}
               </span>
               {currentOriginalPrice > currentPrice && (
-                <span className="text-base sm:text-lg text-[#6B6B6B] line-through font-normal">
+                <span className="text-lg sm:text-xl text-[#757575] line-through font-medium">
                   {formatBDT(currentOriginalPrice, { locale: 'bn' })}
                 </span>
               )}
@@ -863,13 +791,15 @@ function ProductContent() {
                     );
 
                     return (
-                      <div
+                      <button
                         key={v.sku || `var-${idx}`}
+                        type="button"
                         role="radio"
                         aria-checked={isSelected}
                         aria-disabled={vOutOfStock}
+                        disabled={vOutOfStock}
                         onClick={() => !vOutOfStock && handleSelectVariation(idx)}
-                        className={`relative p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between min-h-[96px] ${
+                        className={`w-full relative p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between min-h-[96px] ${
                           vOutOfStock
                             ? 'opacity-50 cursor-not-allowed bg-gray-50 border-[#EFE9E0]'
                             : isSelected
@@ -877,15 +807,24 @@ function ProductContent() {
                             : 'border-[#EFE9E0] bg-white hover:border-[#D6403B]/60 cursor-pointer'
                         }`}
                       >
-                        {/* Top: Name + Selection Circle / Tick Indicator */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 pr-1">
-                            <p className="text-xs sm:text-sm font-bold text-[#2B2B2B] leading-snug">
-                              {parsed.name}
-                            </p>
-                            <p className="text-[11px] text-[#6B6B6B] leading-tight mt-0.5 line-clamp-2">
-                              {parsed.included}
-                            </p>
+                        {/* Top: Photo (if exists) + Name + Selection Circle / Tick Indicator */}
+                        <div className="flex items-start justify-between gap-2.5 w-full">
+                          <div className="flex items-start gap-2.5 min-w-0 pr-1">
+                            {v.imageUrl && (
+                              <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shrink-0 shadow-2xs">
+                                <Image src={v.imageUrl} alt={parsed.name} fill className="object-cover" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm sm:text-base font-bold text-[#2B2B2B] leading-snug">
+                                {parsed.name}
+                              </p>
+                              {parsed.included && (
+                                <p className="text-xs sm:text-sm text-[#555] leading-tight mt-1 line-clamp-2">
+                                  {parsed.included}
+                                </p>
+                              )}
+                            </div>
                           </div>
 
                           {/* Corner Indicator: red circle with tick if selected, empty circle if not */}
@@ -901,12 +840,12 @@ function ProductContent() {
                         </div>
 
                         {/* Bottom: Price + Stock label */}
-                        <div className="mt-3 pt-2 border-t border-[#EFE9E0] flex items-baseline justify-between gap-1">
-                          <span className="text-sm font-extrabold text-[#C23631]">
+                        <div className="mt-3 pt-2 border-t border-[#EFE9E0] flex items-baseline justify-between gap-1 w-full">
+                          <span className="text-base sm:text-lg font-black text-[#C23631]">
                             {formatBDT(vPrice, { locale: 'bn' })}
                           </span>
 
-                          <span className="text-[10px] font-bold">
+                          <span className="text-xs font-bold">
                             {vOutOfStock ? (
                               <span className="text-[#9B2420]">স্টক শেষ</span>
                             ) : vLowStock ? (
@@ -918,7 +857,7 @@ function ProductContent() {
                             )}
                           </span>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -932,74 +871,74 @@ function ProductContent() {
             )}
 
             {/* 6. Quantity stepper and live total line */}
-            <div className="space-y-2 pt-2 border-t border-[#EFE9E0]">
+            <div className="space-y-2.5 pt-3 border-t border-[#EFE9E0]">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#2B2B2B]">অর্ডারের পরিমাণ:</span>
-                <div className="flex items-center bg-[#FAF7F2] border border-[#EFE9E0] rounded-full p-1 shadow-inner">
+                <span className="text-sm sm:text-base font-bold text-[#2B2B2B]">অর্ডারের পরিমাণ:</span>
+                <div className="flex items-center bg-[#FAF7F2] border border-[#EFE9E0] rounded-full p-1.5 shadow-inner">
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                     disabled={quantity <= 1}
-                    className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
+                    className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
                     title="কমান"
                   >
-                    <Minus className="w-3.5 h-3.5" />
+                    <Minus className="w-4 h-4" />
                   </button>
-                  <span className="w-10 text-center font-bold text-sm">
+                  <span className="w-12 text-center font-extrabold text-base sm:text-lg">
                     {toBanglaDigits(quantity)}
                   </span>
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.min(currentStock, q + 1))}
                     disabled={quantity >= currentStock}
-                    className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
+                    className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
                     title="বাড়ান"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Live Total Line (e.g., "১২ পিস সেট x ১, মোট ৳৯৯৯") */}
-              <div className="bg-[#FAF7F2] rounded-xl px-3 py-2 border border-[#EFE9E0] text-xs font-medium text-[#2B2B2B] flex items-center justify-between">
+              {/* Live Total Line */}
+              <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 border border-[#EFE9E0] text-sm sm:text-base font-medium text-[#2B2B2B] flex items-center justify-between">
                 <span>
                   {selectedParsed.name} x {toBanglaDigits(quantity)}
                 </span>
-                <span className="font-bold text-sm text-[#C23631]">
+                <span className="font-black text-base sm:text-xl text-[#C23631]">
                   মোট {formatBDT(currentPrice * quantity, { locale: 'bn' })}
                 </span>
               </div>
             </div>
 
-            {/* 7. Action Buttons: "এখনই অর্ডার করুন" (solid) vs "কার্টে যোগ করুন" (outlined) */}
-            <div className="space-y-2.5 pt-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* 1. Primary Action: Order Now (Solid Primary #D6403B) */}
+            {/* 7. Action Buttons: "Order Now" vs "Add to Cart" */}
+            <div className="space-y-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* 1. Primary Action: Order Now */}
                 <button
                   type="button"
                   onClick={handleBuyNow}
                   disabled={isOutOfStock}
-                  className="py-3.5 px-4 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] active:scale-[0.98] text-white font-bold text-base flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="py-4 px-6 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] active:scale-[0.98] text-white font-black text-base sm:text-lg flex items-center justify-center gap-2.5 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Zap className="w-4 h-4 fill-current" />
+                  <Zap className="w-5 h-5 fill-current" />
                   <span>{isOutOfStock ? 'Stock Out' : 'Order Now'}</span>
                 </button>
 
-                {/* 2. Secondary Action: Add to Cart (Outlined Primary) */}
+                {/* 2. Secondary Action: Add to Cart */}
                 <button
                   type="button"
                   onClick={handleAddToCart}
                   disabled={isOutOfStock}
-                  className={`py-3.5 px-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all cursor-pointer border-2 border-[#D6403B] text-[#D6403B] bg-transparent hover:bg-[#FDE3E1]/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={`py-4 px-6 rounded-xl font-black text-base sm:text-lg flex items-center justify-center gap-2.5 transition-all cursor-pointer border-2 border-[#D6403B] text-[#D6403B] bg-transparent hover:bg-[#FDE3E1]/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {addedToast ? (
                     <>
-                      <Check className="w-4 h-4 text-[#1F6B43]" />
+                      <Check className="w-5 h-5 text-[#1F6B43]" />
                       <span className="text-[#1F6B43]">Added to Cart!</span>
                     </>
                   ) : (
                     <>
-                      <ShoppingBag className="w-4 h-4" />
+                      <ShoppingBag className="w-5 h-5" />
                       <span>{isOutOfStock ? 'Stock Out' : 'Add to Cart'}</span>
                     </>
                   )}
@@ -1083,11 +1022,11 @@ function ProductContent() {
            ===================================================================== */}
         <div id="reviews-section" className="bg-white rounded-2xl border border-[#EFE9E0] p-5 sm:p-8 shadow-xs space-y-6">
           {/* Tabs Navigation Header */}
-          <div className="flex gap-2 overflow-x-auto pb-2 border-b border-[#EFE9E0] scrollbar-none text-xs sm:text-sm font-bold sticky top-16 bg-white z-20 pt-1">
+          <div className="flex gap-2 overflow-x-auto pb-2 border-b border-[#EFE9E0] scrollbar-none text-sm sm:text-base font-bold sticky top-16 bg-white z-20 pt-1">
             {[
               { id: 'desc', label: 'বিবরণ' },
               { id: 'box', label: 'বাক্সে কী আছে' },
-              { id: 'videos', label: `ডেমো ভিডিও (${toBanglaDigits(productVideos.length)})` },
+              ...(productVideos.length > 0 ? [{ id: 'videos', label: `ডেমো ভিডিও (${toBanglaDigits(productVideos.length)})` }] : []),
               { id: 'reviews', label: `রিভিউ (${toBanglaDigits(product.reviewCount || 48)})` },
               { id: 'faq', label: 'প্রশ্নোত্তর' },
             ].map((tab) => (
@@ -1095,7 +1034,7 @@ function ProductContent() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-4 py-2.5 rounded-full whitespace-nowrap transition-all cursor-pointer ${
+                className={`px-5 py-2.5 rounded-full whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === tab.id
                     ? 'bg-[#D6403B] text-white shadow-xs'
                     : 'text-[#6B6B6B] hover:text-[#2B2B2B] hover:bg-[#FAF7F2]'
@@ -1506,27 +1445,40 @@ function ProductContent() {
       )}
 
       {/* =========================================================================
-          VIDEO MODAL (Rule: Never empty black box inline, opens in modal on tap)
+          VIDEO MODAL (Supports YouTube, Vimeo, and Direct Video Files)
          ========================================================================= */}
-      {activeVideoModal && (
-        <Modal
-          isOpen={!!activeVideoModal}
-          onClose={() => setActiveVideoModal(null)}
-          title={activeVideoModal.titleBn}
-          description={`দৈর্ঘ্য: ${activeVideoModal.duration}`}
-          maxWidth="lg"
-        >
-          <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
-            <video
-              src={activeVideoModal.url}
-              controls
-              autoPlay
-              playsInline
-              className="w-full h-full object-contain"
-            />
-          </div>
-        </Modal>
-      )}
+      {activeVideoModal && (() => {
+        const videoInfo = getVideoEmbedInfo(activeVideoModal.url);
+        return (
+          <Modal
+            isOpen={!!activeVideoModal}
+            onClose={() => setActiveVideoModal(null)}
+            title={activeVideoModal.titleBn}
+            description={activeVideoModal.duration ? `দৈর্ঘ্য: ${activeVideoModal.duration}` : undefined}
+            maxWidth="lg"
+          >
+            <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
+              {videoInfo.isEmbed ? (
+                <iframe
+                  src={videoInfo.embedUrl}
+                  title={activeVideoModal.titleBn}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full border-0"
+                />
+              ) : (
+                <video
+                  src={activeVideoModal.url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-contain"
+                />
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* =========================================================================
           MOBILE STICKY "ORDER NOW" BUY BAR (Rule: Option name, total price, order button)

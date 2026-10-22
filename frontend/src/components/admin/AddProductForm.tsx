@@ -120,12 +120,18 @@ export default function AddProductForm({
   );
 
   // 4. Variations
+  const [hasVariations, setHasVariations] = useState<boolean>(() => {
+    if (initialProduct?.variations && initialProduct.variations.length > 0) {
+      return true;
+    }
+    return Boolean(initialProduct?.isVariable);
+  });
   const [optionGroupTitle, setOptionGroupTitle] = useState('Set Options');
   const [optionValues, setOptionValues] = useState<string[]>(() => {
     if (initialProduct?.variations && initialProduct.variations.length > 0) {
       return initialProduct.variations.map((v: any) => v.attributes?.colorSet || v.titleEn || v.name);
     }
-    return ['12 Piece Set', '24 Piece Set', '48 Piece Deluxe Set'];
+    return [];
   });
   const [newOptionInput, setNewOptionInput] = useState('');
 
@@ -153,11 +159,7 @@ export default function AddProductForm({
         };
       });
     }
-    return [
-      { id: 'var-1', name: '12 Piece Set', detail: '১২টি শেপ + ৬টি রঙ + ১ ব্রাশ', sku: '', price: 1200, salePrice: 999, stock: 25, imageUrl: '' },
-      { id: 'var-2', name: '24 Piece Set', detail: '২৪টি শেপ + ১২টি রঙ + ২ ব্রাশ', sku: '', price: 1800, salePrice: 1450, stock: 15, imageUrl: '' },
-      { id: 'var-3', name: '48 Piece Deluxe Set', detail: 'সম্পূর্ণ কালেকশন বক্স + সব কালার', sku: '', price: 2400, salePrice: 1990, stock: 10, imageUrl: '' },
-    ];
+    return [];
   });
 
   // 5. Shipping & Search
@@ -263,6 +265,38 @@ export default function AddProductForm({
   const handleRemovePhoto = (idx: number) => {
     markDirty();
     setImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Upload variation specific photo
+  const [uploadingVarId, setUploadingVarId] = useState<string | null>(null);
+  const handleVariationPhotoUpload = async (varId: string, file: File) => {
+    try {
+      setUploadingVarId(varId);
+      markDirty();
+
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('name', `craftykidsco_var_${Date.now()}`);
+
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && (data.url || data.display_url)) {
+        const cdnUrl = data.url || data.display_url;
+        updateVariationRow(varId, 'imageUrl', cdnUrl);
+        setImages((prev) => (prev.includes(cdnUrl) ? prev : [...prev, cdnUrl]));
+        success('Variation photo uploaded successfully.');
+      } else {
+        toastError(data.message || 'Image upload failed. Please try again.');
+      }
+    } catch {
+      toastError('Connection error uploading image.');
+    } finally {
+      setUploadingVarId(null);
+    }
   };
 
   // Add Variation Option Tag
@@ -454,30 +488,43 @@ export default function AddProductForm({
 
     const effectiveSku = getEffectiveSku();
 
-    const formattedVariations = variations.map((v) => {
-      const optionName = v.name.trim();
-      const optionDetail = (v.detail || '').trim();
-      return {
-        id: v.id,
-        name: optionName,
-        detail: optionDetail,
-        whatsInIt: optionDetail,
-        descriptionBn: optionDetail,
-        sku: v.sku || `${effectiveSku}-${optionName.replace(/\s+/g, '-').toUpperCase()}`,
-        titleBn: optionDetail ? `${optionName} (${optionDetail})` : optionName,
-        titleEn: `${titleEn} (${optionName})`,
-        price: Number(v.price),
-        salePrice: Number(v.salePrice || v.price),
-        stock: Number(v.stock),
-        stockQuantity: Number(v.stock),
-        imageUrl: v.imageUrl || primaryImage,
-        isActive: true,
-        attributes: {
-          colorSet: optionName,
-          detail: optionDetail,
-        },
-      };
+    const formattedVariations =
+      hasVariations && variations.length > 0
+        ? variations.map((v) => {
+            const optionName = v.name.trim();
+            const optionDetail = (v.detail || '').trim();
+            return {
+              id: v.id,
+              name: optionName,
+              detail: optionDetail,
+              whatsInIt: optionDetail,
+              descriptionBn: optionDetail,
+              sku: v.sku || `${effectiveSku}-${optionName.replace(/\s+/g, '-').toUpperCase()}`,
+              titleBn: optionDetail ? `${optionName} (${optionDetail})` : optionName,
+              titleEn: `${titleEn} (${optionName})`,
+              price: Number(v.price),
+              salePrice: Number(v.salePrice || v.price),
+              stock: Number(v.stock),
+              stockQuantity: Number(v.stock),
+              imageUrl: v.imageUrl || primaryImage,
+              isActive: true,
+              attributes: {
+                colorSet: optionName,
+                detail: optionDetail,
+              },
+            };
+          })
+        : [];
+
+    const allGalleryImages = [...images];
+    formattedVariations.forEach((v) => {
+      if (v.imageUrl && !allGalleryImages.includes(v.imageUrl)) {
+        allGalleryImages.push(v.imageUrl);
+      }
     });
+    if (allGalleryImages.length === 0) {
+      allGalleryImages.push(primaryImage);
+    }
 
     const payload = {
       titleBn: titleBn.trim(),
@@ -505,7 +552,7 @@ export default function AddProductForm({
       pieces: whatsInTheBox.trim(),
       imageUrl: primaryImage,
       image: primaryImage,
-      galleryImages: images.length > 0 ? images : [primaryImage],
+      galleryImages: allGalleryImages,
       videoUrl: videoUrl.trim() || undefined,
       weight: Number(weightGrams || 350),
       packageSize: packageSize.trim(),
@@ -687,8 +734,8 @@ export default function AddProductForm({
                     setVideoUrl(e.target.value);
                     markDirty();
                   }}
-                  placeholder="https://youtube.com/watch?v=... or direct MP4 link"
-                  helperText="Videos show with duration and play thumbnail in the storefront gallery"
+                  placeholder="https://youtube.com/watch?v=... or https://youtu.be/... or MP4 link"
+                  helperText="Supports YouTube links (watch, shorts, embed), Vimeo, or direct MP4/WebM videos. Leave blank if product has no video."
                 />
               </div>
             </CardContent>
@@ -871,170 +918,254 @@ export default function AddProductForm({
           <Card>
             <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <CardTitle>Variations</CardTitle>
-                <p className="text-xs text-[#6B6B6B]">
-                  Create options like set sizes and age groups. Table appears with inline row editing.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="secondary" onClick={handleCopyPriceToAll}>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy price to all rows</span>
-                </Button>
-                <Button size="sm" variant="primary" onClick={handleGenerateVariations}>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Generate variations</span>
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Option Values Tags Input */}
-              <div className="p-3.5 bg-[#FAF7F2] rounded-[16px] border border-[#EFE9E0] space-y-2">
-                <label className="text-xs font-semibold text-[#2B2B2B] block">
-                  Option values for {optionGroupTitle} (e.g., 12 Piece, 24 Piece)
-                </label>
-                <div className="flex flex-wrap items-center gap-2">
-                  {optionValues.map((opt) => (
-                    <span
-                      key={opt}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[#EFE9E0] text-xs font-medium text-[#2B2B2B]"
-                    >
-                      <span>{opt}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveOptionTag(opt)}
-                        className="text-[#6B6B6B] hover:text-[#9B2420]"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                  <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-3">
+                  <CardTitle>Variations</CardTitle>
+                  <label className="inline-flex items-center gap-2 cursor-pointer bg-[#FAF7F2] px-3 py-1 rounded-full border border-[#EFE9E0] text-xs font-bold text-[#2B2B2B] hover:bg-[#F5EFE6] transition-colors">
                     <input
-                      type="text"
-                      value={newOptionInput}
-                      onChange={(e) => setNewOptionInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddOptionTag();
+                      type="checkbox"
+                      checked={hasVariations}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setHasVariations(checked);
+                        markDirty();
+                        if (checked && variations.length === 0) {
+                          setVariations([
+                            {
+                              id: `var-${Date.now()}-1`,
+                              name: '12 Piece Set',
+                              detail: '১২টি শেপ + ৬টি রঙ + ১ ব্রাশ',
+                              sku: `${getEffectiveSku()}-12PCS`,
+                              price: Number(regularPrice || 1200),
+                              salePrice: Number(salePrice || 999),
+                              stock: Number(stockQuantity || 25),
+                              imageUrl: images[0] || '',
+                            },
+                          ]);
+                          setOptionValues(['12 Piece Set']);
                         }
                       }}
-                      placeholder="+ Add option value"
-                      className="bg-white border border-[#EFE9E0] rounded-full px-3 py-1 text-xs text-[#2B2B2B] outline-none focus:border-[#D6403B] w-36"
+                      className="rounded border-[#D1D5DB] text-[#D6403B] focus:ring-[#D6403B] w-4 h-4"
                     />
-                    <Button size="sm" variant="secondary" onClick={handleAddOptionTag}>
-                      Add
-                    </Button>
+                    <span>This product has multiple variations</span>
+                  </label>
+                </div>
+                <p className="text-xs text-[#6B6B6B] mt-1">
+                  {hasVariations
+                    ? 'Configure multiple options (different sizes, colors, piece counts) with individual photos, prices, and stocks.'
+                    : 'Currently single product (no variations). Turn on the checkbox above if this product has multiple sizes or options.'}
+                </p>
+              </div>
+
+              {hasVariations && (
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="secondary" onClick={handleCopyPriceToAll}>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy price to all rows</span>
+                  </Button>
+                  <Button size="sm" variant="primary" onClick={handleGenerateVariations}>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Generate variations</span>
+                  </Button>
+                </div>
+              )}
+            </CardHeader>
+
+            {hasVariations ? (
+              <CardContent className="space-y-4">
+                {/* Option Values Tags Input */}
+                <div className="p-3.5 bg-[#FAF7F2] rounded-[16px] border border-[#EFE9E0] space-y-2">
+                  <label className="text-xs font-semibold text-[#2B2B2B] block">
+                    Option values for {optionGroupTitle} (e.g., 12 Piece, 24 Piece, 48 Piece)
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {optionValues.map((opt) => (
+                      <span
+                        key={opt}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[#EFE9E0] text-xs font-medium text-[#2B2B2B]"
+                      >
+                        <span>{opt}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOptionTag(opt)}
+                          className="text-[#6B6B6B] hover:text-[#9B2420]"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={newOptionInput}
+                        onChange={(e) => setNewOptionInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddOptionTag();
+                          }
+                        }}
+                        placeholder="+ Add option value"
+                        className="bg-white border border-[#EFE9E0] rounded-full px-3 py-1 text-xs text-[#2B2B2B] outline-none focus:border-[#D6403B] w-36"
+                      />
+                      <Button size="sm" variant="secondary" onClick={handleAddOptionTag}>
+                        Add
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Variations Table */}
-              <TableContainer>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Option</TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-1">
-                          <span>What&apos;s in it (Detail)</span>
-                          <span className="text-[10px] text-[#8C8C8C] font-normal">(কী কী আছে)</span>
-                        </div>
-                      </TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Regular (৳)</TableHead>
-                      <TableHead>Sale (৳)</TableHead>
-                      <TableHead>Stock</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {variations.length === 0 ? (
+                {/* Variations Table with Photo Column */}
+                <TableContainer>
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={7} className="py-6 text-center text-[#6B6B6B]">
-                          No variations added. Click &quot;Generate variations&quot; or add a custom row.
-                        </TableCell>
+                        <TableHead className="w-16">Photo</TableHead>
+                        <TableHead>Option</TableHead>
+                        <TableHead>
+                          <div className="flex items-center gap-1">
+                            <span>What&apos;s in it (Detail)</span>
+                            <span className="text-[10px] text-[#8C8C8C] font-normal">(কী কী আছে)</span>
+                          </div>
+                        </TableHead>
+                        <TableHead>SKU</TableHead>
+                        <TableHead>Regular (৳)</TableHead>
+                        <TableHead>Sale (৳)</TableHead>
+                        <TableHead>Stock</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
                       </TableRow>
-                    ) : (
-                      variations.map((v) => (
-                        <TableRow key={v.id}>
-                          <TableCell>
-                            <input
-                              type="text"
-                              value={v.name}
-                              onChange={(e) => updateVariationRow(v.id, 'name', e.target.value)}
-                              placeholder="e.g. ১২ পিস সেট"
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-semibold text-[#2B2B2B] outline-none w-32 focus:bg-white"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <input
-                              type="text"
-                              value={v.detail || ''}
-                              onChange={(e) => updateVariationRow(v.id, 'detail', e.target.value)}
-                              placeholder="যেমন: ১২টি শেপ + ৬টি রঙ + ১ ব্রাশ"
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-48 sm:w-60 focus:bg-white"
-                              title="What's included in this set (shown under option title on storefront product page)"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <input
-                              type="text"
-                              value={v.sku}
-                              onChange={(e) => updateVariationRow(v.id, 'sku', e.target.value)}
-                              placeholder={`${getEffectiveSku()}-OPT`}
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-mono text-[#6B6B6B] outline-none w-28 focus:bg-white"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <input
-                              type="number"
-                              value={v.price}
-                              onChange={(e) => updateVariationRow(v.id, 'price', Number(e.target.value))}
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-20 focus:bg-white"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <input
-                              type="number"
-                              value={v.salePrice}
-                              onChange={(e) => updateVariationRow(v.id, 'salePrice', Number(e.target.value))}
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-bold text-[#C23631] outline-none w-20 focus:bg-white"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <input
-                              type="number"
-                              value={v.stock}
-                              onChange={(e) => updateVariationRow(v.id, 'stock', Number(e.target.value))}
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-16 focus:bg-white"
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <button
-                              type="button"
-                              onClick={() => deleteVariationRow(v.id)}
-                              className="p-1 rounded text-[#6B6B6B] hover:text-[#9B2420] hover:bg-[#FDE3E1] transition-colors cursor-pointer"
-                              aria-label="Delete variation"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                    </TableHeader>
+                    <TableBody>
+                      {variations.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="py-6 text-center text-[#6B6B6B]">
+                            No variations added yet. Click &quot;Generate variations&quot; or &quot;+ Add custom variation row&quot;.
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                      ) : (
+                        variations.map((v) => (
+                          <TableRow key={v.id}>
+                            {/* Photo Column */}
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {v.imageUrl ? (
+                                  <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-[#EFE9E0] bg-[#FAF7F2] group shrink-0 shadow-2xs">
+                                    <Image src={v.imageUrl} alt={v.name} fill className="object-cover" />
+                                    <button
+                                      type="button"
+                                      onClick={() => updateVariationRow(v.id, 'imageUrl', '')}
+                                      className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                      title="Remove photo"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <label
+                                    className="w-10 h-10 rounded-lg border border-dashed border-[#D1D5DB] hover:border-[#D6403B] bg-white hover:bg-[#FAF7F2] flex items-center justify-center cursor-pointer text-[#6B6B6B] hover:text-[#D6403B] transition-colors shrink-0"
+                                    title="Upload photo for this variation"
+                                  >
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleVariationPhotoUpload(v.id, file);
+                                      }}
+                                    />
+                                    {uploadingVarId === v.id ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#D6403B]" />
+                                    ) : (
+                                      <ImageIcon className="w-3.5 h-3.5" />
+                                    )}
+                                  </label>
+                                )}
+                              </div>
+                            </TableCell>
 
-              <div className="flex justify-end">
-                <Button size="sm" variant="ghost" onClick={handleAddCustomRow}>
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Add custom variation row</span>
-                </Button>
-              </div>
-            </CardContent>
+                            <TableCell>
+                              <input
+                                type="text"
+                                value={v.name}
+                                onChange={(e) => updateVariationRow(v.id, 'name', e.target.value)}
+                                placeholder="e.g. ১২ পিস সেট"
+                                className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-semibold text-[#2B2B2B] outline-none w-28 focus:bg-white"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <input
+                                type="text"
+                                value={v.detail || ''}
+                                onChange={(e) => updateVariationRow(v.id, 'detail', e.target.value)}
+                                placeholder="যেমন: ১২টি শেপ + ৬টি রঙ + ১ ব্রাশ"
+                                className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-44 sm:w-56 focus:bg-white"
+                                title="What's included in this set (shown under option title on storefront product page)"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <input
+                                type="text"
+                                value={v.sku}
+                                onChange={(e) => updateVariationRow(v.id, 'sku', e.target.value)}
+                                placeholder={`${getEffectiveSku()}-OPT`}
+                                className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-mono text-[#6B6B6B] outline-none w-24 focus:bg-white"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <input
+                                type="number"
+                                value={v.price}
+                                onChange={(e) => updateVariationRow(v.id, 'price', Number(e.target.value))}
+                                className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-16 focus:bg-white"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <input
+                                type="number"
+                                value={v.salePrice}
+                                onChange={(e) => updateVariationRow(v.id, 'salePrice', Number(e.target.value))}
+                                className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-bold text-[#C23631] outline-none w-16 focus:bg-white"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <input
+                                type="number"
+                                value={v.stock}
+                                onChange={(e) => updateVariationRow(v.id, 'stock', Number(e.target.value))}
+                                className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-14 focus:bg-white"
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <button
+                                type="button"
+                                onClick={() => deleteVariationRow(v.id)}
+                                className="p-1 rounded text-[#6B6B6B] hover:text-[#9B2420] hover:bg-[#FDE3E1] transition-colors cursor-pointer"
+                                aria-label="Delete variation"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                <div className="flex justify-end">
+                  <Button size="sm" variant="ghost" onClick={handleAddCustomRow}>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Add custom variation row</span>
+                  </Button>
+                </div>
+              </CardContent>
+            ) : (
+              <CardContent>
+                <div className="p-4 bg-[#FAF7F2] rounded-xl border border-dashed border-[#EFE9E0] text-center text-xs text-[#6B6B6B]">
+                  This product is currently configured as a single item with no variations. To add multiple sets, sizes, or color options with individual photos and pricing, check <strong>&quot;This product has multiple variations&quot;</strong> above.
+                </div>
+              </CardContent>
+            )}
           </Card>
 
           {/* 5. Shipping & Search */}

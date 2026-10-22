@@ -61,6 +61,9 @@ export interface SampleProduct {
   categorySlug?: string;
   basePrice: number;
   baseSalePrice: number;
+  price?: number;
+  salePrice?: number;
+  stock?: number;
   rating?: number;
   reviewCount?: number;
   isVariable: boolean;
@@ -82,14 +85,51 @@ export interface SampleProduct {
   variations?: ProductVariation[];
 }
 
+export function getVideoEmbedInfo(url?: string): {
+  type: 'youtube' | 'vimeo' | 'direct';
+  embedUrl: string;
+  isEmbed: boolean;
+  thumbnailUrl?: string;
+} {
+  if (!url || typeof url !== 'string') {
+    return { type: 'direct', embedUrl: '', isEmbed: false };
+  }
+  const trimmed = url.trim();
+
+  // YouTube Shorts, Watch, Embed, youtu.be
+  const ytMatch = trimmed.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|v\/|shorts\/)|youtu\.be\/)([\w-]{11})/i);
+  if (ytMatch && ytMatch[1]) {
+    const videoId = ytMatch[1];
+    return {
+      type: 'youtube',
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`,
+      isEmbed: true,
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+    };
+  }
+
+  // Vimeo
+  const vimeoMatch = trimmed.match(/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/([^\/]*)\/videos\/|album\/(\d+)\/video\/|)(\d+)/i);
+  if (vimeoMatch && vimeoMatch[3]) {
+    return {
+      type: 'vimeo',
+      embedUrl: `https://player.vimeo.com/video/${vimeoMatch[3]}?autoplay=1`,
+      isEmbed: true,
+    };
+  }
+
+  return { type: 'direct', embedUrl: trimmed, isEmbed: false };
+}
+
 export function getProductMedia(product: SampleProduct): {
   images: string[];
   videos: ProductVideo[];
 } {
-  const images: string[] = [product.imageUrl];
+  const images: string[] = [];
+  if (product.imageUrl) images.push(product.imageUrl);
   if (product.galleryImages && product.galleryImages.length > 0) {
     product.galleryImages.forEach((img) => {
-      if (!images.includes(img)) images.push(img);
+      if (img && !images.includes(img)) images.push(img);
     });
   }
   if (product.variations && product.variations.length > 0) {
@@ -99,97 +139,29 @@ export function getProductMedia(product: SampleProduct): {
       }
     });
   }
-
-  const categoryImagePool: Record<string, string[]> = {
-    'art-kits': [
-      'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
-      'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
-      'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg',
-      'https://i.ibb.co/kVrGCzrh/craftykidsco-tool-set.jpg',
-      'https://i.ibb.co/v4bLHK3N/craftykidsco-sunny-shores.jpg',
-      'https://i.ibb.co/7J0qh5wC/craftykidsco-ocean-world.jpg',
-    ],
-    'wax-crayons': [
-      'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=800&q=80',
-    ],
-    'play-dough-clay': [
-      'https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80',
-    ],
-    'sketchbooks': [
-      'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=800&q=80',
-    ],
-    'wooden-toys': [
-      'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1618842676088-c4d48a6a7c9d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=800&q=80',
-    ],
-    'puzzles': [
-      'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1618842676088-c4d48a6a7c9d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=800&q=80',
-    ],
-    'educational-toys': [
-      'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1618842676088-c4d48a6a7c9d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=800&q=80',
-    ],
-    'gift-sets': [
-      'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=80',
-      'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg',
-      'https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=800&q=80',
-    ],
-  };
-
-  const pool = categoryImagePool[product.categorySlug || ''] || categoryImagePool['art-kits'];
-  for (const extraImg of pool) {
-    if (images.length >= 5) break;
-    if (!images.includes(extraImg)) {
-      images.push(extraImg);
-    }
+  if (images.length === 0) {
+    images.push('https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg');
   }
 
   let videos: ProductVideo[] = [];
   if (product.videos && product.videos.length > 0) {
     videos = product.videos;
-  } else {
+  } else if (product.videoUrl && product.videoUrl.trim()) {
+    const rawUrl = product.videoUrl.trim();
+    const embedInfo = getVideoEmbedInfo(rawUrl);
     videos = [
       {
-        id: 'vid-1',
-        title: 'Unboxing & Box Contents Review',
-        titleBn: 'ভিডিও ১: আনবক্সিং ও পণ্য রিভিউ',
-        url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-        duration: '0:15',
-        thumbnailUrl: images[0] || product.imageUrl,
-      },
-      {
-        id: 'vid-2',
-        title: 'Creative Play & Drawing Demo',
-        titleBn: 'ভিডিও ২: শিশুদের লাইভ আর্ট ডেমো',
-        url: 'https://vjs.zencdn.net/v/oceans.mp4',
-        duration: '0:45',
-        thumbnailUrl: images[1] || images[0] || product.imageUrl,
+        id: 'vid-custom-1',
+        title: product.titleEn ? `${product.titleEn} Video` : 'Product Video',
+        titleBn: 'পণ্য ভিডিও',
+        url: rawUrl,
+        duration: 'ভিডিও',
+        thumbnailUrl: embedInfo.thumbnailUrl || images[0] || product.imageUrl,
       },
     ];
+  } else {
+    // Only show videos if explicitly added by admin
+    videos = [];
   }
 
   return { images, videos };
