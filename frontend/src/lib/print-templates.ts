@@ -400,8 +400,8 @@ export async function generateInvoiceHtml(
               ${printConfig.returnPolicyText || 'পণ্য হাতে পাওয়ার পর কোনো ত্রুটি বা সমস্যা পেলে ৩ দিনের মধ্যে আমাদের কাস্টমার কেয়ারে যোগাযোগ করুন।'}
             </div>
             <div class="footer-contact-row">
-              <div><strong>হটলাইন:</strong> ${printConfig.phone || printConfig.supportPhone || '01711-223344'}</div>
-              <div><strong>হোয়াটসঅ্যাপ:</strong> ${printConfig.whatsapp || '+8801711223344'}</div>
+              <div><strong>হটলাইন:</strong> ${printConfig.phone || printConfig.supportPhone || '01731-376498'}</div>
+              <div><strong>হোয়াটসঅ্যাপ:</strong> ${printConfig.whatsapp || '+8801731376498'}</div>
               <div><strong>ওয়েবসাইট:</strong> ${printConfig.website || 'craftykidsco.com'}</div>
               <div><strong>ফেসবুক:</strong> ${printConfig.facebookPage || 'facebook.com/craftykidsco.bd'}</div>
             </div>
@@ -835,7 +835,7 @@ export async function generateStickerHtml(
           <div class="company-tagline">${printConfig.tagline || 'শিশুদের নিরাপদ মোমের রঙ ও খেলনা'}</div>
         </div>
         <div class="sender-right">
-          <div class="company-phone">${printConfig.phone || '01711-223344'}</div>
+          <div class="company-phone">${printConfig.phone || '01731-376498'}</div>
         </div>
       </div>
 

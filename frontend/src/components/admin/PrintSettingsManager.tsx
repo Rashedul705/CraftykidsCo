@@ -26,9 +26,9 @@ export function PrintSettingsManager() {
   // Print Settings State
   const [companyName, setCompanyName] = useState('CraftyKidsCo');
   const [tagline, setTagline] = useState('শিশুদের নিরাপদ প্রাকৃতিক রঙ ও শিক্ষামূলক খেলনা');
-  const [phone, setPhone] = useState('01711-223344');
-  const [supportPhone, setSupportPhone] = useState('01711-223344');
-  const [whatsapp, setWhatsapp] = useState('8801711223344');
+  const [phone, setPhone] = useState('01731-376498');
+  const [supportPhone, setSupportPhone] = useState('01731-376498');
+  const [whatsapp, setWhatsapp] = useState('8801731376498');
   const [website, setWebsite] = useState('craftykidsco.com');
   const [facebookPage, setFacebookPage] = useState('fb.com/craftykidsco.bd');
   const [logoUrl, setLogoUrl] = useState('/icons/icon-192x192.png');
@@ -176,7 +176,7 @@ export function PrintSettingsManager() {
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="01711-223344"
+                placeholder="01731-376498"
                 className="w-full p-2.5 rounded-xl border border-[#EFE9E0] focus:outline-[#D6403B] font-medium"
               />
             </div>
@@ -187,7 +187,7 @@ export function PrintSettingsManager() {
                 type="text"
                 value={supportPhone}
                 onChange={(e) => setSupportPhone(e.target.value)}
-                placeholder="01711-223344"
+                placeholder="01731-376498"
                 className="w-full p-2.5 rounded-xl border border-[#EFE9E0] focus:outline-[#D6403B] font-medium"
               />
             </div>
@@ -198,7 +198,7 @@ export function PrintSettingsManager() {
                 type="text"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="8801711223344"
+                placeholder="8801731376498"
                 className="w-full p-2.5 rounded-xl border border-[#EFE9E0] focus:outline-[#D6403B] font-medium"
               />
             </div>

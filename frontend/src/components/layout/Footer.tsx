@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { PhoneCall, Mail, MapPin, Truck, ShieldCheck, Heart } from 'lucide-react';
+import { PhoneCall, Mail, MapPin, Truck, ShieldCheck, Heart, MessageCircle } from 'lucide-react';
 import { BRAND_CONFIG } from '@/lib/brand';
 
 export function Footer() {
@@ -23,10 +23,22 @@ export function Footer() {
             শিশুদের সুস্থ শৈশব ও সৃজনশীল মেধা বিকাশে ১০০% নিরাপদ নন-টক্সিক মোমের রঙ ও শিক্ষণীয় খেলনার নির্ভরযোগ্য ব্র্যান্ড।
           </p>
           <div className="space-y-1.5 text-xs text-[#CCCCCC] pt-1">
-            <p className="flex items-center gap-2">
+            <a
+              href={`tel:${BRAND_CONFIG.defaultHotline.replace(/[^\d+]/g, '')}`}
+              className="flex items-center gap-2 hover:text-white transition-colors"
+            >
               <PhoneCall className="w-3.5 h-3.5 text-[#D6403B]" />
               <span>{BRAND_CONFIG.defaultHotline}</span>
-            </p>
+            </a>
+            <a
+              href={`https://wa.me/${BRAND_CONFIG.defaultWhatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-[#25D366] hover:text-[#34D399] transition-colors"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+              <span>হোয়াটসঅ্যাপ: {BRAND_CONFIG.defaultHotline}</span>
+            </a>
             <p className="flex items-center gap-2">
               <Mail className="w-3.5 h-3.5 text-[#D6403B]" />
               <span>{BRAND_CONFIG.defaultEmail}</span>

@@ -28,6 +28,66 @@ export async function GET() {
           trustBadges: Array.isArray(parsed.trustBadges) && parsed.trustBadges.length > 0 ? parsed.trustBadges : defaultSiteSettings.trustBadges,
           promoBanners: Array.isArray(parsed.promoBanners) && parsed.promoBanners.length > 0 ? parsed.promoBanners : defaultSiteSettings.promoBanners,
         };
+
+        // Automatically migrate any legacy/dummy placeholder phone numbers to 01731376498
+        let updated = false;
+        const isLegacyNumber = (val?: string) =>
+          !val ||
+          val.includes('01711') ||
+          val.includes('১৭১১') ||
+          val.includes('01890') ||
+          val.includes('১৮৯০') ||
+          val.includes('01700') ||
+          val.includes('১৭০০');
+
+        if (isLegacyNumber(merged.footer?.phone)) {
+          merged.footer.phone = '+৮৮০ ১৭৩১-৩৭৬৪৯৮';
+          updated = true;
+        }
+        if (isLegacyNumber(merged.announcement?.hotline)) {
+          merged.announcement.hotline = '01731-376498';
+          updated = true;
+        }
+        if (isLegacyNumber(merged.announcement?.whatsapp)) {
+          merged.announcement.whatsapp = '01731-376498';
+          updated = true;
+        }
+        if (isLegacyNumber(merged.bulkOrderBanner?.whatsappNumber)) {
+          merged.bulkOrderBanner.whatsappNumber = '+8801731376498';
+          updated = true;
+        }
+        if (isLegacyNumber(merged.print?.phone)) {
+          merged.print.phone = '01731-376498';
+          updated = true;
+        }
+        if (isLegacyNumber(merged.print?.supportPhone)) {
+          merged.print.supportPhone = '01731-376498';
+          updated = true;
+        }
+        if (isLegacyNumber(merged.print?.whatsapp)) {
+          merged.print.whatsapp = '8801731376498';
+          updated = true;
+        }
+        if (Array.isArray(merged.promoBanners)) {
+          merged.promoBanners.forEach((b) => {
+            if (b.link && (b.link.includes('01711') || b.link.includes('01890') || b.link.includes('১৭১১'))) {
+              b.link = 'https://wa.me/8801731376498';
+              updated = true;
+            }
+          });
+        }
+
+        if (updated) {
+          try {
+            await Setting.updateOne(
+              { key: 'site_settings' },
+              { $set: { value: JSON.stringify(merged), updatedAt: new Date() } }
+            );
+          } catch (syncErr) {
+            console.warn('Could not persist updated site_settings numbers to MongoDB:', syncErr);
+          }
+        }
+
         updateSiteSettings(merged);
         return NextResponse.json({
           success: true,

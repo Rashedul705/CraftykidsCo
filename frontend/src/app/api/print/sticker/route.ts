@@ -11,7 +11,7 @@ const SAMPLE_TEST_ORDER: OrderRecord = {
   id: 'ord-test-sample',
   orderNumber: 'CKC-20261022-9999',
   customerName: 'নাজমুল ইসলাম (নমুনা প্রিন্ট)',
-  customerPhone: '01711-223344',
+  customerPhone: '01731-376498',
   district: 'Dhaka',
   fullAddress: 'বাড়ি #১২, রোড #৭, সেক্টর #৩, উত্তরা, ঢাকা-১২৩০',
   subtotal: 1569,
