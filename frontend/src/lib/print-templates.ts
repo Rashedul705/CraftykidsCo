@@ -134,12 +134,14 @@ export function findChromeExecutable(): string | null {
   }
 
   const paths = [
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/nix/var/nix/profiles/default/bin/chromium',
+    '/root/.nix-profile/bin/chromium',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
     '/usr/bin/google-chrome-stable',
     '/usr/bin/google-chrome',
-    '/usr/bin/chromium-browser',
-    '/usr/bin/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
   ];

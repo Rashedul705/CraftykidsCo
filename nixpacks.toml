@@ -1,0 +1,18 @@
+# Nixpacks configuration for CraftyKidsCo
+# Used by Coolify / Railway / Nixpacks deployment engines
+
+[phases.setup]
+nixPkgs = ["...", "chromium"]
+
+[variables]
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/nix/var/nix/profiles/default/bin/chromium"
+
+[phases.install]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm start"
