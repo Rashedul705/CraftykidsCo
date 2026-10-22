@@ -53,38 +53,54 @@ function parseVariationDetails(
   titleBn: string,
   titleEn?: string,
   productTitleBn?: string,
-  productTitleEn?: string
+  productTitleEn?: string,
+  explicitDetail?: string,
+  explicitName?: string
 ) {
-  let name = titleBn;
-  let included = '';
+  let name = (explicitName || titleBn || '').trim();
+  let included = (explicitDetail || '').trim();
 
-  // Extract from parentheses if available
-  const matchBn = titleBn.match(/^([^(]+)(?:\((.+)\))?/);
-  if (matchBn) {
-    name = matchBn[1].trim();
-    included = matchBn[2]?.trim() || '';
+  // If name has parentheses (e.g. "১২ পিস সেট (১২টি শেপ + ৬টি রঙ + ১ ব্রাশ)"), extract clean name and detail
+  if (name.includes('(')) {
+    const match = name.match(/^([^(]+)(?:\((.+)\))?/);
+    if (match) {
+      name = match[1].trim();
+      if (!included && match[2]) {
+        included = match[2].trim();
+      }
+    }
+  }
+
+  // Also check titleBn parentheses if included is still empty
+  if (!included && titleBn && titleBn.includes('(')) {
+    const matchBn = titleBn.match(/^([^(]+)(?:\((.+)\))?/);
+    if (matchBn) {
+      if (!name) name = matchBn[1].trim();
+      if (matchBn[2]) included = matchBn[2].trim();
+    }
   }
 
   // If the extracted name matches or contains the product title, then what was in parentheses is the actual variation!
   if (
+    !explicitName &&
     productTitleBn &&
     (name.toLowerCase().includes(productTitleBn.toLowerCase().replace(/[-–—]/g, ' ').trim()) ||
       productTitleBn.toLowerCase().includes(name.toLowerCase()))
   ) {
-    if (included) {
+    if (included && !explicitDetail) {
       name = included;
       included = '';
     }
   }
 
   // If name has "12 piece" or "24 piece" or "48 piece", format nicely into Bangla
-  if (/12\s*piece/i.test(name) || /১২\s*পিস/.test(name)) {
+  if (!explicitName && (/12\s*piece/i.test(name) || /১২\s*পিস/.test(name))) {
     name = '১২ পিস সেট';
     if (!included) included = '১২টি শেপ + ৬টি রঙ + ১ ব্রাশ';
-  } else if (/24\s*piece/i.test(name) || /২৪\s*পিস/.test(name)) {
+  } else if (!explicitName && (/24\s*piece/i.test(name) || /২৪\s*পিস/.test(name))) {
     name = '২৪ পিস মেগা বক্স';
     if (!included) included = '২৪টি শেপ + ১২টি রঙ + ২ ব্রাশ';
-  } else if (/48\s*piece/i.test(name) || /৪৮\s*পিস/.test(name) || /36\s*piece/i.test(name) || /৩৬\s*পিস/.test(name)) {
+  } else if (!explicitName && (/48\s*piece/i.test(name) || /৪৮\s*পিস/.test(name) || /36\s*piece/i.test(name) || /৩৬\s*পিস/.test(name))) {
     name = '৩৬ পিস ডিলাক্স গিফট সেট';
     if (!included) included = 'সম্পূর্ণ কালেকশন বক্স + সব কালার';
   }
@@ -496,9 +512,11 @@ function ProductContent() {
       currentVariation.titleBn,
       currentVariation.titleEn,
       product.titleBn,
-      product.titleEn
+      product.titleEn,
+      (currentVariation as any).detail || (currentVariation as any).whatsInIt || (currentVariation as any).descriptionBn || (currentVariation as any).attributes?.detail,
+      (currentVariation as any).name || (currentVariation as any).attributes?.colorSet
     );
-  }, [currentVariation]);
+  }, [currentVariation, product.titleBn, product.titleEn]);
 
   // Structured data
   const productSchema = {
@@ -839,7 +857,9 @@ function ProductContent() {
                       v.titleBn,
                       v.titleEn,
                       product.titleBn,
-                      product.titleEn
+                      product.titleEn,
+                      (v as any).detail || (v as any).whatsInIt || (v as any).descriptionBn || (v as any).attributes?.detail,
+                      (v as any).name || (v as any).attributes?.colorSet
                     );
 
                     return (

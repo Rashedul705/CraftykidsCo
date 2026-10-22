@@ -51,6 +51,7 @@ export interface AddProductFormProps {
 export interface VariationRow {
   id: string;
   name: string;
+  detail?: string;
   sku: string;
   price: number;
   salePrice: number;
@@ -130,20 +131,32 @@ export default function AddProductForm({
 
   const [variations, setVariations] = useState<VariationRow[]>(() => {
     if (initialProduct?.variations && initialProduct.variations.length > 0) {
-      return initialProduct.variations.map((v: any, idx: number) => ({
-        id: v.id || `var-${idx + 1}`,
-        name: v.attributes?.colorSet || v.titleEn || v.titleBn || `Option ${idx + 1}`,
-        sku: v.sku || '',
-        price: Number(v.price || regularPrice || 1200),
-        salePrice: Number(v.salePrice || salePrice || 999),
-        stock: Number(v.stockQuantity ?? v.stock ?? 25),
-        imageUrl: v.imageUrl || '',
-      }));
+      return initialProduct.variations.map((v: any, idx: number) => {
+        let initialDetail = v.detail || v.whatsInIt || v.descriptionBn || v.attributes?.detail || '';
+        let initialName = v.name || v.attributes?.colorSet || v.titleEn || v.titleBn || `Option ${idx + 1}`;
+        if (!initialDetail && v.titleBn) {
+          const match = v.titleBn.match(/^([^(]+)\((.+)\)/);
+          if (match && match[2]) {
+            initialDetail = match[2].trim();
+            initialName = match[1].trim();
+          }
+        }
+        return {
+          id: v.id || `var-${idx + 1}`,
+          name: initialName,
+          detail: initialDetail,
+          sku: v.sku || '',
+          price: Number(v.price || regularPrice || 1200),
+          salePrice: Number(v.salePrice || salePrice || 999),
+          stock: Number(v.stockQuantity ?? v.stock ?? 25),
+          imageUrl: v.imageUrl || '',
+        };
+      });
     }
     return [
-      { id: 'var-1', name: '12 Piece Set', sku: '', price: 1200, salePrice: 999, stock: 25, imageUrl: '' },
-      { id: 'var-2', name: '24 Piece Set', sku: '', price: 1800, salePrice: 1450, stock: 15, imageUrl: '' },
-      { id: 'var-3', name: '48 Piece Deluxe Set', sku: '', price: 2400, salePrice: 1990, stock: 10, imageUrl: '' },
+      { id: 'var-1', name: '12 Piece Set', detail: '১২টি শেপ + ৬টি রঙ + ১ ব্রাশ', sku: '', price: 1200, salePrice: 999, stock: 25, imageUrl: '' },
+      { id: 'var-2', name: '24 Piece Set', detail: '২৪টি শেপ + ১২টি রঙ + ২ ব্রাশ', sku: '', price: 1800, salePrice: 1450, stock: 15, imageUrl: '' },
+      { id: 'var-3', name: '48 Piece Deluxe Set', detail: 'সম্পূর্ণ কালেকশন বক্স + সব কালার', sku: '', price: 2400, salePrice: 1990, stock: 10, imageUrl: '' },
     ];
   });
 
@@ -277,14 +290,25 @@ export default function AddProductForm({
 
     const generated: VariationRow[] = optionValues.map((opt, idx) => {
       const cleanSlug = opt.replace(/\s+/g, '-').toLowerCase();
+      const existing = variations.find((v) => v.name.toLowerCase() === opt.toLowerCase());
+
+      // Smart default detail if matched
+      let autoDetail = existing?.detail || '';
+      if (!autoDetail) {
+        if (/12/i.test(opt) || /১২/i.test(opt)) autoDetail = '১২টি শেপ + ৬টি রঙ + ১ ব্রাশ';
+        else if (/24/i.test(opt) || /২৪/i.test(opt)) autoDetail = '২৪টি শেপ + ১২টি রঙ + ২ ব্রাশ';
+        else if (/36|48/i.test(opt) || /৩৬|৪৮/i.test(opt)) autoDetail = 'সম্পূর্ণ কালেকশন বক্স + সব কালার';
+      }
+
       return {
-        id: `var-${cleanSlug}-${Date.now()}-${idx}`,
+        id: existing?.id || `var-${cleanSlug}-${Date.now()}-${idx}`,
         name: opt,
-        sku: `${baseSlug.substring(0, 8).toUpperCase()}-${cleanSlug.toUpperCase()}`,
-        price: baseRegular,
-        salePrice: baseSale,
-        stock: baseStock,
-        imageUrl: images[0] || '',
+        detail: autoDetail,
+        sku: existing?.sku || `${baseSlug.substring(0, 8).toUpperCase()}-${cleanSlug.toUpperCase()}`,
+        price: existing?.price || baseRegular,
+        salePrice: existing?.salePrice || baseSale,
+        stock: existing?.stock ?? baseStock,
+        imageUrl: existing?.imageUrl || images[0] || '',
       };
     });
 
@@ -318,6 +342,7 @@ export default function AddProductForm({
       {
         id: `var-custom-${Date.now()}`,
         name: `Option ${nextIdx}`,
+        detail: '',
         sku: `${getEffectiveSku()}-OPT${nextIdx}`,
         price: Number(regularPrice || 1200),
         salePrice: Number(salePrice || 999),
@@ -424,22 +449,32 @@ export default function AddProductForm({
     const effectiveSlug = urlSlug.trim() || titleEn.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
     const primaryImage = images[0] || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg';
 
-    const formattedVariations = variations.map((v) => ({
-      sku: v.sku || `${effectiveSku}-${v.name.replace(/\s+/g, '-').toUpperCase()}`,
-      titleBn: `${titleBn} (${v.name})`,
-      titleEn: `${titleEn} (${v.name})`,
-      price: Number(v.price),
-      salePrice: Number(v.salePrice || v.price),
-      stock: Number(v.stock),
-      stockQuantity: Number(v.stock),
-      imageUrl: v.imageUrl || primaryImage,
-      isActive: true,
-      attributes: {
-        colorSet: v.name,
-      },
-    }));
-
     const effectiveSku = getEffectiveSku();
+
+    const formattedVariations = variations.map((v) => {
+      const optionName = v.name.trim();
+      const optionDetail = (v.detail || '').trim();
+      return {
+        id: v.id,
+        name: optionName,
+        detail: optionDetail,
+        whatsInIt: optionDetail,
+        descriptionBn: optionDetail,
+        sku: v.sku || `${effectiveSku}-${optionName.replace(/\s+/g, '-').toUpperCase()}`,
+        titleBn: optionDetail ? `${optionName} (${optionDetail})` : optionName,
+        titleEn: `${titleEn} (${optionName})`,
+        price: Number(v.price),
+        salePrice: Number(v.salePrice || v.price),
+        stock: Number(v.stock),
+        stockQuantity: Number(v.stock),
+        imageUrl: v.imageUrl || primaryImage,
+        isActive: true,
+        attributes: {
+          colorSet: optionName,
+          detail: optionDetail,
+        },
+      };
+    });
 
     const payload = {
       titleBn: titleBn.trim(),
@@ -898,6 +933,12 @@ export default function AddProductForm({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Option</TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-1">
+                          <span>What&apos;s in it (Detail)</span>
+                          <span className="text-[10px] text-[#8C8C8C] font-normal">(কী কী আছে)</span>
+                        </div>
+                      </TableHead>
                       <TableHead>SKU</TableHead>
                       <TableHead>Regular (৳)</TableHead>
                       <TableHead>Sale (৳)</TableHead>
@@ -908,7 +949,7 @@ export default function AddProductForm({
                   <TableBody>
                     {variations.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="py-6 text-center text-[#6B6B6B]">
+                        <TableCell colSpan={7} className="py-6 text-center text-[#6B6B6B]">
                           No variations added. Click &quot;Generate variations&quot; or add a custom row.
                         </TableCell>
                       </TableRow>
@@ -920,7 +961,18 @@ export default function AddProductForm({
                               type="text"
                               value={v.name}
                               onChange={(e) => updateVariationRow(v.id, 'name', e.target.value)}
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-semibold text-[#2B2B2B] outline-none w-36"
+                              placeholder="e.g. ১২ পিস সেট"
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-semibold text-[#2B2B2B] outline-none w-32 focus:bg-white"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <input
+                              type="text"
+                              value={v.detail || ''}
+                              onChange={(e) => updateVariationRow(v.id, 'detail', e.target.value)}
+                              placeholder="যেমন: ১২টি শেপ + ৬টি রঙ + ১ ব্রাশ"
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-48 sm:w-60 focus:bg-white"
+                              title="What's included in this set (shown under option title on storefront product page)"
                             />
                           </TableCell>
                           <TableCell>
@@ -929,7 +981,7 @@ export default function AddProductForm({
                               value={v.sku}
                               onChange={(e) => updateVariationRow(v.id, 'sku', e.target.value)}
                               placeholder={`${getEffectiveSku()}-OPT`}
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-mono text-[#6B6B6B] outline-none w-32"
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-mono text-[#6B6B6B] outline-none w-28 focus:bg-white"
                             />
                           </TableCell>
                           <TableCell>
@@ -937,7 +989,7 @@ export default function AddProductForm({
                               type="number"
                               value={v.price}
                               onChange={(e) => updateVariationRow(v.id, 'price', Number(e.target.value))}
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-20"
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-20 focus:bg-white"
                             />
                           </TableCell>
                           <TableCell>
@@ -945,7 +997,7 @@ export default function AddProductForm({
                               type="number"
                               value={v.salePrice}
                               onChange={(e) => updateVariationRow(v.id, 'salePrice', Number(e.target.value))}
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-bold text-[#C23631] outline-none w-20"
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs font-bold text-[#C23631] outline-none w-20 focus:bg-white"
                             />
                           </TableCell>
                           <TableCell>
@@ -953,14 +1005,14 @@ export default function AddProductForm({
                               type="number"
                               value={v.stock}
                               onChange={(e) => updateVariationRow(v.id, 'stock', Number(e.target.value))}
-                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-16"
+                              className="bg-transparent border border-transparent hover:border-[#EFE9E0] focus:border-[#D6403B] rounded-[8px] px-2 py-1 text-xs text-[#2B2B2B] outline-none w-16 focus:bg-white"
                             />
                           </TableCell>
                           <TableCell className="text-right">
                             <button
                               type="button"
                               onClick={() => deleteVariationRow(v.id)}
-                              className="p-1 rounded text-[#6B6B6B] hover:text-[#9B2420] hover:bg-[#FDE3E1] transition-colors"
+                              className="p-1 rounded text-[#6B6B6B] hover:text-[#9B2420] hover:bg-[#FDE3E1] transition-colors cursor-pointer"
                               aria-label="Delete variation"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

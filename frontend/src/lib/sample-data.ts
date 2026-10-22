@@ -28,6 +28,11 @@ export interface ProductReview {
 }
 
 export interface ProductVariation {
+  id?: string;
+  name?: string;
+  detail?: string;
+  whatsInIt?: string;
+  descriptionBn?: string;
   sku: string;
   titleBn: string;
   titleEn: string;
@@ -36,6 +41,7 @@ export interface ProductVariation {
   stock: number;
   imageUrl?: string;
   badge?: string;
+  attributes?: Record<string, any>;
 }
 
 export interface ProductVideo {

@@ -9,12 +9,18 @@ export interface ISafetyBadge {
 }
 
 export interface IProductVariation {
+  id?: string;
   sku: string;
+  name?: string;
+  detail?: string;
+  whatsInIt?: string;
+  descriptionBn?: string;
   titleBn?: string;
   titleEn?: string;
-  attributes: Record<string, string>; // e.g. { colorSet: '24', ageGroup: '2+' }
+  attributes?: Record<string, string>; // e.g. { colorSet: '24', detail: '...' }
   price: number; // Integer BDT
   salePrice?: number | null; // Integer BDT
+  stock?: number;
   stockQuantity: number;
   imageUrl?: string;
   isActive: boolean;
