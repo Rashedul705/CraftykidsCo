@@ -43,12 +43,21 @@ export interface IProduct extends Document {
   basePrice: number; // Integer BDT
   salePrice?: number | null; // Integer BDT
   baseSalePrice?: number | null; // Integer BDT
+  costPerItem?: number;
+  sku?: string;
+  stock?: number;
+  lowStockAlert?: number;
   category?: string;
   categorySlug?: string;
   primaryCategorySlug?: string;
+  subCategory?: string;
+  brand?: string;
+  tags?: string[];
   description?: string;
   descriptionBn?: string;
   descriptionEn?: string;
+  shortDescriptionBn?: string;
+  shortDescriptionEn?: string;
   pieces?: string;
   badge?: string;
   rating?: number;
@@ -63,6 +72,7 @@ export interface IProduct extends Document {
   isFeatured?: boolean;
   isBestSeller?: boolean;
   isNewArrival?: boolean;
+  targetAge?: string;
   targetAgeMin?: number;
   targetAgeMax?: number;
   safetyBadges?: any[];
@@ -71,7 +81,15 @@ export interface IProduct extends Document {
   faqs?: any[];
   reviews?: any[];
   variations?: any[];
-  stock?: number;
+  videoUrl?: string;
+  weight?: number;
+  packageSize?: string;
+  handlingTime?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  allowCashOnDelivery?: boolean;
+  showStockLeft?: boolean;
+  requiresGiftWrap?: boolean;
   isActive?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -79,7 +97,7 @@ export interface IProduct extends Document {
 
 const ProductSchema = new Schema<IProduct>(
   {
-    id: { type: String },
+    id: { type: String, unique: true, sparse: true, index: true },
     title: { type: String },
     titleBn: { type: String, required: true },
     titleEn: { type: String, required: true },
@@ -88,12 +106,21 @@ const ProductSchema = new Schema<IProduct>(
     basePrice: { type: Number, required: true },
     salePrice: { type: Number },
     baseSalePrice: { type: Number },
+    costPerItem: { type: Number },
+    sku: { type: String },
+    stock: { type: Number, default: 100 },
+    lowStockAlert: { type: Number, default: 5 },
     category: { type: String },
     categorySlug: { type: String, index: true },
     primaryCategorySlug: { type: String, index: true },
+    subCategory: { type: String },
+    brand: { type: String },
+    tags: [{ type: String }],
     description: { type: String },
     descriptionBn: { type: String },
     descriptionEn: { type: String },
+    shortDescriptionBn: { type: String },
+    shortDescriptionEn: { type: String },
     pieces: { type: String },
     badge: { type: String },
     rating: { type: Number, default: 4.9 },
@@ -108,6 +135,7 @@ const ProductSchema = new Schema<IProduct>(
     isFeatured: { type: Boolean, default: false, index: true },
     isBestSeller: { type: Boolean, default: false, index: true },
     isNewArrival: { type: Boolean, default: false, index: true },
+    targetAge: { type: String },
     targetAgeMin: { type: Number, index: true },
     targetAgeMax: { type: Number, index: true },
     safetyBadges: { type: Schema.Types.Mixed, default: [] },
@@ -116,7 +144,15 @@ const ProductSchema = new Schema<IProduct>(
     faqs: { type: Schema.Types.Mixed, default: [] },
     reviews: { type: Schema.Types.Mixed, default: [] },
     variations: { type: Schema.Types.Mixed, default: [] },
-    stock: { type: Number, default: 100 },
+    videoUrl: { type: String },
+    weight: { type: Number },
+    packageSize: { type: String },
+    handlingTime: { type: String },
+    seoTitle: { type: String },
+    seoDescription: { type: String },
+    allowCashOnDelivery: { type: Boolean, default: true },
+    showStockLeft: { type: Boolean, default: true },
+    requiresGiftWrap: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true }

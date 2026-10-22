@@ -93,8 +93,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const prodId = body.id || `prod-${Date.now()}`;
-    const slug = body.slug || body.titleEn.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    await connectToDatabase();
+
+    // 1. Ensure collision-free unique slug
+    let baseSlug = (body.slug || body.titleEn || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+
+    if (!baseSlug) {
+      baseSlug = `prod-${Date.now()}`;
+    }
+
+    let slug = baseSlug;
+    let slugCounter = 1;
+    try {
+      while (await Product.exists({ slug })) {
+        slugCounter++;
+        slug = `${baseSlug}-${slugCounter}`;
+      }
+    } catch (err) {
+      console.warn('Slug collision check warning:', err);
+    }
+
+    // 2. Ensure collision-free unique id
+    let prodId = body.id || `prod-${Date.now()}`;
+    let idCounter = 1;
+    try {
+      while (await Product.exists({ id: prodId })) {
+        idCounter++;
+        prodId = `prod-${Date.now()}-${idCounter}`;
+      }
+    } catch (err) {
+      console.warn('ID collision check warning:', err);
+    }
+
     const price = Math.round(Number(body.basePrice));
     const salePrice = body.baseSalePrice ? Math.round(Number(body.baseSalePrice)) : price;
     const imageUrl = body.imageUrl || body.image || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg';
@@ -108,39 +143,67 @@ export async function POST(req: NextRequest) {
       category: body.category || body.categorySlug || 'Art Kits',
       categorySlug: body.categorySlug || 'art-kits',
       primaryCategorySlug: body.categorySlug || 'art-kits',
+      subCategory: body.subCategory || '',
       price,
       basePrice: price,
       salePrice,
       baseSalePrice: salePrice,
+      costPerItem: body.costPerItem !== undefined && body.costPerItem !== '' ? Number(body.costPerItem) : undefined,
+      sku: body.sku || `CKC-${slug.substring(0, 8).toUpperCase()}-001`,
+      stock: body.stock !== undefined && body.stock !== '' ? Math.max(0, Number(body.stock)) : 100,
+      lowStockAlert: body.lowStockAlert !== undefined && body.lowStockAlert !== '' ? Number(body.lowStockAlert) : 5,
+      brand: body.brand || 'CraftyKidsCo',
+      tags: Array.isArray(body.tags) ? body.tags : [],
+      description: body.description || body.descriptionBn || '',
+      descriptionBn: body.descriptionBn || body.description || '',
+      descriptionEn: body.descriptionEn || '',
+      shortDescriptionBn: body.shortDescriptionBn || '',
+      shortDescriptionEn: body.shortDescriptionEn || '',
+      pieces: body.pieces || '',
+      badge: body.badge || 'New',
       image: imageUrl,
       imageUrl,
-      galleryImages: body.galleryImages || [imageUrl],
+      galleryImages: body.galleryImages && body.galleryImages.length > 0 ? body.galleryImages : [imageUrl],
       isVariable: Boolean(body.variations && body.variations.length > 0),
       isBestSeller: Boolean(body.isBestSeller),
       isNewArrival: Boolean(body.isNewArrival ?? true),
+      isFeatured: Boolean(body.isFeatured),
+      targetAge: body.targetAge || '2+',
       targetAgeMin: body.targetAgeMin || 2,
       targetAgeMax: body.targetAgeMax || 8,
-      stock: body.stock || 100,
-      description: body.description || body.descriptionBn || '',
-      pieces: body.pieces || '',
-      badge: body.badge || 'New',
       safetyBadges: body.safetyBadges || ['১০০% নিরাপদ ও নন-টক্সিক'],
       variations: body.variations || [],
+      videoUrl: body.videoUrl || undefined,
+      weight: body.weight !== undefined && body.weight !== '' ? Number(body.weight) : 350,
+      packageSize: body.packageSize || '20 x 15 x 5 cm',
+      handlingTime: body.handlingTime || '1-2 Days',
+      seoTitle: body.seoTitle || body.titleEn,
+      seoDescription: body.seoDescription || body.shortDescriptionEn || '',
+      allowCashOnDelivery: body.allowCashOnDelivery !== undefined ? Boolean(body.allowCashOnDelivery) : true,
+      showStockLeft: body.showStockLeft !== undefined ? Boolean(body.showStockLeft) : true,
+      requiresGiftWrap: body.requiresGiftWrap !== undefined ? Boolean(body.requiresGiftWrap) : false,
+      isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
     };
 
     let createdProduct: any = null;
 
-    // 1. Try persisting to MongoDB Atlas
+    // 3. Persist to MongoDB Atlas
     try {
-      await connectToDatabase();
       const dbDoc = await Product.create(newProductData);
       createdProduct = dbDoc.toObject ? dbDoc.toObject() : dbDoc;
       console.log(`✅ Product ${slug} saved to MongoDB Atlas!`);
     } catch (dbErr: any) {
-      console.error('Failed to save product in MongoDB:', dbErr.message);
+      console.error('Failed to save product in MongoDB:', dbErr);
+      return NextResponse.json(
+        {
+          success: false,
+          message: `ডাটাবেজে পণ্য সংরক্ষণে ত্রুটি: ${dbErr.message || 'Validation error'}`,
+        },
+        { status: 400 }
+      );
     }
 
-    // 2. Fallback/Sync to memory store
+    // 4. Sync to memory store
     const sampleProd: SampleProduct = {
       id: prodId,
       slug,
@@ -168,9 +231,10 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Error in POST /api/products:', error);
     return NextResponse.json(
-      { success: false, message: 'নতুন পণ্য সংরক্ষণে ত্রুটি' },
+      { success: false, message: `নতুন পণ্য সংরক্ষণে ত্রুটি: ${error?.message || ''}` },
       { status: 500 }
     );
   }

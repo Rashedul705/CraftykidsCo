@@ -117,7 +117,20 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
     if (body.handlingTime !== undefined) updateFields.handlingTime = body.handlingTime;
     if (body.seoTitle !== undefined) updateFields.seoTitle = body.seoTitle;
     if (body.seoDescription !== undefined) updateFields.seoDescription = body.seoDescription;
+    if (body.slug !== undefined) {
+      const cleanSlug = body.slug.trim().toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+      if (cleanSlug) {
+        try {
+          await connectToDatabase();
+          const collision = await Product.findOne({ slug: cleanSlug, id: { $ne: id } });
+          if (!collision) {
+            updateFields.slug = cleanSlug;
+          }
+        } catch {}
+      }
+    }
     if (body.allowCashOnDelivery !== undefined) updateFields.allowCashOnDelivery = Boolean(body.allowCashOnDelivery);
+    if (body.showStockLeft !== undefined) updateFields.showStockLeft = Boolean(body.showStockLeft);
     if (body.requiresGiftWrap !== undefined) updateFields.requiresGiftWrap = Boolean(body.requiresGiftWrap);
     if (body.isActive !== undefined) updateFields.isActive = Boolean(body.isActive);
     if (body.variations !== undefined) {

@@ -446,7 +446,10 @@ export default function AddProductForm({
     setFormErrors({});
     setIsSubmitting(true);
 
-    const effectiveSlug = urlSlug.trim() || titleEn.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    const effectiveSlug =
+      urlSlug.trim() ||
+      titleEn.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-') ||
+      `product-${Date.now()}`;
     const primaryImage = images[0] || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg';
 
     const effectiveSku = getEffectiveSku();
