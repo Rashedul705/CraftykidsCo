@@ -38,6 +38,7 @@ import {
 } from '@/lib/store';
 import { SampleProduct, SampleCategory } from '@/lib/sample-data';
 import { formatBDT } from '@/lib/utils';
+import { sortProductsByStockAndRecency } from '@/lib/product-utils';
 import { HomeSectionsEditor } from '@/components/admin/HomeSectionsEditor';
 import CategoriesAttributesEditor from '@/components/admin/CategoriesAttributesEditor';
 import AddProductForm from '@/components/admin/AddProductForm';
@@ -274,9 +275,9 @@ export default function AdminDashboardPage() {
     });
   }, [orders, ordersStatusFilter, searchQuery]);
 
-  // Filtered products for Catalog tab
+  // Filtered products for Catalog tab (recently added first, stock-out products last)
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    const list = products.filter((p) => {
       if (productCategoryFilter !== 'ALL' && p.categorySlug !== productCategoryFilter) return false;
       if (productSearchQuery.trim()) {
         const q = productSearchQuery.toLowerCase();
@@ -287,6 +288,7 @@ export default function AdminDashboardPage() {
       }
       return true;
     });
+    return sortProductsByStockAndRecency(list);
   }, [products, productCategoryFilter, productSearchQuery]);
 
   // Order status update

@@ -5,6 +5,8 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
 import { verifyAdminRequest } from '@/lib/auth';
 
+import { sortProductsByStockAndRecency } from '@/lib/product-utils';
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -33,12 +35,13 @@ export async function GET(req: NextRequest) {
         ];
       }
 
-      const dbProducts = await Product.find(mongoQuery).lean();
+      const dbProducts = await Product.find(mongoQuery).sort({ createdAt: -1 }).lean();
       if (dbProducts && dbProducts.length > 0) {
+        const sorted = sortProductsByStockAndRecency(dbProducts);
         return NextResponse.json({
           success: true,
-          count: dbProducts.length,
-          products: dbProducts,
+          count: sorted.length,
+          products: sorted,
           source: 'mongodb',
         });
       }
@@ -64,7 +67,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, count: products.length, products, source: 'memory' });
+    const sortedMemory = sortProductsByStockAndRecency(products);
+    return NextResponse.json({ success: true, count: sortedMemory.length, products: sortedMemory, source: 'memory' });
   } catch (error) {
     return NextResponse.json(
       { success: false, message: 'পণ্য লোড করতে সমস্যা হয়েছে' },

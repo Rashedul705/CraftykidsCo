@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -11,29 +11,26 @@ import {
   RotateCcw,
   Headphones,
   Star,
-  CheckCircle2,
-  Gift,
   ChevronRight,
   ChevronLeft,
   Maximize2,
   X,
   Send,
-  PhoneCall,
-  Mail,
-  MapPin,
   Tag,
   Copy,
   Check,
+  Flame,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { ProductCard } from '@/components/storefront/ProductCard';
-import { sampleCategories, sampleProducts } from '@/lib/sample-data';
-import { formatBDT, toBanglaDigits } from '@/lib/utils';
+import { sampleCategories, sampleProducts, SampleCategory } from '@/lib/sample-data';
+import { toBanglaDigits } from '@/lib/utils';
 import { BRAND_CONFIG } from '@/lib/brand';
 import { SiteSettings, defaultSiteSettings, HeroSlide } from '@/lib/site-settings';
 import { useToast } from '@/components/ui/Toast';
+import { isProductOutOfStock, sortProductsByStockAndRecency } from '@/lib/product-utils';
 
 export default function HomePage() {
   const [locale, setLocale] = useState<'bn' | 'en'>('bn');
@@ -41,6 +38,9 @@ export default function HomePage() {
   const [couponCopied, setCouponCopied] = useState(false);
   const [subscriberInput, setSubscriberInput] = useState('');
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
+  const [categories, setCategories] = useState<SampleCategory[]>(sampleCategories);
+  const [products, setProducts] = useState<any[]>(sampleProducts);
+  const [, setIsLoading] = useState<boolean>(true);
 
   const heroSlides: HeroSlide[] =
     settings.heroSlides && settings.heroSlides.length > 0
@@ -92,7 +92,7 @@ export default function HomePage() {
     if (typeof window !== 'undefined') {
       navigator.clipboard?.writeText(code);
       setCouponCopied(true);
-      toast.success(`কুপন কোড '${code}' কপি হয়েছে! চেকআউটে ব্যবহার করুন।`);
+      toast.success(`Coupon code '${code}' copied! Use at checkout.`);
       setTimeout(() => setCouponCopied(false), 3000);
     }
   };
@@ -104,9 +104,6 @@ export default function HomePage() {
       setSubscriberInput('');
     }
   };
-
-  const [products, setProducts] = useState<any[]>(sampleProducts);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -120,6 +117,21 @@ export default function HomePage() {
         }
       } catch (err) {
         console.warn('Could not fetch dynamic site settings:', err);
+      }
+    };
+
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch('/api/categories');
+        if (res.ok) {
+          const data = await res.json();
+          const items = Array.isArray(data) ? data : (data.categories || data.data || []);
+          if (items.length > 0) {
+            setCategories(items);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch categories from API:', err);
       }
     };
 
@@ -141,29 +153,94 @@ export default function HomePage() {
     };
 
     fetchSettings();
+    fetchCategories();
     fetchProducts();
   }, []);
 
-  // Filter products for various sections (Max 4 products in a row)
-  const newArrivalProducts = products.filter((p) => p.isNewArrival || p.badge === 'New').slice(0, 4);
-  const trendingProducts = products.filter((p) => p.isBestSeller || p.badge === 'Popular' || p.badge === 'Best Seller').slice(0, 4);
+  // Sorted Products Rule:
+  // 1. In-stock products first, stock out products last
+  // 2. Recently added products first within each group
+  const sortedProducts = useMemo(() => {
+    return sortProductsByStockAndRecency(products);
+  }, [products]);
 
-  // Category Showcases (Minimum 4 products required to show block)
-  const artKitProducts = products
-    .filter((p) => p.categorySlug === 'art-kits' || (p.slug && (p.slug.includes('paint') || p.slug.includes('kit'))))
-    .slice(0, 4);
+  // 1. New Arrival Products (4 cards)
+  const newArrivalProducts = useMemo(() => {
+    const filtered = sortedProducts.filter((p) => p.isNewArrival || p.badge === 'New');
+    const source = filtered.length >= 4 ? filtered : sortedProducts;
+    return source.slice(0, 4);
+  }, [sortedProducts]);
 
-  const crayonProducts = products
-    .filter((p) => p.categorySlug === 'wax-crayons' || (p.slug && p.slug.includes('crayon')))
-    .slice(0, 4);
+  // 2. Trending Now Products (4 cards)
+  const trendingProducts = useMemo(() => {
+    const filtered = sortedProducts.filter(
+      (p) => p.isBestSeller || p.badge === 'Popular' || p.badge === 'Best Seller'
+    );
+    const source = filtered.length > 0 ? filtered : sortedProducts;
+    return source.slice(0, 4);
+  }, [sortedProducts]);
 
-  const clayProducts = products
-    .filter((p) => p.categorySlug === 'play-dough-clay' || (p.slug && p.slug.includes('clay')))
-    .slice(0, 4);
+  // 3. Category-Based Products: Show ALL categories which have product
+  const categoriesWithProducts = useMemo(() => {
+    return categories
+      .map((cat) => {
+        const catSlug = cat.slug;
+        const catProducts = sortedProducts.filter((p) => {
+          if (p.categorySlug === catSlug || p.primaryCategorySlug === catSlug || p.category === catSlug) {
+            return true;
+          }
+          if (
+            p.category &&
+            typeof p.category === 'string' &&
+            cat.nameEn &&
+            p.category.toLowerCase() === cat.nameEn.toLowerCase()
+          ) {
+            return true;
+          }
+          // Slug matching fallbacks for core categories
+          if (catSlug === 'art-kits' && p.slug && (p.slug.includes('paint') || p.slug.includes('kit'))) {
+            return true;
+          }
+          if (
+            catSlug === 'wax-crayons' &&
+            p.slug &&
+            (p.slug.includes('crayon') || p.slug.includes('washable'))
+          ) {
+            return true;
+          }
+          if (catSlug === 'play-dough-clay' && p.slug && (p.slug.includes('dough') || p.slug.includes('clay'))) {
+            return true;
+          }
+          if (
+            catSlug === 'educational-toys' &&
+            p.slug &&
+            (p.slug.includes('edu') || p.slug.includes('blocks') || p.slug.includes('wooden'))
+          ) {
+            return true;
+          }
+          if (catSlug === 'wooden-toys' && p.slug && (p.slug.includes('wooden') || p.slug.includes('blocks'))) {
+            return true;
+          }
+          if (
+            catSlug === 'sketchbooks' &&
+            p.slug &&
+            (p.slug.includes('book') || p.slug.includes('sketch') || p.slug.includes('paper'))
+          ) {
+            return true;
+          }
+          if (catSlug === 'puzzles' && p.slug && (p.slug.includes('puzzle') || p.slug.includes('game'))) {
+            return true;
+          }
+          return false;
+        });
 
-  const educationalProducts = products
-    .filter((p) => p.categorySlug === 'educational-toys' || p.categorySlug === 'wooden-toys')
-    .slice(0, 4);
+        return {
+          category: cat,
+          products: catProducts,
+        };
+      })
+      .filter((item) => item.products.length > 0);
+  }, [categories, sortedProducts]);
 
   const isBn = locale === 'bn';
 
@@ -174,7 +251,7 @@ export default function HomePage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-10 sm:space-y-14">
         {/* ========================================================================= */}
-        {/* 4. Hero Banner Slider (Admin Managed)                                      */}
+        {/* 1. Hero Banner Slider (Admin Managed)                                      */}
         {/* ========================================================================= */}
         <section
           className="relative overflow-hidden rounded-2xl border border-[#EFE9E0] select-none group bg-white shadow-xs"
@@ -215,19 +292,20 @@ export default function HomePage() {
                         {isBn ? slide.descBn : slide.descEn}
                       </p>
 
+                      {/* Primary and Secondary CTA Buttons in English */}
                       <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-4 pt-2">
                         <Link
                           href={slide.ctaPrimaryHref || '/shop'}
                           className="px-7 sm:px-8 py-3.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-sm sm:text-base shadow-xs hover:shadow transition-all flex items-center gap-2 cursor-pointer"
                         >
-                          <span>{slide.ctaPrimaryText || 'এখনই অর্ডার করুন'}</span>
+                          <span>{slide.ctaPrimaryText || 'Order Now'}</span>
                           <ArrowRight className="w-4 h-4" />
                         </Link>
                         <Link
                           href={slide.ctaSecondaryHref || '/category/wax-crayons'}
                           className="px-6 py-3.5 rounded-xl bg-white hover:bg-[#FAF7F2] border border-[#EFE9E0] text-[#2B2B2B] font-bold text-sm sm:text-base shadow-2xs transition-all cursor-pointer"
                         >
-                          {slide.ctaSecondaryText || 'বিস্তারিত জানুন'}
+                          {slide.ctaSecondaryText || 'View Details'}
                         </Link>
                       </div>
                     </div>
@@ -278,14 +356,14 @@ export default function HomePage() {
           <button
             onClick={prevSlide}
             className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] hover:text-[#D6403B] shadow-sm flex items-center justify-center transition-all opacity-80 hover:opacity-100 z-20 cursor-pointer"
-            title="পূর্ববর্তী স্লাইড"
+            title="Previous Slide"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={nextSlide}
             className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-[#2B2B2B] hover:text-[#D6403B] shadow-sm flex items-center justify-center transition-all opacity-80 hover:opacity-100 z-20 cursor-pointer"
-            title="পরবর্তী স্লাইড"
+            title="Next Slide"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
@@ -301,7 +379,7 @@ export default function HomePage() {
                     ? 'w-6 h-2 bg-[#D6403B] shadow-xs'
                     : 'w-2 h-2 bg-white/70 hover:bg-white'
                 }`}
-                title={`স্লাইড ${i + 1}`}
+                title={`Slide ${i + 1}`}
               />
             ))}
           </div>
@@ -314,7 +392,7 @@ export default function HomePage() {
               <button
                 onClick={() => setIsZoomModalOpen(false)}
                 className="absolute -top-12 right-0 text-white hover:text-[#D6403B] p-2 cursor-pointer z-10"
-                title="বন্ধ করুন"
+                title="Close"
               >
                 <X className="w-7 h-7" />
               </button>
@@ -331,41 +409,61 @@ export default function HomePage() {
         )}
 
         {/* ========================================================================= */}
-        {/* 5. ক্যাটাগরি অনুযায়ী কিনুন: Round Category Images                           */}
+        {/* 2. CHOOSE CATEGORY BASE PRODUCT                                           */}
         {/* ========================================================================= */}
-        <section className="space-y-4">
+        <section className="space-y-5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                ক্যাটাগরি অনুযায়ী কিনুন
+                {isBn ? 'ক্যাটাগরি বেছে নিন' : 'Choose by Category'}
               </h2>
-              <p className="text-xs sm:text-sm text-[#6B6B6B]">শিশুর বয়স ও আগ্রহ অনুযায়ী পছন্দের বিভাগ বেছে নিন</p>
+              <p className="text-xs sm:text-sm text-[#6B6B6B]">
+                {isBn
+                  ? 'শিশুর বয়স ও আগ্রহ অনুযায়ী পছন্দের বিভাগ বেছে নিয়ে কেনাকাটা করুন'
+                  : 'Select your preferred category based on your child’s age and interest'}
+              </p>
             </div>
             <Link
               href="/shop"
               className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
             >
-              <span>সব দেখুন</span>
+              <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          {/* Row of 8 circular category buttons */}
+          {/* Quick Category Selection Chips / Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {categoriesWithProducts.map(({ category, products: catProds }) => (
+              <a
+                key={category.slug}
+                href={`#cat-${category.slug}`}
+                className="px-4 py-2 rounded-xl bg-white border border-[#EFE9E0] hover:border-[#D6403B] hover:bg-[#FAF7F2] text-xs font-bold text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0"
+              >
+                <span>{isBn ? category.nameBn : category.nameEn}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FAF7F2] border border-[#EFE9E0] text-[#6B6B6B]">
+                  {catProds.length}
+                </span>
+              </a>
+            ))}
+          </div>
+
+          {/* Row of circular category buttons */}
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 sm:gap-4">
-            {sampleCategories.map((cat) => (
+            {categoriesWithProducts.map(({ category }) => (
               <Link
-                key={cat.slug}
-                href={`/category/${cat.slug}`}
+                key={category.slug}
+                href={`/category/${category.slug}`}
                 className="group flex flex-col items-center text-center transition-transform hover:-translate-y-1"
               >
                 <div
                   className="w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 border-2 border-[#EFE9E0] group-hover:border-[#D6403B] transition-all flex items-center justify-center relative overflow-hidden shadow-2xs"
-                  style={{ backgroundColor: cat.badgeColor || '#FAF7F2' }}
+                  style={{ backgroundColor: category.badgeColor || '#FAF7F2' }}
                 >
                   <div className="relative w-full h-full rounded-full overflow-hidden">
                     <Image
-                      src={cat.imageUrl}
-                      alt={cat.nameBn}
+                      src={category.imageUrl}
+                      alt={category.nameBn}
                       fill
                       sizes="80px"
                       className="object-cover group-hover:scale-110 transition-transform duration-300"
@@ -373,7 +471,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <span className="mt-2 text-xs font-bold text-[#2B2B2B] group-hover:text-[#D6403B] transition-colors line-clamp-1">
-                  {cat.nameBn}
+                  {isBn ? category.nameBn : category.nameEn}
                 </span>
               </Link>
             ))}
@@ -381,21 +479,30 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
-        {/* 6. নতুন পণ্য (New Products - 4 cards + সব দেখুন link)                       */}
+        {/* 3. NEW ARRIVAL (Recently added first, stock out last)                      */}
         {/* ========================================================================= */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                নতুন পণ্য
-              </h2>
-              <p className="text-xs sm:text-sm text-[#6B6B6B]">আমাদের সদ্য যুক্ত হওয়া ক্রিয়েটিভ কালেকশন</p>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-[#E8F7FD] flex items-center justify-center text-[#0B5F85]">
+                <Sparkles className="w-4 h-4 text-[#0B5F85]" />
+              </div>
+              <div>
+                <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
+                  {isBn ? 'নতুন পণ্য' : 'New Arrivals'}
+                </h2>
+                <p className="text-xs sm:text-sm text-[#6B6B6B]">
+                  {isBn
+                    ? 'আমাদের সদ্য যুক্ত হওয়া ক্রিয়েটিভ কালেকশন'
+                    : 'Our freshly curated creative toys and art supplies'}
+                </p>
+              </div>
             </div>
             <Link
               href="/shop?filter=new"
               className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
             >
-              <span>সব দেখুন</span>
+              <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -403,8 +510,8 @@ export default function HomePage() {
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
             {newArrivalProducts.map((product) => (
               <ProductCard
-                key={product.id}
-                id={product.id}
+                key={product.id || product.slug}
+                id={product.id || product.slug}
                 slug={product.slug || product.id}
                 title={product.titleBn || product.title}
                 titleEn={product.titleEn}
@@ -417,27 +524,38 @@ export default function HomePage() {
                 imageUrl={product.imageUrl || product.image}
                 locale={locale}
                 hasVariations={!!(product.variations && product.variations.length > 0)}
+                stock={product.stock}
+                isOutOfStock={isProductOutOfStock(product)}
               />
             ))}
           </div>
         </section>
 
         {/* ========================================================================= */}
-        {/* 7. এখন ট্রেন্ডিং (Trending Now - 4 cards + সব দেখুন link)                    */}
+        {/* 4. TRENDING NOW (Recently added first, stock out last)                     */}
         {/* ========================================================================= */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                এখন ট্রেন্ডিং
-              </h2>
-              <p className="text-xs sm:text-sm text-[#6B6B6B]">অভিভাবকদের সবচেয়ে পছন্দের খেলনা ও রঙ</p>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-[#FEE2E2] flex items-center justify-center text-[#DC2626]">
+                <Flame className="w-4 h-4 text-[#DC2626]" />
+              </div>
+              <div>
+                <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
+                  {isBn ? 'এখন ট্রেন্ডিং' : 'Trending Now'}
+                </h2>
+                <p className="text-xs sm:text-sm text-[#6B6B6B]">
+                  {isBn
+                    ? 'অভিভাবকদের সবচেয়ে পছন্দের খেলনা ও রঙ'
+                    : 'Most popular collections loved by parents and kids'}
+                </p>
+              </div>
             </div>
             <Link
               href="/shop?filter=trending"
               className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
             >
-              <span>সব দেখুন</span>
+              <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -445,8 +563,8 @@ export default function HomePage() {
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
             {trendingProducts.map((product) => (
               <ProductCard
-                key={product.id}
-                id={product.id}
+                key={product.id || product.slug}
+                id={product.id || product.slug}
                 slug={product.slug || product.id}
                 title={product.titleBn || product.title}
                 titleEn={product.titleEn}
@@ -459,342 +577,92 @@ export default function HomePage() {
                 imageUrl={product.imageUrl || product.image}
                 locale={locale}
                 hasVariations={!!(product.variations && product.variations.length > 0)}
+                stock={product.stock}
+                isOutOfStock={isProductOutOfStock(product)}
               />
             ))}
           </div>
         </section>
 
         {/* ========================================================================= */}
-        {/* 8. One block per category (colored banner card first, then 4 products)      */}
+        {/* 5. CATEGORY BASE PRODUCTS - SHOW ALL CATEGORIES WHICH HAVE PRODUCT         */}
         {/* ========================================================================= */}
-
-        {/* BLOCK 1: প্লাস্টার আর্ট ও পেইন্টিং কিট */}
-        {artKitProducts.length >= 4 && (
-          <section className="space-y-4">
+        {categoriesWithProducts.map(({ category, products: catProducts }) => (
+          <section
+            key={category.slug}
+            id={`cat-${category.slug}`}
+            className="space-y-4 scroll-mt-20 pt-2"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                  প্লাস্টার আর্ট ও পেইন্টিং কিট
+                  {isBn ? category.nameBn : category.nameEn}
                 </h2>
                 <p className="text-xs sm:text-sm text-[#6B6B6B]">
-                  ক্রিয়েট • পেইন্ট • প্লে - শিশুদের স্ক্রিন-ফ্রি ক্রিয়েটিভ আর্ট বক্স
+                  {category.description ||
+                    (isBn
+                      ? `${category.nameBn} এর নিরাপদ ও শিক্ষামূলক পণ্যসমূহ`
+                      : `Safe and creative collections for ${category.nameEn}`)}
                 </p>
               </div>
               <Link
-                href="/category/art-kits"
+                href={`/category/${category.slug}`}
                 className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
               >
-                <span>সব দেখুন</span>
+                <span>View All</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-              {/* Colored Banner Card First */}
-              <div className="lg:col-span-1 rounded-2xl bg-[#FFF3CC] border border-[#FFE28A] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
-                <div className="space-y-2.5 z-10">
-                  <span className="text-[11px] font-bold text-[#7A4E00] bg-white/90 px-2.5 py-0.5 rounded-full inline-block shadow-2xs">
-                    আর্ট ও ক্রাফট
-                  </span>
-                  <h3 className="font-heading font-black text-xl text-[#2B2B2B] leading-snug">
-                    প্লাস্টার পেইন্টিং
-                  </h3>
-                  <p className="text-xs text-[#6B6B6B] leading-relaxed">
-                    রঙ, ব্রাশ ও থ্রিডি প্লাস্টার শেপ নিয়ে সম্পূর্ণ ক্রাফট বক্স
-                  </p>
-                </div>
-
-                <div className="relative w-full h-40 sm:h-48 lg:h-auto lg:aspect-square my-3 rounded-xl overflow-hidden shadow-2xs border border-white">
-                  <Image
-                    src="https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg"
-                    alt="Plaster Painting Kits Collection"
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform"
-                  />
-                </div>
-
-                <Link
-                  href="/category/art-kits"
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm text-center shadow-2xs transition-colors"
-                >
-                  সব পণ্য দেখুন
-                </Link>
-              </div>
-
-              {/* 4 Products on Right */}
-              <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                {artKitProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    slug={product.slug || product.id}
-                    title={product.titleBn || product.title}
-                    titleEn={product.titleEn}
-                    price={product.basePrice ?? product.price}
-                    salePrice={product.baseSalePrice ?? product.salePrice}
-                    badge={product.badge}
-                    ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 3)}+ বছর`}
-                    safetyBadgeText="১০০% নিরাপদ"
-                    rating={product.rating}
-                    imageUrl={product.imageUrl || product.image}
-                    locale={locale}
-                    hasVariations={!!(product.variations && product.variations.length > 0)}
-                  />
-                ))}
-              </div>
+            {/* Product Grid: recently added first, stock out last */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+              {catProducts.slice(0, 8).map((product) => (
+                <ProductCard
+                  key={product.id || product.slug}
+                  id={product.id || product.slug}
+                  slug={product.slug || product.id}
+                  title={product.titleBn || product.title}
+                  titleEn={product.titleEn}
+                  price={product.basePrice ?? product.price}
+                  salePrice={product.baseSalePrice ?? product.salePrice}
+                  badge={product.badge}
+                  ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 3)}+ বছর`}
+                  safetyBadgeText="১০০% নিরাপদ"
+                  rating={product.rating}
+                  imageUrl={product.imageUrl || product.image}
+                  locale={locale}
+                  hasVariations={!!(product.variations && product.variations.length > 0)}
+                  stock={product.stock}
+                  isOutOfStock={isProductOutOfStock(product)}
+                />
+              ))}
             </div>
           </section>
-        )}
-
-        {/* BLOCK 2: মোমের রঙ (Wax Crayons) */}
-        {crayonProducts.length >= 4 && (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                  মোমের রঙ
-                </h2>
-                <p className="text-xs sm:text-sm text-[#6B6B6B]">ফুড-গ্রেড প্রাকৃতিক মৌচাকের মোম ও উজ্জ্বল নিরাপদ রঙ</p>
-              </div>
-              <Link
-                href="/category/wax-crayons"
-                className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
-              >
-                <span>সব দেখুন</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-              {/* Colored Banner Card First */}
-              <div className="lg:col-span-1 rounded-2xl bg-[#DDF3E6] border border-[#BDE6CE] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
-                <div className="space-y-2.5 z-10">
-                  <span className="text-[11px] font-bold text-[#1F6B43] bg-white/90 px-2.5 py-0.5 rounded-full inline-block shadow-2xs">
-                    ১০০% নন-টক্সিক
-                  </span>
-                  <h3 className="font-heading font-black text-xl text-[#2B2B2B] leading-snug">
-                    ন্যাচারাল ক্রেয়ন
-                  </h3>
-                  <p className="text-xs text-[#6B6B6B] leading-relaxed">
-                    শিশুর নরম হাতের গ্রিপ ও ওয়াশেবল মোমের রঙের সম্পূর্ণ সিরিজ
-                  </p>
-                </div>
-
-                <div className="relative w-full h-40 sm:h-48 lg:h-auto lg:aspect-square my-3 rounded-xl overflow-hidden shadow-2xs border border-white">
-                  <Image
-                    src="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=500&q=80"
-                    alt="Wax Crayons Collection"
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform"
-                  />
-                </div>
-
-                <Link
-                  href="/category/wax-crayons"
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm text-center shadow-2xs transition-colors"
-                >
-                  সব পণ্য দেখুন
-                </Link>
-              </div>
-
-              {/* 4 Products on Right */}
-              <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                {crayonProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    slug={product.slug || product.id}
-                    title={product.titleBn || product.title}
-                    titleEn={product.titleEn}
-                    price={product.basePrice ?? product.price}
-                    salePrice={product.baseSalePrice ?? product.salePrice}
-                    badge={product.badge}
-                    ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 2)}+ বছর`}
-                    safetyBadgeText="১০০% নিরাপদ"
-                    rating={product.rating}
-                    imageUrl={product.imageUrl || product.image}
-                    locale={locale}
-                    hasVariations={!!(product.variations && product.variations.length > 0)}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* BLOCK 3: আর্টক্লে ও মডেলিং ডো (Clay & Dough) */}
-        {clayProducts.length >= 4 && (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                  আর্টক্লে ও মডেলিং ডো
-                </h2>
-                <p className="text-xs sm:text-sm text-[#6B6B6B]">হাতে জড়াবে না, নরম ও গন্ধহীন রঙিন প্লে-ডো</p>
-              </div>
-              <Link
-                href="/category/play-dough-clay"
-                className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
-              >
-                <span>সব দেখুন</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-              {/* Colored Banner Card First */}
-              <div className="lg:col-span-1 rounded-2xl bg-[#DDF1FB] border border-[#BEE4F7] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
-                <div className="space-y-2.5 z-10">
-                  <span className="text-[11px] font-bold text-[#0B5F85] bg-white/90 px-2.5 py-0.5 rounded-full inline-block shadow-2xs">
-                    মডেলিং ডো
-                  </span>
-                  <h3 className="font-heading font-black text-xl text-[#2B2B2B] leading-snug">
-                    সফট আর্টক্লে
-                  </h3>
-                  <p className="text-xs text-[#6B6B6B] leading-relaxed">
-                    সহজে যেকোনো রূপ দেওয়ার মতো নরম এবং নিরাপদ উপাদান
-                  </p>
-                </div>
-
-                <div className="relative w-full h-40 sm:h-48 lg:h-auto lg:aspect-square my-3 rounded-xl overflow-hidden shadow-2xs border border-white">
-                  <Image
-                    src="https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=500&q=80"
-                    alt="Play Dough Collection"
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform"
-                  />
-                </div>
-
-                <Link
-                  href="/category/play-dough-clay"
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm text-center shadow-2xs transition-colors"
-                >
-                  সব পণ্য দেখুন
-                </Link>
-              </div>
-
-              {/* 4 Products on Right */}
-              <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                {clayProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    slug={product.slug || product.id}
-                    title={product.titleBn || product.title}
-                    titleEn={product.titleEn}
-                    price={product.basePrice ?? product.price}
-                    salePrice={product.baseSalePrice ?? product.salePrice}
-                    badge={product.badge}
-                    ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 3)}+ বছর`}
-                    safetyBadgeText="১০০% নিরাপদ"
-                    rating={product.rating}
-                    imageUrl={product.imageUrl || product.image}
-                    locale={locale}
-                    hasVariations={!!(product.variations && product.variations.length > 0)}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* BLOCK 4: শিক্ষণীয় কাঠের খেলনা (Educational & Wooden Toys) */}
-        {educationalProducts.length >= 4 && (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                  শিক্ষণীয় কাঠের খেলনা
-                </h2>
-                <p className="text-xs sm:text-sm text-[#6B6B6B]">শিশুর মেধার বিকাশ ও মনোযোগ বাড়াতে সহায়ক মন্টেসরি মেথড গেমস</p>
-              </div>
-              <Link
-                href="/category/educational-toys"
-                className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
-              >
-                <span>সব দেখুন</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-              {/* Colored Banner Card First */}
-              <div className="lg:col-span-1 rounded-2xl bg-[#FDE3E1] border border-[#F8BEBA] p-5 sm:p-6 flex flex-col justify-between text-center lg:text-left relative overflow-hidden group">
-                <div className="space-y-2.5 z-10">
-                  <span className="text-[11px] font-bold text-[#9B2420] bg-white/90 px-2.5 py-0.5 rounded-full inline-block shadow-2xs">
-                    মন্টেসরি মেথড
-                  </span>
-                  <h3 className="font-heading font-black text-xl text-[#2B2B2B] leading-snug">
-                    কাঠের খেলনা
-                  </h3>
-                  <p className="text-xs text-[#6B6B6B] leading-relaxed">
-                    স্ক্রিন টাইম কমিয়ে মেধা ও মনোযোগ বাড়াতে সহায়ক নিরাপদ খেলনা
-                  </p>
-                </div>
-
-                <div className="relative w-full h-40 sm:h-48 lg:h-auto lg:aspect-square my-3 rounded-xl overflow-hidden shadow-2xs border border-white">
-                  <Image
-                    src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=500&q=80"
-                    alt="Educational Toys Collection"
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform"
-                  />
-                </div>
-
-                <Link
-                  href="/category/educational-toys"
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm text-center shadow-2xs transition-colors"
-                >
-                  সব পণ্য দেখুন
-                </Link>
-              </div>
-
-              {/* 4 Products on Right */}
-              <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                {educationalProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    slug={product.slug || product.id}
-                    title={product.titleBn || product.title}
-                    titleEn={product.titleEn}
-                    price={product.basePrice ?? product.price}
-                    salePrice={product.baseSalePrice ?? product.salePrice}
-                    badge={product.badge}
-                    ageBadgeText={`${toBanglaDigits(product.targetAgeMin || 2)}+ বছর`}
-                    safetyBadgeText="১০০% নিরাপদ"
-                    rating={product.rating}
-                    imageUrl={product.imageUrl || product.image}
-                    locale={locale}
-                    hasVariations={!!(product.variations && product.variations.length > 0)}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+        ))}
 
         {/* ========================================================================= */}
-        {/* 9. Offer and Flash Sale Banners                                            */}
+        {/* 6. Offer and Flash Sale Banners (Combo Offer & Shop Now)                   */}
         {/* ========================================================================= */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div className="rounded-2xl border border-[#EFE9E0] p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center text-center sm:text-left gap-5 shadow-xs bg-gradient-to-r from-[#FFF5F5] to-[#FFF0E6]">
             <div className="space-y-2.5 flex-1">
               <span className="text-xs font-bold uppercase text-[#D6403B] bg-white px-3 py-1 rounded-full shadow-2xs inline-block border border-[#EFE9E0]">
-                সীমিত সময়ের অফার
+                {isBn ? 'সীমিত সময়ের অফার' : 'Limited Time Offer'}
               </span>
               <h3 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                গিফট কম্বো ও বান্ডেল সেট
+                {isBn ? 'গিফট কম্বো ও বান্ডেল সেট' : 'Gift Combo & Bundle Sets'}
               </h3>
               <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-sm leading-relaxed">
-                পেইন্টিং কিট ও ওয়াটার কালার একসাথে নিলে পাচ্ছেন বিশেষ ক্যাশব্যাক ও ফ্রি গিফট র্যাপিং
+                {isBn
+                  ? 'পেইন্টিং কিট ও ওয়াটার কালার একসাথে নিলে পাচ্ছেন বিশেষ ছাড় ও ফ্রি গিফট র্যাপিং'
+                  : 'Special discounts, bundle savings and free gift wrapping for complete creative kits'}
               </p>
               <div className="pt-1">
                 <Link
                   href="/bundles"
                   className="inline-block px-6 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm shadow-2xs transition-colors"
                 >
-                  কম্বো অফার দেখুন
+                  Combo Offer
                 </Link>
               </div>
             </div>
@@ -811,20 +679,22 @@ export default function HomePage() {
           <div className="rounded-2xl border border-[#EFE9E0] p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center text-center sm:text-left gap-5 shadow-xs bg-gradient-to-r from-[#F0FDF4] to-[#E6F4EA]">
             <div className="space-y-2.5 flex-1">
               <span className="text-xs font-bold uppercase text-[#1F6B43] bg-white px-3 py-1 rounded-full shadow-2xs inline-block border border-[#EFE9E0]">
-                ফ্রি ডেলিভারি
+                {isBn ? 'ফ্রি ডেলিভারি' : 'Free Delivery'}
               </span>
               <h3 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
                 ৳{toBanglaDigits(BRAND_CONFIG.freeDeliveryThreshold)}+ অর্ডারে ডেলিভারি ফ্রি
               </h3>
               <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-sm leading-relaxed">
-                সারা দেশে যে কোনো অর্ডারে ক্যাশ অন ডেলিভারি সুবিধা এবং সম্পূর্ণ ফ্রি শিপিং উপভোগ করুন
+                {isBn
+                  ? 'সারা দেশে যে কোনো অর্ডারে ক্যাশ অন ডেলিভারি সুবিধা এবং সম্পূর্ণ ফ্রি শিপিং উপভোগ করুন'
+                  : 'Cash on delivery available all over Bangladesh with zero delivery charge on qualifying orders'}
               </p>
               <div className="pt-1">
                 <Link
                   href="/shop"
                   className="inline-block px-6 py-2.5 rounded-xl bg-[#1F6B43] hover:bg-[#185334] text-white font-bold text-xs sm:text-sm shadow-2xs transition-colors"
                 >
-                  এখনই শপিং করুন
+                  Shop Now
                 </Link>
               </div>
             </div>
@@ -840,17 +710,17 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
-        {/* 10. Why buy from us, Reviews, First Order Coupon Signup                    */}
+        {/* 7. Why Buy From Us (Food-grade, fast shipping, returns, support)           */}
         {/* ========================================================================= */}
-
-        {/* A: Why buy from us (4 cards) */}
         <section className="space-y-6 pt-2">
           <div className="text-center">
             <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
-              কেন {BRAND_CONFIG.name}?
+              {isBn ? `কেন ${BRAND_CONFIG.name}?` : `Why Choose ${BRAND_CONFIG.name}?`}
             </h2>
             <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1 max-w-2xl mx-auto">
-              বাংলাদেশের সচেতন অভিভাবকদের আস্থার প্রথম ও নির্ভরযোগ্য পছন্দ
+              {isBn
+                ? 'বাংলাদেশের সচেতন অভিভাবকদের আস্থার প্রথম ও নির্ভরযোগ্য পছন্দ'
+                : 'Bangladesh’s most trusted brand for safe, non-toxic creative childhood tools'}
             </p>
           </div>
 
@@ -860,10 +730,12 @@ export default function HomePage() {
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-sm sm:text-base text-[#2B2B2B]">
-                ১০০% ফুড-গ্রেড ও নিরাপদ
+                {isBn ? '১০০% ফুড-গ্রেড ও নিরাপদ' : '100% Food-Grade Safe'}
               </h3>
               <p className="text-xs text-[#6B6B6B] leading-relaxed">
-                কোনো ক্ষতিকর রাসায়নিক বা ভারী ধাতু নেই, শিশুর স্পর্শ ও মুখের জন্য সম্পূর্ণ নিরাপদ
+                {isBn
+                  ? 'কোনো ক্ষতিকর রাসায়নিক বা ভারী ধাতু নেই, শিশুর ত্বক ও মুখের জন্য সম্পূর্ণ নিরাপদ'
+                  : 'Zero heavy metals or toxins, completely safe for children’s hands and mouth'}
               </p>
             </div>
 
@@ -872,10 +744,12 @@ export default function HomePage() {
                 <Truck className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-sm sm:text-base text-[#2B2B2B]">
-                সারা দেশে দ্রুত ডেলিভারি
+                {isBn ? 'সারা দেশে দ্রুত ডেলিভারি' : 'Fast Nationwide Shipping'}
               </h3>
               <p className="text-xs text-[#6B6B6B] leading-relaxed">
-                ঢাকা শহরে ২৪-৪৮ ঘণ্টা এবং ঢাকার বাইরে ৩-৪ দিনে বিশ্বস্ত হোম ডেলিভারি সেবা
+                {isBn
+                  ? 'ঢাকা শহরে ২৪-৪৮ ঘণ্টা এবং ঢাকার বাইরে ৩-৪ দিনে বিশ্বস্ত হোম ডেলিভারি সেবা'
+                  : 'Fast doorstep delivery across all 64 districts with verified courier tracking'}
               </p>
             </div>
 
@@ -884,10 +758,14 @@ export default function HomePage() {
                 <RotateCcw className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-sm sm:text-base text-[#2B2B2B]">
-                {toBanglaDigits(BRAND_CONFIG.defaultReturnDays)} দিনে সহজ রিটার্ন
+                {isBn
+                  ? `${toBanglaDigits(BRAND_CONFIG.defaultReturnDays)} দিনে সহজ রিটার্ন`
+                  : `${BRAND_CONFIG.defaultReturnDays}-Day Easy Return`}
               </h3>
               <p className="text-xs text-[#6B6B6B] leading-relaxed">
-                পণ্য ভাঙা বা নষ্ট থাকলে কোনো ঝামেলা ছাড়া দ্রুত বিনামূল্যে রিপ্লেসমেন্ট সুবিধা
+                {isBn
+                  ? 'পণ্য ভাঙা বা নষ্ট থাকলে কোনো ঝামেলা ছাড়া দ্রুত বিনামূল্যে রিপ্লেসমেন্ট সুবিধা'
+                  : 'Instant hassle-free replacement for any damaged or defective item'}
               </p>
             </div>
 
@@ -896,23 +774,29 @@ export default function HomePage() {
                 <Headphones className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-sm sm:text-base text-[#2B2B2B]">
-                ২৪/৭ আন্তরিক সাপোর্ট
+                {isBn ? '২৪/৭ আন্তরিক সাপোর্ট' : 'Dedicated Support'}
               </h3>
               <p className="text-xs text-[#6B6B6B] leading-relaxed">
-                হোয়াটসঅ্যাপ বা ফোনে যেকোনো তথ্য ও অর্ডার সংক্রান্ত সহায়তায় আমাদের টিম সদা প্রস্তুত
+                {isBn
+                  ? 'হোয়াটসঅ্যাপ বা ফোনে যেকোনো তথ্য ও অর্ডার সংক্রান্ত সহায়তায় আমাদের টিম সদা প্রস্তুত'
+                  : 'Direct WhatsApp and phone assistance ready to help with orders anytime'}
               </p>
             </div>
           </div>
         </section>
 
-        {/* B: Customer Testimonials / Reviews (3 cards) */}
+        {/* ========================================================================= */}
+        {/* 8. Customer Reviews                                                       */}
+        {/* ========================================================================= */}
         <section className="space-y-6">
           <div className="text-center">
             <h2 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
-              সন্তুষ্ট অভিভাবকদের মতামত
+              {isBn ? 'সন্তুষ্ট অভিভাবকদের মতামত' : 'Parent Reviews & Feedback'}
             </h2>
             <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1">
-              আমাদের প্রোডাক্ট ব্যবহার করে সম্মানিত ক্রেতারা কী বলছেন
+              {isBn
+                ? 'আমাদের প্রোডাক্ট ব্যবহার করে সম্মানিত ক্রেতারা কী বলছেন'
+                : 'Genuine feedback from parents across Bangladesh'}
             </p>
           </div>
 
@@ -934,7 +818,7 @@ export default function HomePage() {
                   <span className="text-[11px] text-[#6B6B6B]">৪ বছরের বাচ্চার মা, ধানমন্ডি</span>
                 </div>
                 <span className="text-[10px] bg-[#DDF3E6] text-[#1F6B43] font-bold px-2 py-0.5 rounded-full">
-                  ভেরিফাইড
+                  Verified
                 </span>
               </div>
             </div>
@@ -956,7 +840,7 @@ export default function HomePage() {
                   <span className="text-[11px] text-[#6B6B6B]">৩ বছরের বাচ্চার বাবা, চট্টগ্রাম</span>
                 </div>
                 <span className="text-[10px] bg-[#DDF3E6] text-[#1F6B43] font-bold px-2 py-0.5 rounded-full">
-                  ভেরিফাইড
+                  Verified
                 </span>
               </div>
             </div>
@@ -978,32 +862,37 @@ export default function HomePage() {
                   <span className="text-[11px] text-[#6B6B6B]">উত্তরা, ঢাকা</span>
                 </div>
                 <span className="text-[10px] bg-[#DDF3E6] text-[#1F6B43] font-bold px-2 py-0.5 rounded-full">
-                  ভেরিফাইড
+                  Verified
                 </span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* C: First Order Coupon Signup */}
+        {/* ========================================================================= */}
+        {/* 9. Welcome Coupon Code Signup                                             */}
+        {/* ========================================================================= */}
         <section className="rounded-2xl bg-white border border-[#EFE9E0] p-6 sm:p-8 max-w-4xl mx-auto shadow-xs text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF3CC] text-[#7A4E00] text-xs font-bold">
             <Tag className="w-3.5 h-3.5" />
-            <span>স্পেশাল ওয়েলকাম অফার</span>
+            <span>Special Welcome Offer</span>
           </div>
 
           <div className="space-y-1">
             <h3 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
-              প্রথম অর্ডারে ১০% বিশেষ ছাড়!
+              {isBn ? 'প্রথম অর্ডারে ১০% বিশেষ ছাড়!' : 'Get 10% Off On Your First Order!'}
             </h3>
             <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-lg mx-auto">
-              আপনার মোবাইল নম্বর দিয়ে প্রথম অর্ডারের জন্য প্রোমো কোড সংগ্রহ করুন এবং চেকআউটে সরাসরি ছাড় উপভোগ করুন
+              {isBn
+                ? 'আপনার মোবাইল নম্বর দিয়ে প্রথম অর্ডারের জন্য প্রোমো কোড সংগ্রহ করুন এবং চেকআউটে সরাসরি ছাড় উপভোগ করুন'
+                : 'Enter your phone number to claim your first order promo code at checkout'}
             </p>
           </div>
 
           {/* Coupon Code Pill & Copy Button */}
           <div className="flex items-center justify-center gap-3 pt-1">
             <div className="flex items-center gap-2 bg-[#FAF7F2] border-2 border-dashed border-[#D6403B] px-4 py-2 rounded-xl">
+              <span className="text-xs font-bold text-[#6B6B6B] uppercase">Coupon Code:</span>
               <span className="font-mono font-black text-lg text-[#D6403B] tracking-wider">
                 CRAFTY10
               </span>
@@ -1011,7 +900,7 @@ export default function HomePage() {
                 type="button"
                 onClick={() => handleCopyCoupon('CRAFTY10')}
                 className="p-1 rounded hover:bg-black/5 text-[#6B6B6B] hover:text-[#D6403B] transition-colors cursor-pointer"
-                title="কুপন কোড কপি করুন"
+                title="Copy Code"
               >
                 {couponCopied ? <Check className="w-4 h-4 text-[#1F6B43]" /> : <Copy className="w-4 h-4" />}
               </button>
@@ -1019,25 +908,28 @@ export default function HomePage() {
           </div>
 
           {/* Quick Input Form */}
-          <form onSubmit={handleCouponSignup} className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-md mx-auto pt-2">
+          <form
+            onSubmit={handleCouponSignup}
+            className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-md mx-auto pt-2"
+          >
             <input
               type="text"
               value={subscriberInput}
               onChange={(e) => setSubscriberInput(e.target.value)}
-              placeholder="মোবাইল নম্বর লিখুন (যেমন: 01700-000000)"
+              placeholder={isBn ? 'মোবাইল নম্বর লিখুন (যেমন: 01700-000000)' : 'Phone number (e.g., 01700-000000)'}
               className="w-full px-4 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs sm:text-sm text-[#2B2B2B] focus:bg-white focus:outline-none focus:border-[#D6403B]"
             />
             <button
               type="submit"
               className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors shrink-0 cursor-pointer"
             >
-              কোড নিন
+              Get Code
             </button>
           </form>
         </section>
 
         {/* ========================================================================= */}
-        {/* Bulk Orders Banner (School & Kindergarten)                                */}
+        {/* 10. Bulk Orders Banner (School & Kindergarten)                            */}
         {/* ========================================================================= */}
         {settings.bulkOrderBanner?.enabled !== false && (
           <section className="rounded-2xl bg-[#FFF3CC]/40 border border-[#FFE28A] p-6 sm:p-8 text-center space-y-4 max-w-3xl mx-auto shadow-2xs">
@@ -1046,7 +938,8 @@ export default function HomePage() {
                 {settings.bulkOrderBanner?.titleBn || 'স্কুল ও কিন্ডারগার্টেন বাল্ক অর্ডার'}
               </h3>
               <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1 max-w-xl mx-auto">
-                {settings.bulkOrderBanner?.descBn || 'আপনার স্কুলের আর্ট ক্লাস বা জন্মদিনের রিটার্ন গিফটের জন্য বিশেষ মূল্যে ক্রাফট কিট নিতে যোগাযোগ করুন'}
+                {settings.bulkOrderBanner?.descBn ||
+                  'আপনার স্কুলের আর্ট ক্লাস বা জন্মদিনের রিটার্ন গিফটের জন্য বিশেষ মূল্যে ক্রাফট কিট নিতে যোগাযোগ করুন'}
               </p>
             </div>
 
@@ -1058,7 +951,7 @@ export default function HomePage() {
                 className="px-6 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs sm:text-sm shadow-2xs transition-colors flex items-center gap-1.5"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>{settings.bulkOrderBanner?.ctaText || 'হোয়াটসঅ্যাপে যোগাযোগ করুন'}</span>
+                <span>{settings.bulkOrderBanner?.ctaText || 'Order via WhatsApp'}</span>
               </a>
             </div>
           </section>

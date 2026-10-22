@@ -954,7 +954,7 @@ function ProductContent() {
             {/* 7. Action Buttons: "এখনই অর্ডার করুন" (solid) vs "কার্টে যোগ করুন" (outlined) */}
             <div className="space-y-2.5 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* 1. Primary Action: এখনই অর্ডার করুন (Solid Primary #D6403B) */}
+                {/* 1. Primary Action: Order Now (Solid Primary #D6403B) */}
                 <button
                   type="button"
                   onClick={handleBuyNow}
@@ -962,10 +962,10 @@ function ProductContent() {
                   className="py-3.5 px-4 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] active:scale-[0.98] text-white font-bold text-base flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Zap className="w-4 h-4 fill-current" />
-                  <span>এখনই অর্ডার করুন</span>
+                  <span>{isOutOfStock ? 'Stock Out' : 'Order Now'}</span>
                 </button>
 
-                {/* 2. Secondary Action: কার্টে যোগ করুন (Outlined Primary) */}
+                {/* 2. Secondary Action: Add to Cart (Outlined Primary) */}
                 <button
                   type="button"
                   onClick={handleAddToCart}
@@ -975,12 +975,12 @@ function ProductContent() {
                   {addedToast ? (
                     <>
                       <Check className="w-4 h-4 text-[#1F6B43]" />
-                      <span className="text-[#1F6B43]">কার্টে যোগ হয়েছে!</span>
+                      <span className="text-[#1F6B43]">Added to Cart!</span>
                     </>
                   ) : (
                     <>
                       <ShoppingBag className="w-4 h-4" />
-                      <span>কার্টে যোগ করুন</span>
+                      <span>{isOutOfStock ? 'Stock Out' : 'Add to Cart'}</span>
                     </>
                   )}
                 </button>
@@ -1380,7 +1380,7 @@ function ProductContent() {
               onClick={handleAddCombo}
               className="py-3 px-5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
             >
-              কম্বো কার্টে যোগ করুন
+              Add Combo to Cart
             </button>
           </div>
         </div>
@@ -1539,7 +1539,7 @@ function ProductContent() {
             onClick={handleAddToCart}
             disabled={isOutOfStock}
             className="p-2.5 rounded-xl bg-[#FAF7F2] text-[#D6403B] border border-[#EFE9E0] font-bold text-xs flex items-center justify-center active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-            title="কার্টে যোগ করুন"
+            title="Add to Cart"
           >
             <ShoppingBag className="w-4 h-4" />
           </button>
@@ -1551,7 +1551,7 @@ function ProductContent() {
             className="py-2.5 px-3.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
             <Zap className="w-3.5 h-3.5 fill-current" />
-            <span className="whitespace-nowrap">{isOutOfStock ? 'স্টক শেষ' : 'এখনই অর্ডার করুন'}</span>
+            <span className="whitespace-nowrap">{isOutOfStock ? 'Stock Out' : 'Order Now'}</span>
           </button>
         </div>
       </div>

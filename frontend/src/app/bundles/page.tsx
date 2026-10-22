@@ -441,8 +441,8 @@ export default function BundlesPage() {
                     <ShoppingBag className="w-4 h-4" />
                     <span>
                       {addedItemKey === featuredBundle.id
-                        ? 'কার্টে যোগ হয়েছে!'
-                        : 'এই কম্বোটি কিনুন'}
+                        ? 'Added to Cart!'
+                        : 'Order Combo Now'}
                     </span>
                   </button>
                 </div>
@@ -622,10 +622,10 @@ export default function BundlesPage() {
                           <ShoppingBag className="w-3.5 h-3.5" />
                           <span>
                             {isOutOfStock
-                              ? 'স্টক শেষ'
+                              ? 'Stock Out'
                               : addedItemKey === b.id
-                              ? 'যোগ হয়েছে!'
-                              : 'কার্টে যোগ'}
+                              ? 'Added!'
+                              : 'Add to Cart'}
                           </span>
                         </button>
                       </div>
@@ -933,7 +933,7 @@ export default function BundlesPage() {
                 className="px-5 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#C23631] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
               >
                 <ShoppingBag className="w-4 h-4" />
-                <span>কার্টে যোগ করুন</span>
+                <span>Add to Cart</span>
               </button>
             </div>
           </div>

@@ -179,7 +179,7 @@ export function Header({
                 )}
               </div>
               <div className="hidden sm:flex flex-col text-left leading-tight">
-                <span className="text-[10px] font-medium text-white/80">{isBn ? 'কার্ট' : 'Cart'}</span>
+                <span className="text-[10px] font-medium text-white/80">Cart</span>
                 <span className="text-xs font-extrabold">{formatBDT(subtotal, { locale: activeLocale })}</span>
               </div>
             </Link>
