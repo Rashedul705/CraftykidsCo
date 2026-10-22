@@ -65,7 +65,7 @@ export function calculateDelivery(
       charge: 0,
       isFree: true,
       zone: d.includes('dhaka') || d.includes('ঢাকা') ? 'DHAKA' : 'OUTSIDE',
-      descriptionBn: 'ফ্রি ডেলিভারি (অর্ডার ৳১,০০০+)',
+      descriptionBn: 'ফ্রি ডেলিভারি (অর্ডার ৳1,000+)',
     };
   }
 

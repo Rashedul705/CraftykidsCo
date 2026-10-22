@@ -463,8 +463,8 @@ export default function BundlesPage() {
               { id: 'toddler', label: '👶 ১-৩ বছর (টডলার)' },
               { id: 'kids', label: '🎨 ৩-৬ বছর (কিডস)' },
               { id: 'school', label: '🎒 ৬+ বছর (স্কুল ও আর্ট)' },
-              { id: 'under-700', label: '৳৭০০ এর নিচে' },
-              { id: 'above-1000', label: '৳১০০০+ মেগা সেট' },
+              { id: 'under-700', label: '৳700 এর নিচে' },
+              { id: 'above-1000', label: '৳1000+ মেগা সেট' },
             ].map((chip) => (
               <button
                 key={chip.id}

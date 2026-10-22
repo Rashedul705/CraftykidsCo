@@ -682,7 +682,7 @@ export default function HomePage() {
                 {isBn ? 'ফ্রি ডেলিভারি' : 'Free Delivery'}
               </span>
               <h3 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                ৳{toBanglaDigits(BRAND_CONFIG.freeDeliveryThreshold)}+ অর্ডারে ডেলিভারি ফ্রি
+                ৳{BRAND_CONFIG.freeDeliveryThreshold}+ অর্ডারে ডেলিভারি ফ্রি
               </h3>
               <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-sm leading-relaxed">
                 {isBn

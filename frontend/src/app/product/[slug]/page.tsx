@@ -1046,7 +1046,7 @@ function ProductContent() {
                 <div>
                   <strong className="block text-[#2B2B2B]">সারা বাংলাদেশে হোম ডেলিভারি</strong>
                   <span className="text-[#6B6B6B] text-[11px]">
-                    ঢাকা ৳{toBanglaDigits(BRAND_CONFIG.defaultDeliveryDhaka)}, বাইরে ৳{toBanglaDigits(BRAND_CONFIG.defaultDeliveryOutside)}। ৳{toBanglaDigits(BRAND_CONFIG.freeDeliveryThreshold)}+ এ ফ্রি!
+                    ঢাকা ৳{BRAND_CONFIG.defaultDeliveryDhaka}, বাইরে ৳{BRAND_CONFIG.defaultDeliveryOutside}। ৳{BRAND_CONFIG.freeDeliveryThreshold}+ এ ফ্রি!
                   </span>
                 </div>
               </div>

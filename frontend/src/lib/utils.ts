@@ -21,13 +21,13 @@ export function toBanglaDigits(numberOrString: number | string): string {
  */
 export function formatBDT(
   amount: number,
-  options?: { locale?: 'bn' | 'en'; showSymbol?: boolean }
+  options?: { locale?: 'bn' | 'en'; showSymbol?: boolean; forceBanglaDigits?: boolean }
 ): string {
-  const locale = options?.locale || 'bn';
   const showSymbol = options?.showSymbol !== false;
-  const formattedNumber = new Intl.NumberFormat('en-IN').format(amount);
+  const safeAmount = Number.isFinite(amount) ? Math.round(amount) : 0;
+  const formattedNumber = new Intl.NumberFormat('en-IN').format(safeAmount);
 
-  if (locale === 'bn') {
+  if (options?.forceBanglaDigits) {
     const banglaFormatted = toBanglaDigits(formattedNumber);
     return showSymbol ? `৳${banglaFormatted}` : banglaFormatted;
   }

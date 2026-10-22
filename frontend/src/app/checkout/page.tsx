@@ -689,7 +689,7 @@ export default function CheckoutPage() {
                         জেলা নির্বাচন করুন
                       </span>
                     ) : isFreeDelivery ? (
-                      <span className="font-bold text-[#1F6B43]">ফ্রি (৳০)</span>
+                      <span className="font-bold text-[#1F6B43]">ফ্রি (৳0)</span>
                     ) : (
                       <span className="font-bold text-[#2B2B2B]">৳{deliveryCharge}</span>
                     )}

@@ -26,7 +26,7 @@ let globalCoupons: CouponRecord[] = [
     isActive: true,
     startDate: '2026-01-01',
     endDate: '2026-12-31',
-    descriptionBn: '১০% ছাড় (সর্বোচ্চ ৳১৫০), সর্বনিম্ন ৳৫০০ অর্ডারে',
+    descriptionBn: '10% ছাড় (সর্বোচ্চ ৳150), সর্বনিম্ন ৳500 অর্ডারে',
   },
   {
     id: 'coup-2',
@@ -39,7 +39,7 @@ let globalCoupons: CouponRecord[] = [
     isActive: true,
     startDate: '2026-01-01',
     endDate: '2026-12-31',
-    descriptionBn: '৳৬০ ফ্ল্যাট ছাড়, সর্বনিম্ন ৳৬০০ অর্ডারে',
+    descriptionBn: '৳60 ফ্ল্যাট ছাড়, সর্বনিম্ন ৳600 অর্ডারে',
   },
   {
     id: 'coup-3',
@@ -53,7 +53,7 @@ let globalCoupons: CouponRecord[] = [
     isActive: true,
     startDate: '2026-03-01',
     endDate: '2026-06-30',
-    descriptionBn: 'ঈদ স্পেশাল ১৫% ডিসকাউন্ট (সর্বোচ্চ ৳৩০০)',
+    descriptionBn: 'ঈদ স্পেশাল 15% ডিসকাউন্ট (সর্বোচ্চ ৳300)',
   },
   {
     id: 'coup-4',
@@ -66,7 +66,7 @@ let globalCoupons: CouponRecord[] = [
     isActive: true,
     startDate: '2026-01-01',
     endDate: '2026-12-31',
-    descriptionBn: 'নতুন অভিভাবকদের জন্য প্রথম অর্ডারে ৳১০০ ওয়েলকাম ছাড়',
+    descriptionBn: 'নতুন অভিভাবকদের জন্য প্রথম অর্ডারে ৳100 ওয়েলকাম ছাড়',
   },
 ];
 

@@ -231,7 +231,7 @@ export default function CartPage() {
                     <span>ডেলিভারি চার্জ:</span>
                     <div>
                       {isFreeDelivery ? (
-                        <span className="font-bold text-[#1F6B43]">ফ্রি (৳০)</span>
+                        <span className="font-bold text-[#1F6B43]">ফ্রি (৳0)</span>
                       ) : (
                         <span className="text-[11px] font-semibold text-[#6B6B6B] bg-[#FAF7F2] border border-[#EFE9E0] px-2 py-0.5 rounded-full">
                           চেকআউটে নির্ধারিত হবে
