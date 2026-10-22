@@ -16,6 +16,7 @@ interface CartContextType {
   updateQuantity: (id: string, delta: number) => void;
   clearCart: () => void;
   applyCouponCode: (code: string) => { success: boolean; message: string };
+  applyCouponAsync: (code: string) => Promise<{ success: boolean; message: string }>;
   removeCoupon: () => void;
 }
 
@@ -115,6 +116,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const applyCouponCode = (code: string): { success: boolean; message: string } => {
     const clean = code.trim().toUpperCase();
+    if (!clean) {
+      return { success: false, message: 'অনুগ্রহ করে কুপন কোড লিখুন।' };
+    }
     const res = validateCoupon(clean, subtotal);
 
     if (res.valid) {
@@ -124,6 +128,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     return { success: false, message: res.message };
+  };
+
+  const applyCouponAsync = async (code: string): Promise<{ success: boolean; message: string }> => {
+    const clean = code.trim().toUpperCase();
+    if (!clean) {
+      return { success: false, message: 'অনুগ্রহ করে কুপন কোড লিখুন।' };
+    }
+    const localRes = validateCoupon(clean, subtotal);
+    if (localRes.valid) {
+      setAppliedCoupon(clean);
+      setDiscountAmount(localRes.discountAmount);
+      return { success: true, message: localRes.message };
+    }
+
+    try {
+      const res = await fetch(`/api/coupons?code=${encodeURIComponent(clean)}&subtotal=${subtotal}`);
+      const data = await res.json();
+      if (data.success && data.valid) {
+        setAppliedCoupon(clean);
+        setDiscountAmount(data.discountAmount);
+        return { success: true, message: data.message || `কুপন ${clean} সফলভাবে যুক্ত হয়েছে!` };
+      }
+      return { success: false, message: data.message || localRes.message };
+    } catch {
+      return { success: false, message: localRes.message };
+    }
   };
 
   const removeCoupon = () => {
@@ -145,6 +175,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         updateQuantity,
         clearCart,
         applyCouponCode,
+        applyCouponAsync,
         removeCoupon,
       }}
     >

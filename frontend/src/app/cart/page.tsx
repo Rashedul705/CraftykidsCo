@@ -32,6 +32,7 @@ export default function CartPage() {
     couponCode,
     discountAmount,
     applyCouponCode,
+    applyCouponAsync,
     removeCoupon,
   } = useCart();
 
@@ -55,11 +56,14 @@ export default function CartPage() {
   const isFreeDelivery = subtotal >= (deliverySettings.freeDeliveryThreshold || 1000);
   const grandTotal = Math.max(0, subtotal - discountAmount);
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!couponInput.trim()) return;
-    const res = applyCouponCode(couponInput);
+    const res = await applyCouponAsync(couponInput);
     setCouponFeedback(res);
+    if (res.success) {
+      setCouponInput('');
+    }
   };
 
   return (

@@ -67,13 +67,21 @@ export const ACTIVE_COUPONS: CouponRule[] = [
   },
 ];
 
+import { validateCoupon as validateDynamicCoupon } from './coupons-store';
+
 export function validateAndApplyCoupon(
   code: string,
   subtotal: number
 ): { valid: boolean; discountAmount: number; message?: string } {
+  // Check dynamic coupons store first
+  const dyn = validateDynamicCoupon(code, subtotal);
+  if (dyn.valid) {
+    return { valid: true, discountAmount: dyn.discountAmount, message: dyn.message };
+  }
+
   const coupon = ACTIVE_COUPONS.find((c) => c.code.toUpperCase() === code.trim().toUpperCase());
   if (!coupon || !coupon.isActive) {
-    return { valid: false, discountAmount: 0, message: 'কুপন কোডটি সঠিক নয় বা মেয়াদোত্তীর্ণ' };
+    return { valid: false, discountAmount: 0, message: dyn.message || 'কুপন কোডটি সঠিক নয় বা মেয়াদোত্তীর্ণ' };
   }
 
   if (subtotal < coupon.minOrderVal) {

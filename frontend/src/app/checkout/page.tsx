@@ -13,6 +13,7 @@ import {
   ShoppingBag,
   CreditCard,
   AlertCircle,
+  Tag,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -28,7 +29,60 @@ const districtOptions = getDistrictOptions();
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, discountAmount, couponCode, clearCart } = useCart();
+  const {
+    items,
+    subtotal,
+    discountAmount,
+    couponCode,
+    applyCouponCode,
+    applyCouponAsync,
+    removeCoupon,
+    clearCart,
+  } = useCart();
+
+  // Coupon states on checkout
+  const [couponInput, setCouponInput] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponFeedback, setCouponFeedback] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleApplyCoupon = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = couponInput.trim().toUpperCase();
+    if (!clean) return;
+
+    setIsApplyingCoupon(true);
+    setCouponFeedback(null);
+
+    try {
+      const res = await applyCouponAsync(clean);
+      setCouponFeedback(res);
+      if (res.success) {
+        setCouponInput('');
+      }
+    } catch {
+      setCouponFeedback({ success: false, message: 'কুপন প্রয়োগ করতে সমস্যা হয়েছে।' });
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleQuickApply = async (codeToApply: string) => {
+    setCouponInput(codeToApply);
+    setIsApplyingCoupon(true);
+    setCouponFeedback(null);
+
+    try {
+      const res = await applyCouponAsync(codeToApply);
+      setCouponFeedback(res);
+      if (res.success) {
+        setCouponInput('');
+      }
+    } catch {
+      setCouponFeedback({ success: false, message: 'কুপন প্রয়োগ করতে সমস্যা হয়েছে।' });
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
 
   // Form states
   const [customerName, setCustomerName] = useState('');
@@ -520,6 +574,104 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                 ))}
+              </div>
+
+              {/* Coupon Code Section */}
+              <div className="pt-3 border-t border-[#EFE9E0] space-y-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#2B2B2B]">
+                  <Tag className="w-3.5 h-3.5 text-[#FF6B6B]" />
+                  <span>কুপন ও ছাড় কোড (Coupon Code)</span>
+                </div>
+
+                {couponCode ? (
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-[#EBF8EE] border border-[#C4EDCD] text-xs transition-all">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-[#2D7A3E] text-white flex items-center justify-center font-bold text-[10px]">
+                        ✓
+                      </div>
+                      <div>
+                        <span className="font-bold text-[#2D7A3E] block">
+                          কুপন: <span className="tracking-wider">{couponCode}</span>
+                        </span>
+                        <span className="text-[11px] text-[#2D7A3E]">
+                          ৳{discountAmount} ছাড় প্রযোজ্য হয়েছে
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        removeCoupon();
+                        setCouponFeedback(null);
+                      }}
+                      className="text-xs font-bold text-[#FF6B6B] hover:text-[#D6403B] hover:underline px-2 py-1 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={(e) => {
+                          setCouponInput(e.target.value.toUpperCase());
+                          if (couponFeedback) setCouponFeedback(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleApplyCoupon();
+                          }
+                        }}
+                        placeholder="RONG10 বা FREE60"
+                        className="flex-1 px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] uppercase font-bold tracking-wider placeholder:normal-case placeholder:font-normal placeholder:tracking-normal focus:outline-none focus:border-[#FF6B6B]"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isApplyingCoupon || !couponInput.trim()}
+                        onClick={() => handleApplyCoupon()}
+                        className="text-xs font-bold px-4 py-2"
+                      >
+                        {isApplyingCoupon ? 'Applying...' : 'Apply'}
+                      </Button>
+                    </div>
+
+                    {/* Quick coupon suggestions */}
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      <span className="text-[10px] text-[#8C8C8C]">জনপ্রিয় কুপন:</span>
+                      {['RONG10', 'FREE60', 'FIRSTORDER'].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => handleQuickApply(c)}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#FFF5F5] border border-[#FFE3E3] text-[#FF6B6B] hover:bg-[#FF6B6B] hover:text-white transition-colors cursor-pointer"
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Feedback message */}
+                {couponFeedback && (
+                  <div
+                    className={`text-xs p-2.5 rounded-xl flex items-start gap-2 ${
+                      couponFeedback.success
+                        ? 'bg-[#EBF8EE] text-[#2D7A3E] border border-[#C4EDCD]'
+                        : 'bg-[#FFF0F0] text-[#D6403B] border border-[#FFD5D5]'
+                    }`}
+                  >
+                    <span className="font-bold">
+                      {couponFeedback.success ? '✓' : '⚠'}
+                    </span>
+                    <span>{couponFeedback.message}</span>
+                  </div>
+                )}
               </div>
 
               {/* Price Calculation */}
