@@ -205,11 +205,22 @@ function ProductContent() {
   const [selectedVariationIndex, setSelectedVariationIndex] = useState<number>(firstAvailableIndex);
   const [variationError, setVariationError] = useState<string | null>(null);
 
+  // Multi-variation choosing state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState<boolean>(false);
+  const [variationQuantities, setVariationQuantities] = useState<Record<string, number>>({});
+
   useEffect(() => {
     setSelectedVariationIndex(firstAvailableIndex);
     setVariationError(null);
     setOverrideHeroImage(null);
-  }, [firstAvailableIndex, slug]);
+    if (variations.length > 0) {
+      const activeV = variations[firstAvailableIndex];
+      const key = activeV?.sku || activeV?.id || `var-${firstAvailableIndex}`;
+      setVariationQuantities({ [key]: 1 });
+    } else {
+      setVariationQuantities({});
+    }
+  }, [firstAvailableIndex, slug, variations]);
 
   const currentVariation = variations.length > 0 ? (variations[selectedVariationIndex] || variations[0]) : null;
 
@@ -232,9 +243,39 @@ function ProductContent() {
   const isOutOfStock = currentStock <= 0;
   const isLowStock = currentStock > 0 && currentStock <= 10;
 
-  // Quantity state
+  // Quantity state (for single select mode)
   const [quantity, setQuantity] = useState<number>(1);
   const [addedToast, setAddedToast] = useState<boolean>(false);
+
+  // Active selected variations list (for multi-select or single mode)
+  const selectedVariationsList = useMemo(() => {
+    if (variations.length === 0) return [];
+    if (!isMultiSelectMode) {
+      const single = variations[selectedVariationIndex] || variations[0];
+      return single ? [{ variation: single, quantity }] : [];
+    }
+    return variations
+      .filter((v) => (variationQuantities[v.sku || v.id || ''] || 0) > 0)
+      .map((v) => ({
+        variation: v,
+        quantity: variationQuantities[v.sku || v.id || ''] || 1,
+      }));
+  }, [variations, isMultiSelectMode, selectedVariationIndex, quantity, variationQuantities]);
+
+  const totalSelectedCount = useMemo(() => {
+    if (variations.length === 0) return quantity;
+    if (!isMultiSelectMode) return quantity;
+    return selectedVariationsList.reduce((acc, item) => acc + item.quantity, 0);
+  }, [variations.length, isMultiSelectMode, quantity, selectedVariationsList]);
+
+  const totalSelectedPrice = useMemo(() => {
+    if (variations.length === 0) return currentPrice * quantity;
+    if (!isMultiSelectMode) return currentPrice * quantity;
+    return selectedVariationsList.reduce((acc, item) => {
+      const p = item.variation.salePrice || item.variation.price;
+      return acc + p * item.quantity;
+    }, 0);
+  }, [variations.length, isMultiSelectMode, currentPrice, quantity, selectedVariationsList]);
 
   // Below fold tabs
   const [activeTab, setActiveTab] = useState<'desc' | 'box' | 'videos' | 'reviews' | 'faq'>('desc');
@@ -246,10 +287,13 @@ function ProductContent() {
   // When variation changes, update active hero image to that variation's photo
   const handleSelectVariation = (idx: number) => {
     const chosen = variations[idx];
-    if (!chosen || (chosen.stock ?? 1) <= 0) return; // cannot select out of stock option
+    if (!chosen || (chosen.stock ?? 1) <= 0) return;
 
     setSelectedVariationIndex(idx);
     setVariationError(null);
+
+    const key = chosen.sku || chosen.id || `var-${idx}`;
+    setVariationQuantities({ [key]: quantity });
 
     if (chosen.imageUrl) {
       setOverrideHeroImage(chosen.imageUrl);
@@ -260,6 +304,60 @@ function ProductContent() {
     } else {
       setOverrideHeroImage(null);
     }
+  };
+
+  // Toggle multi-variation item
+  const handleToggleMultiVariation = (idx: number) => {
+    const chosen = variations[idx];
+    if (!chosen || (chosen.stock ?? 1) <= 0) return;
+
+    if (chosen.imageUrl) {
+      setOverrideHeroImage(chosen.imageUrl);
+      const foundIdx = galleryImages.findIndex((img) => img === chosen.imageUrl);
+      if (foundIdx !== -1) {
+        setActiveImageIndex(foundIdx);
+      }
+    }
+
+    const key = chosen.sku || chosen.id || `var-${idx}`;
+    setVariationQuantities((prev) => {
+      const current = prev[key] || 0;
+      const next = { ...prev };
+      if (current > 0) {
+        const count = Object.values(prev).filter((q) => q > 0).length;
+        if (count > 1) {
+          delete next[key];
+        }
+      } else {
+        next[key] = 1;
+      }
+      return next;
+    });
+  };
+
+  // Update quantity of an individual variation in multi-select mode
+  const handleUpdateVariationQty = (idx: number, delta: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const chosen = variations[idx];
+    if (!chosen || (chosen.stock ?? 1) <= 0) return;
+
+    const key = chosen.sku || chosen.id || `var-${idx}`;
+    const maxStock = chosen.stock ?? 99;
+
+    setVariationQuantities((prev) => {
+      const current = prev[key] || 0;
+      const nextQty = Math.min(maxStock, Math.max(0, current + delta));
+      const next = { ...prev };
+      if (nextQty <= 0) {
+        const count = Object.values(prev).filter((q) => q > 0).length;
+        if (count > 1) {
+          delete next[key];
+        }
+      } else {
+        next[key] = nextQty;
+      }
+      return next;
+    });
   };
 
   // Next / Prev Image Navigation
@@ -307,6 +405,28 @@ function ProductContent() {
   const handleAddToCart = () => {
     if (!product || isOutOfStock) return;
 
+    if (variations.length > 0 && isMultiSelectMode && selectedVariationsList.length > 0) {
+      selectedVariationsList.forEach(({ variation: v, quantity: qty }) => {
+        addItem({
+          id: `${product.id}-${v.sku || v.id}`,
+          productId: product.id,
+          productSlug: product.slug,
+          title: product.titleEn,
+          titleBn: product.titleBn,
+          imageUrl: v.imageUrl || galleryImages[0] || product.imageUrl,
+          price: v.salePrice || v.price,
+          quantity: qty,
+          variationSku: v.sku,
+          variationTitle: v.titleEn,
+          variationTitleBn: v.titleBn,
+        });
+      });
+      setAddedToast(true);
+      toast.success(`${toBanglaDigits(selectedVariationsList.length)}টি ভ্যারিয়েন্ট কার্টে যোগ করা হয়েছে!`);
+      setTimeout(() => setAddedToast(false), 2500);
+      return;
+    }
+
     addItem({
       id: currentVariation
         ? `${product.id}-${currentVariation.sku}`
@@ -331,6 +451,35 @@ function ProductContent() {
   // Direct Buy Now handler -> Adds to Cart & Routes directly to Checkout
   const handleBuyNow = () => {
     if (!product || isOutOfStock) return;
+
+    if (variations.length > 0 && isMultiSelectMode && selectedVariationsList.length > 0) {
+      selectedVariationsList.forEach(({ variation: v, quantity: qty }) => {
+        addItem({
+          id: `${product.id}-${v.sku || v.id}`,
+          productId: product.id,
+          productSlug: product.slug,
+          title: product.titleEn,
+          titleBn: product.titleBn,
+          imageUrl: v.imageUrl || galleryImages[0] || product.imageUrl,
+          price: v.salePrice || v.price,
+          quantity: qty,
+          variationSku: v.sku,
+          variationTitle: v.titleEn,
+          variationTitleBn: v.titleBn,
+        });
+      });
+
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'InitiateCheckout', {
+          content_name: product.titleEn,
+          value: totalSelectedPrice,
+          currency: 'BDT',
+        });
+      }
+
+      router.push('/checkout');
+      return;
+    }
 
     addItem({
       id: currentVariation
@@ -756,27 +905,47 @@ function ProductContent() {
               )}
             </div>
 
-            {/* 5. Variation selector */}
+            {/* 5. Variation selector: 1 in a row layout with optional multi-variation picking */}
             {variations.length > 0 && (
-              <div className="space-y-3 pt-2 border-t border-[#EFE9E0]">
-                {/* Heading & Option count */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-[#2B2B2B]">
-                    সেট বাছুন:
-                  </span>
-                  <span className="text-xs text-[#6B6B6B] font-medium">
-                    {toBanglaDigits(variations.length)}টি অপশন
-                  </span>
+              <div className="space-y-3 pt-3 border-t border-[#EFE9E0]">
+                {/* Heading & Multi-choice toggle button */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm sm:text-base font-bold text-[#2B2B2B]">
+                      সেট বাছুন:
+                    </span>
+                    <span className="text-xs text-[#6B6B6B] font-medium bg-[#FAF7F2] px-2 py-0.5 rounded-full border border-[#EFE9E0]">
+                      {toBanglaDigits(variations.length)}টি অপশন
+                    </span>
+                  </div>
+
+                  {/* Multi-variation choosing toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
+                    className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
+                      isMultiSelectMode
+                        ? 'bg-[#D6403B] text-white border-[#D6403B] shadow-2xs'
+                        : 'bg-white text-[#D6403B] border-[#D6403B]/40 hover:bg-[#FDE3E1]/30'
+                    }`}
+                  >
+                    <Check className={`w-3.5 h-3.5 ${isMultiSelectMode ? 'inline' : 'hidden'}`} />
+                    <span>{isMultiSelectMode ? '✓ একাধিক নির্বাচন মোড' : '+ একাধিক ভ্যারিয়েন্ট বাছুন'}</span>
+                  </button>
                 </div>
 
-                {/* Variation Cards Grid with radiogroup */}
+                {/* Variation Cards: 1 in a row (vertical stack of spacious horizontal cards) */}
                 <div
-                  role="radiogroup"
+                  role={isMultiSelectMode ? 'group' : 'radiogroup'}
                   aria-label="সেট বাছুন"
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"
+                  className="space-y-2.5"
                 >
                   {variations.map((v, idx) => {
-                    const isSelected = selectedVariationIndex === idx;
+                    const varKey = v.sku || v.id || `var-${idx}`;
+                    const varQty = variationQuantities[varKey] || 0;
+                    const isSelected = isMultiSelectMode
+                      ? varQty > 0
+                      : selectedVariationIndex === idx;
                     const vPrice = v.salePrice || v.price;
                     const vStock = v.stock ?? 20;
                     const vOutOfStock = vStock <= 0;
@@ -791,73 +960,125 @@ function ProductContent() {
                     );
 
                     return (
-                      <button
-                        key={v.sku || `var-${idx}`}
-                        type="button"
-                        role="radio"
+                      <div
+                        key={varKey}
+                        role={isMultiSelectMode ? 'checkbox' : 'radio'}
                         aria-checked={isSelected}
                         aria-disabled={vOutOfStock}
-                        disabled={vOutOfStock}
-                        onClick={() => !vOutOfStock && handleSelectVariation(idx)}
-                        className={`w-full relative p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between min-h-[96px] ${
+                        onClick={() => {
+                          if (vOutOfStock) return;
+                          if (isMultiSelectMode) {
+                            handleToggleMultiVariation(idx);
+                          } else {
+                            handleSelectVariation(idx);
+                          }
+                        }}
+                        className={`w-full p-3 sm:p-4 rounded-2xl border text-left transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                           vOutOfStock
                             ? 'opacity-50 cursor-not-allowed bg-gray-50 border-[#EFE9E0]'
                             : isSelected
-                            ? 'border-2 border-[#D6403B] bg-[#FDE3E1]/40 shadow-xs cursor-pointer'
-                            : 'border-[#EFE9E0] bg-white hover:border-[#D6403B]/60 cursor-pointer'
+                            ? 'border-2 border-[#D6403B] bg-[#FDE3E1]/30 shadow-xs cursor-pointer'
+                            : 'border-[#EFE9E0] bg-white hover:border-[#D6403B]/60 cursor-pointer shadow-2xs'
                         }`}
                       >
-                        {/* Top: Photo (if exists) + Name + Selection Circle / Tick Indicator */}
-                        <div className="flex items-start justify-between gap-2.5 w-full">
-                          <div className="flex items-start gap-2.5 min-w-0 pr-1">
-                            {v.imageUrl && (
-                              <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shrink-0 shadow-2xs">
-                                <Image src={v.imageUrl} alt={parsed.name} fill className="object-cover" />
+                        {/* Left: Indicator + Image + Title & description */}
+                        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                          {/* Corner Indicator: Checkbox if multi-select, Radio Circle if single select */}
+                          <div className="shrink-0">
+                            {isSelected ? (
+                              <div className="w-5 h-5 rounded-md sm:rounded-full bg-[#D6403B] text-white flex items-center justify-center shadow-xs">
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
                               </div>
+                            ) : (
+                              <div className="w-5 h-5 rounded-md sm:rounded-full border-2 border-[#D1D5DB] bg-white" />
                             )}
-                            <div className="min-w-0">
-                              <p className="text-sm sm:text-base font-bold text-[#2B2B2B] leading-snug">
+                          </div>
+
+                          {/* Variation Thumbnail */}
+                          {v.imageUrl && (
+                            <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shrink-0 shadow-2xs">
+                              <Image src={v.imageUrl} alt={parsed.name} fill className="object-cover" />
+                            </div>
+                          )}
+
+                          {/* Title & Included Details */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-base sm:text-lg font-bold text-[#2B2B2B] leading-tight">
                                 {parsed.name}
+                              </h3>
+                              {v.badge && (
+                                <span className="text-[10px] font-bold text-[#D6403B] bg-[#FDE3E1] px-2 py-0.5 rounded-full">
+                                  {v.badge}
+                                </span>
+                              )}
+                            </div>
+
+                            {parsed.included && (
+                              <p className="text-xs sm:text-sm text-[#555] leading-snug mt-1">
+                                {parsed.included}
                               </p>
-                              {parsed.included && (
-                                <p className="text-xs sm:text-sm text-[#555] leading-tight mt-1 line-clamp-2">
-                                  {parsed.included}
-                                </p>
+                            )}
+
+                            {/* Stock note */}
+                            <div className="mt-1 flex items-center gap-2 text-xs">
+                              {vOutOfStock ? (
+                                <span className="font-bold text-[#9B2420]">স্টক শেষ</span>
+                              ) : vLowStock ? (
+                                <span className="font-bold text-[#7A4E00]">
+                                  মাত্র {toBanglaDigits(vStock)}টি বাকি
+                                </span>
+                              ) : (
+                                <span className="font-medium text-[#1F6B43]">স্টকে আছে</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Price + Quantity Stepper */}
+                        <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#EFE9E0]/80 shrink-0">
+                          <div className="text-left sm:text-right">
+                            <div className="flex items-baseline gap-1.5 sm:justify-end">
+                              <span className="text-lg sm:text-xl font-black text-[#C23631]">
+                                {formatBDT(vPrice, { locale: 'bn' })}
+                              </span>
+                              {v.price > vPrice && (
+                                <span className="text-xs sm:text-sm text-[#888] line-through font-medium">
+                                  {formatBDT(v.price, { locale: 'bn' })}
+                                </span>
                               )}
                             </div>
                           </div>
 
-                          {/* Corner Indicator: red circle with tick if selected, empty circle if not */}
-                          <div className="shrink-0 mt-0.5">
-                            {isSelected ? (
-                              <div className="w-5 h-5 rounded-full bg-[#D6403B] text-white flex items-center justify-center shadow-xs">
-                                <Check className="w-3 h-3 stroke-[3]" />
-                              </div>
-                            ) : (
-                              <div className="w-5 h-5 rounded-full border-2 border-[#D1D5DB] bg-white" />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Bottom: Price + Stock label */}
-                        <div className="mt-3 pt-2 border-t border-[#EFE9E0] flex items-baseline justify-between gap-1 w-full">
-                          <span className="text-base sm:text-lg font-black text-[#C23631]">
-                            {formatBDT(vPrice, { locale: 'bn' })}
-                          </span>
-
-                          <span className="text-xs font-bold">
-                            {vOutOfStock ? (
-                              <span className="text-[#9B2420]">স্টক শেষ</span>
-                            ) : vLowStock ? (
-                              <span className="text-[#7A4E00]">
-                                মাত্র {toBanglaDigits(vStock)}টি বাকি
+                          {/* In Multi-Select Mode: Individual Quantity Stepper */}
+                          {isMultiSelectMode && isSelected && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center border border-[#EFE9E0] bg-white rounded-xl shadow-2xs overflow-hidden"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => handleUpdateVariationQty(idx, -1, e)}
+                                className="p-1.5 hover:bg-[#FAF7F2] text-[#555] transition-colors cursor-pointer"
+                                title="কমান"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="px-2.5 text-xs font-bold text-[#2B2B2B] min-w-[24px] text-center">
+                                {toBanglaDigits(varQty)}
                               </span>
-                            ) : (
-                              <span className="text-[#1F6B43]">স্টকে আছে</span>
-                            )}
-                          </span>
+                              <button
+                                type="button"
+                                onClick={(e) => handleUpdateVariationQty(idx, 1, e)}
+                                className="p-1.5 hover:bg-[#FAF7F2] text-[#555] transition-colors cursor-pointer"
+                                title="বাড়ান"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -872,40 +1093,45 @@ function ProductContent() {
 
             {/* 6. Quantity stepper and live total line */}
             <div className="space-y-2.5 pt-3 border-t border-[#EFE9E0]">
-              <div className="flex items-center justify-between">
-                <span className="text-sm sm:text-base font-bold text-[#2B2B2B]">অর্ডারের পরিমাণ:</span>
-                <div className="flex items-center bg-[#FAF7F2] border border-[#EFE9E0] rounded-full p-1.5 shadow-inner">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    disabled={quantity <= 1}
-                    className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
-                    title="কমান"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-12 text-center font-extrabold text-base sm:text-lg">
-                    {toBanglaDigits(quantity)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.min(currentStock, q + 1))}
-                    disabled={quantity >= currentStock}
-                    className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
-                    title="বাড়ান"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+              {/* Show single stepper only if not in multi-select mode */}
+              {!isMultiSelectMode && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm sm:text-base font-bold text-[#2B2B2B]">অর্ডারের পরিমাণ:</span>
+                  <div className="flex items-center bg-[#FAF7F2] border border-[#EFE9E0] rounded-full p-1.5 shadow-inner">
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      disabled={quantity <= 1}
+                      className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
+                      title="কমান"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-12 text-center font-extrabold text-base sm:text-lg">
+                      {toBanglaDigits(quantity)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.min(currentStock, q + 1))}
+                      disabled={quantity >= currentStock}
+                      className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
+                      title="বাড়ান"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Live Total Line */}
-              <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 border border-[#EFE9E0] text-sm sm:text-base font-medium text-[#2B2B2B] flex items-center justify-between">
-                <span>
-                  {selectedParsed.name} x {toBanglaDigits(quantity)}
+              <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 border border-[#EFE9E0] text-sm sm:text-base font-medium text-[#2B2B2B] flex items-center justify-between gap-2 flex-wrap">
+                <span className="truncate max-w-xs">
+                  {isMultiSelectMode
+                    ? `নির্বাচিত ${toBanglaDigits(totalSelectedCount)}টি আইটেম (${selectedVariationsList.map((s) => `${s.variation.name} x${toBanglaDigits(s.quantity)}`).join(', ')})`
+                    : `${selectedParsed.name} x ${toBanglaDigits(quantity)}`}
                 </span>
-                <span className="font-black text-base sm:text-xl text-[#C23631]">
-                  মোট {formatBDT(currentPrice * quantity, { locale: 'bn' })}
+                <span className="font-black text-base sm:text-xl text-[#C23631] shrink-0">
+                  মোট {formatBDT(totalSelectedPrice, { locale: 'bn' })}
                 </span>
               </div>
             </div>
@@ -1496,10 +1722,12 @@ function ProductContent() {
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] font-bold text-[#2B2B2B] truncate leading-tight">
-              {selectedParsed.name}
+              {isMultiSelectMode
+                ? `${toBanglaDigits(totalSelectedCount)}টি নির্বাচিত`
+                : selectedParsed.name}
             </span>
             <span className="text-xs font-extrabold text-[#C23631]">
-              মোট {formatBDT(currentPrice * quantity, { locale: 'bn' })}
+              মোট {formatBDT(totalSelectedPrice, { locale: 'bn' })}
             </span>
           </div>
         </div>

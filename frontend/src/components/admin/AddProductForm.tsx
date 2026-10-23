@@ -23,7 +23,7 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from 'lucide-react';
-import { SampleCategory } from '@/lib/sample-data';
+import { SampleCategory, getVideoEmbedInfo } from '@/lib/sample-data';
 import { BRAND_NAME } from '@/lib/brand';
 import { Button } from '@/components/ui/Button';
 import { StatusPill } from '@/components/ui/Pill';
@@ -92,7 +92,9 @@ export default function AddProductForm({
     }
     return [];
   });
-  const [videoUrl, setVideoUrl] = useState<string>(() => initialProduct?.videoUrl || '');
+  const [videoUrl, setVideoUrl] = useState<string>(() => {
+    return initialProduct?.videoUrl || initialProduct?.videos?.[0]?.url || '';
+  });
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // 2. Basic Information
@@ -423,6 +425,7 @@ export default function AddProductForm({
           regularPrice,
           salePrice,
           categorySlug,
+          videoUrl,
           timestamp: new Date().toLocaleTimeString(),
         };
         try {
@@ -433,7 +436,7 @@ export default function AddProductForm({
     }, 30000);
 
     return () => clearInterval(timer);
-  }, [isDirty, isEditing, titleBn, titleEn, regularPrice, salePrice, categorySlug]);
+  }, [isDirty, isEditing, titleBn, titleEn, regularPrice, salePrice, categorySlug, videoUrl]);
 
   // Warn before browser unload if unsaved changes exist
   useEffect(() => {
@@ -553,7 +556,7 @@ export default function AddProductForm({
       imageUrl: primaryImage,
       image: primaryImage,
       galleryImages: allGalleryImages,
-      videoUrl: videoUrl.trim() || undefined,
+      videoUrl: videoUrl.trim(),
       weight: Number(weightGrams || 350),
       packageSize: packageSize.trim(),
       seoTitle: seoTitle.trim() || titleEn.trim(),
@@ -571,7 +574,7 @@ export default function AddProductForm({
       isActive: submitStatus === 'Published',
     };
 
-    const targetId = initialProduct?.id || initialProduct?.slug;
+    const targetId = initialProduct?.id || initialProduct?.slug || initialProduct?._id;
 
     try {
       const endpoint = isEditing ? `/api/products/${targetId}` : '/api/products';
@@ -734,9 +737,60 @@ export default function AddProductForm({
                     setVideoUrl(e.target.value);
                     markDirty();
                   }}
-                  placeholder="https://youtube.com/watch?v=... or https://youtu.be/... or MP4 link"
+                  placeholder="https://youtube.com/shorts/... or https://youtube.com/watch?v=... or MP4 link"
                   helperText="Supports YouTube links (watch, shorts, embed), Vimeo, or direct MP4/WebM videos. Leave blank if product has no video."
                 />
+
+                {videoUrl.trim() && (() => {
+                  const embedInfo = getVideoEmbedInfo(videoUrl);
+                  return (
+                    <div className="mt-2.5 p-3 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="relative w-16 h-12 rounded-lg overflow-hidden bg-black shrink-0 border border-[#EFE9E0] flex items-center justify-center">
+                            {embedInfo.thumbnailUrl ? (
+                              <img
+                                src={embedInfo.thumbnailUrl}
+                                alt="Video Thumbnail"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Video className="w-5 h-5 text-white/80" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                              <span className="text-xs font-bold text-[#1F6B43]">
+                                {embedInfo.type === 'youtube'
+                                  ? '✓ YouTube Video Detected'
+                                  : embedInfo.type === 'vimeo'
+                                  ? '✓ Vimeo Video Detected'
+                                  : '✓ Direct Video Link'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[#6B6B6B] truncate max-w-sm mt-0.5">
+                              {videoUrl}
+                            </p>
+                          </div>
+                        </div>
+
+                        <a
+                          href={videoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1 text-xs font-bold text-[#0B5F85] bg-white rounded-lg border border-[#BEE4F7] hover:bg-[#DDF1FB] transition-colors shrink-0"
+                        >
+                          Open Video ↗
+                        </a>
+                      </div>
+
+                      <p className="text-[11px] text-[#0B5F85] font-semibold bg-[#DDF1FB]/60 px-2.5 py-1 rounded-lg">
+                        💡 Remember to click &quot;{isEditing ? 'Save changes' : 'Publish product'}&quot; in the top bar to save this video to your storefront.
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             </CardContent>
           </Card>

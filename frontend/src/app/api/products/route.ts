@@ -220,6 +220,7 @@ export async function POST(req: NextRequest) {
       targetAgeMin: newProductData.targetAgeMin,
       targetAgeMax: newProductData.targetAgeMax,
       variations: newProductData.variations,
+      videoUrl: newProductData.videoUrl,
     };
     addMemoryProduct(sampleProd);
 

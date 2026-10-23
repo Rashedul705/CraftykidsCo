@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
 import { getProductBySlug, updateProduct as updateMemoryProduct, deleteProduct as deleteMemoryProduct } from '@/lib/store';
@@ -6,6 +7,13 @@ import { verifyAdminRequest } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
+}
+
+function getProductMongoQuery(id: string) {
+  const isObjectId = mongoose.Types.ObjectId.isValid(id);
+  return isObjectId
+    ? { $or: [{ _id: id }, { id }, { slug: id }] }
+    : { $or: [{ id }, { slug: id }] };
 }
 
 // 1. GET /api/products/[id] - Fetch single product by id or slug
@@ -16,9 +24,7 @@ export async function GET(req: NextRequest, context: RouteParams) {
     // Try MongoDB Atlas
     try {
       await connectToDatabase();
-      const dbProduct = await Product.findOne({
-        $or: [{ id }, { slug: id }],
-      }).lean();
+      const dbProduct = await Product.findOne(getProductMongoQuery(id)).lean();
 
       if (dbProduct) {
         return NextResponse.json({
@@ -144,7 +150,7 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
     try {
       await connectToDatabase();
       updatedDoc = await Product.findOneAndUpdate(
-        { $or: [{ id }, { slug: id }] },
+        getProductMongoQuery(id),
         { $set: updateFields },
         { new: true, runValidators: true }
       ).lean();
@@ -190,9 +196,7 @@ export async function DELETE(req: NextRequest, context: RouteParams) {
     // 1. Delete from MongoDB Atlas
     try {
       await connectToDatabase();
-      const res = await Product.findOneAndDelete({
-        $or: [{ id }, { slug: id }],
-      });
+      const res = await Product.findOneAndDelete(getProductMongoQuery(id));
       if (res) deletedFromDb = true;
     } catch (dbErr: any) {
       console.error(`MongoDB error deleting product ${id}:`, dbErr.message);
