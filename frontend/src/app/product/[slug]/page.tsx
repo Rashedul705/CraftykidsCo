@@ -238,6 +238,16 @@ function ProductContent() {
       ? Math.round(((currentOriginalPrice - currentPrice) / currentOriginalPrice) * 100)
       : 0;
 
+  // Short description computation
+  const displayShortDesc = useMemo(() => {
+    if (!product) return '';
+    return (
+      product.shortDescriptionBn?.trim() ||
+      product.shortDescriptionEn?.trim() ||
+      (product.description ? product.description.split('\n')[0].slice(0, 180) : '')
+    );
+  }, [product]);
+
   // Stock status
   const currentStock = currentVariation ? (currentVariation.stock ?? 20) : (product?.stock ?? 20);
   const isOutOfStock = currentStock <= 0;
@@ -704,6 +714,21 @@ function ProductContent() {
                 </div>
               )}
 
+              {/* Watch Video Demo Trigger Button on Main Stage */}
+              {productVideos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveVideoModal(productVideos[0])}
+                  className="absolute bottom-3.5 left-3.5 px-3 py-2 rounded-xl bg-black/80 hover:bg-[#D6403B] text-white shadow-md transition-all duration-200 cursor-pointer flex items-center gap-2 text-xs font-bold z-10 group/btn"
+                  title="ভিডিও ডেমো দেখতে ক্লিক করুন"
+                >
+                  <div className="w-4 h-4 rounded-full bg-[#D6403B] group-hover/btn:bg-white text-white group-hover/btn:text-[#D6403B] flex items-center justify-center transition-colors">
+                    <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
+                  </div>
+                  <span>ভিডিও ডেমো দেখুন</span>
+                </button>
+              )}
+
               {/* Zoom Trigger Button */}
               <button
                 onClick={() => setIsZoomOpen(true)}
@@ -777,6 +802,7 @@ function ProductContent() {
                     src={vid.thumbnailUrl || galleryImages[vIdx] || product.imageUrl}
                     alt={vid.titleBn}
                     fill
+                    unoptimized
                     className="object-cover opacity-60 group-hover:opacity-40 transition-opacity"
                   />
 
@@ -885,6 +911,15 @@ function ProductContent() {
                 >
                   {toBanglaDigits(product.reviewCount || 48)}টি রিভিউ দেখুন
                 </button>
+              </div>
+            )}
+
+            {/* Short Description */}
+            {displayShortDesc && (
+              <div className="p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-[#FAF7F2] to-[#FFF9F3] border border-[#EFE9E0] text-sm sm:text-base text-[#3A3A3A] leading-relaxed shadow-2xs">
+                <p className="font-medium leading-relaxed">
+                  {displayShortDesc}
+                </p>
               </div>
             )}
 
@@ -1244,6 +1279,64 @@ function ProductContent() {
         </div>
 
         {/* =====================================================================
+            PRODUCT VIDEO DEMO HIGHLIGHT (Prominent Embedded Showcase)
+           ===================================================================== */}
+        {productVideos.length > 0 && (() => {
+          const mainVideo = productVideos[0];
+          const embedInfo = getVideoEmbedInfo(mainVideo.url);
+          return (
+            <div className="bg-gradient-to-br from-[#FFF9F3] via-[#FAF7F2] to-white rounded-2xl border-2 border-[#FFE8D6] p-5 sm:p-7 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#D6403B] text-white flex items-center justify-center shadow-md shrink-0">
+                    <Play className="w-5 h-5 fill-current ml-0.5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#D6403B] bg-[#FDE8E7] px-2 py-0.5 rounded-full">
+                        ভিডিও ডেমো
+                      </span>
+                      <span className="text-xs text-[#6B6B6B]">বাস্তব অভিজ্ঞতা</span>
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-extrabold text-[#2B2B2B]">
+                      বাচ্চাদের খেলার আসল ভিডিও ডেমো
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveVideoModal(mainVideo)}
+                  className="inline-flex items-center gap-2 text-xs font-bold text-[#D6403B] hover:text-[#B02824] bg-white px-4 py-2 rounded-xl border border-[#EFE9E0] hover:border-[#D6403B] shadow-2xs transition-all cursor-pointer self-start sm:self-auto"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>ফুল স্ক্রিনে দেখুন</span>
+                </button>
+              </div>
+
+              {/* Video Player Frame */}
+              <div className="relative aspect-video max-w-3xl mx-auto rounded-2xl overflow-hidden bg-black shadow-lg border border-[#EFE9E0]">
+                {embedInfo.isEmbed ? (
+                  <iframe
+                    src={embedInfo.embedUrl.replace('autoplay=1', 'autoplay=0')}
+                    title={mainVideo.titleBn}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={mainVideo.url}
+                    controls
+                    poster={mainVideo.thumbnailUrl}
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* =====================================================================
             BELOW THE FOLD: STICKY TABS (বিবরণ, বাক্সে কী আছে, ডেমো ভিডিও, রিভিউ, প্রশ্নোত্তর)
            ===================================================================== */}
         <div id="reviews-section" className="bg-white rounded-2xl border border-[#EFE9E0] p-5 sm:p-8 shadow-xs space-y-6">
@@ -1375,6 +1468,7 @@ function ProductContent() {
                         src={vid.thumbnailUrl || galleryImages[idx] || product.imageUrl}
                         alt={vid.titleBn}
                         fill
+                        unoptimized
                         className="object-cover opacity-75 group-hover:opacity-50 transition-opacity"
                       />
                       <div className="w-10 h-10 rounded-full bg-[#D6403B] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform z-10">

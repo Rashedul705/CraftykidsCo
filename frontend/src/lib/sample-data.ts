@@ -78,6 +78,11 @@ export interface SampleProduct {
   badge?: string;
   safetyBadges?: string[];
   description?: string;
+  descriptionBn?: string;
+  descriptionEn?: string;
+  shortDescriptionBn?: string;
+  shortDescriptionEn?: string;
+  pieces?: string;
   specifications?: { label: string; value: string }[];
   careInstructions?: string;
   faqs?: { question: string; answer: string }[];
@@ -96,8 +101,8 @@ export function getVideoEmbedInfo(url?: string): {
   }
   const trimmed = url.trim();
 
-  // YouTube Shorts, Watch, Embed, youtu.be
-  const ytMatch = trimmed.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|v\/|shorts\/)|youtu\.be\/)([\w-]{11})/i);
+  // YouTube Shorts, Watch, Embed, youtu.be, m.youtube.com
+  const ytMatch = trimmed.match(/(?:(?:www\.|m\.)?youtube\.com\/(?:watch\?.*v=|embed\/|v\/|shorts\/)|youtu\.be\/)([\w-]{11})/i);
   if (ytMatch && ytMatch[1]) {
     const videoId = ytMatch[1];
     return {

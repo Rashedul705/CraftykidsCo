@@ -102,8 +102,12 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
       updateFields.descriptionBn = body.descriptionBn || body.description;
       updateFields.descriptionEn = body.descriptionEn || body.description;
     }
-    if (body.shortDescriptionBn !== undefined) updateFields.shortDescriptionBn = body.shortDescriptionBn;
-    if (body.shortDescriptionEn !== undefined) updateFields.shortDescriptionEn = body.shortDescriptionEn;
+    if (body.shortDescriptionBn !== undefined) {
+      updateFields.shortDescriptionBn = typeof body.shortDescriptionBn === 'string' ? body.shortDescriptionBn.trim() : '';
+    }
+    if (body.shortDescriptionEn !== undefined) {
+      updateFields.shortDescriptionEn = typeof body.shortDescriptionEn === 'string' ? body.shortDescriptionEn.trim() : '';
+    }
     if (body.pieces !== undefined) updateFields.pieces = body.pieces;
     if (body.badge !== undefined) updateFields.badge = body.badge;
     if (body.isNewArrival !== undefined) updateFields.isNewArrival = Boolean(body.isNewArrival);
@@ -117,7 +121,9 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
     if (body.safetyBadges !== undefined) updateFields.safetyBadges = body.safetyBadges;
     if (body.targetAge !== undefined) updateFields.targetAge = body.targetAge;
     if (body.targetAgeMin !== undefined) updateFields.targetAgeMin = body.targetAgeMin;
-    if (body.videoUrl !== undefined) updateFields.videoUrl = body.videoUrl;
+    if (body.videoUrl !== undefined) {
+      updateFields.videoUrl = typeof body.videoUrl === 'string' ? body.videoUrl.trim() : '';
+    }
     if (body.weight !== undefined) updateFields.weight = body.weight;
     if (body.packageSize !== undefined) updateFields.packageSize = body.packageSize;
     if (body.handlingTime !== undefined) updateFields.handlingTime = body.handlingTime;
@@ -152,7 +158,7 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
       updatedDoc = await Product.findOneAndUpdate(
         getProductMongoQuery(id),
         { $set: updateFields },
-        { new: true, runValidators: true }
+        { returnDocument: 'after', runValidators: false }
       ).lean();
     } catch (dbErr: any) {
       console.error(`MongoDB error updating product ${id}:`, dbErr.message);

@@ -155,13 +155,17 @@ const ProductSchema = new Schema<IProduct>(
     requiresGiftWrap: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true, index: true },
   },
-  { timestamps: true }
+  { timestamps: true, strict: false }
 );
 
 // Indexes
 ProductSchema.index({ slug: 1 });
 ProductSchema.index({ categorySlug: 1, isActive: 1 });
 ProductSchema.index({ isBestSeller: 1, isNewArrival: 1 });
+
+if (process.env.NODE_ENV !== 'production' && mongoose.models && mongoose.models.Product) {
+  delete (mongoose.models as any).Product;
+}
 
 export const Product: Model<IProduct> =
   mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
