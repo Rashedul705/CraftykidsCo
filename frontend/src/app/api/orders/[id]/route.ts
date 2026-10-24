@@ -81,6 +81,7 @@ export async function PATCH(
       'SHIPPED',
       'DELIVERED',
       'CANCELLED',
+      'RETURNED',
     ];
 
     const now = new Date();
@@ -96,6 +97,9 @@ export async function PATCH(
         );
       }
       setFields.status = status;
+      if (status === 'DELIVERED' && paymentStatus === undefined) {
+        setFields.paymentStatus = 'PAID';
+      }
       timelineEntries.push({
         status,
         timestamp: now.toISOString(),

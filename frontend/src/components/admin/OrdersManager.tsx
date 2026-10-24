@@ -468,6 +468,55 @@ export default function OrdersManager({
     });
   };
 
+  // Mark Delivered
+  const handleMarkDelivered = async (order: OrderRecord) => {
+    try {
+      await onStatusChange(order.id, 'DELIVERED');
+      success(`Order #${order.orderNumber} marked as Delivered.`);
+      onRefresh();
+    } catch (err: any) {
+      error(err?.message || 'Failed to update order to Delivered');
+    }
+  };
+
+  // Mark Returned
+  const handleMarkReturned = async (order: OrderRecord) => {
+    setConfirmDialogData({
+      isOpen: true,
+      title: `Mark Order #${order.orderNumber} as Returned`,
+      message: 'Are you sure you want to mark this order as Returned? Stock will be restored.',
+      itemCount: 1,
+      isDestructive: false,
+      confirmLabel: 'Mark as Returned',
+      action: async () => {
+        setConfirmDialogData((prev) => ({ ...prev, isOpen: false }));
+        await onStatusChange(order.id, 'RETURNED');
+        warning(`Order #${order.orderNumber} marked as Returned.`);
+        onRefresh();
+      },
+    });
+  };
+
+  // Direct Status Change from Select
+  const handleDirectStatusChange = async (order: OrderRecord, newStatus: OrderRecord['status']) => {
+    if (newStatus === order.status) return;
+    if (newStatus === 'CANCELLED') {
+      handleCancelOrder(order);
+      return;
+    }
+    if (newStatus === 'RETURNED') {
+      handleMarkReturned(order);
+      return;
+    }
+    try {
+      await onStatusChange(order.id, newStatus);
+      success(`Order #${order.orderNumber} status updated to ${newStatus}.`);
+      onRefresh();
+    } catch (err: any) {
+      error(err?.message || `Failed to update status to ${newStatus}`);
+    }
+  };
+
   // Bulk Confirm
   const handleBulkConfirm = () => {
     const targetOrders = orders.filter((o) => selectedOrderIds.includes(o.id));
@@ -1420,6 +1469,33 @@ export default function OrdersManager({
                                   Print sticker {!(ord.consignmentId || ord.trackingCode) ? '(আগে পাঠান)' : ''}
                                 </span>
                               </button>
+
+                              {ord.status === 'SHIPPED' && (
+                                <button
+                                  onClick={() => {
+                                    setActiveDropdownRowId(null);
+                                    handleMarkDelivered(ord);
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-[#E8F5E9] text-[#1F6B43] flex items-center gap-2 cursor-pointer border-t border-[#EFE9E0]"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Mark Delivered</span>
+                                </button>
+                              )}
+
+                              {(ord.status === 'SHIPPED' || ord.status === 'DELIVERED') && (
+                                <button
+                                  onClick={() => {
+                                    setActiveDropdownRowId(null);
+                                    handleMarkReturned(ord);
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-[#FFF3E0] text-[#E65100] flex items-center gap-2 cursor-pointer border-t border-[#EFE9E0]"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                  <span>Mark Returned</span>
+                                </button>
+                              )}
+
                               {ord.status !== 'CANCELLED' && (
                                 <button
                                   onClick={() => {
@@ -1562,19 +1638,30 @@ export default function OrdersManager({
             <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 text-[#2B2B2B]">
               {/* Top Quick Status & Action Bar */}
               <div className="p-3.5 bg-[#FAF7F2] rounded-[16px] border border-[#EFE9E0] flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[#6B6B6B] font-semibold">স্ট্যাটাস:</span>
-                  <span className="text-xs font-bold text-[#2B2B2B]">
-                    {activeOrder.status === 'PENDING' && 'অপেক্ষমান (Pending Confirmation)'}
-                    {activeOrder.status === 'CONFIRMED' && 'কনফার্মড (Ready for Dispatch)'}
-                    {activeOrder.status === 'SHIPPED' && 'কুরিয়ারে পাঠানো হয়েছে (Shipped)'}
-                    {activeOrder.status === 'DELIVERED' && 'সফলভাবে ডেলিভার্ড (Delivered)'}
-                    {activeOrder.status === 'CANCELLED' && 'বাতিলকৃত (Cancelled)'}
-                    {activeOrder.status === 'RETURNED' && 'রিটার্ন (Returned)'}
-                  </span>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs text-[#6B6B6B] font-semibold">Status:</span>
+                  <select
+                    value={activeOrder.status}
+                    onChange={(e) =>
+                      handleDirectStatusChange(
+                        activeOrder,
+                        e.target.value as OrderRecord['status']
+                      )
+                    }
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white border border-[#EFE9E0] text-[#2B2B2B] shadow-2xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0B5F85]"
+                  >
+                    <option value="PENDING">PENDING (Pending Confirmation)</option>
+                    <option value="CONFIRMED">CONFIRMED (Ready for Dispatch)</option>
+                    <option value="PROCESSING">PROCESSING (Packaging)</option>
+                    <option value="SHIPPED">SHIPPED (With Courier)</option>
+                    <option value="DELIVERED">DELIVERED (Successfully Completed)</option>
+                    <option value="RETURNED">RETURNED (Courier Return)</option>
+                    <option value="CANCELLED">CANCELLED (Cancelled Order)</option>
+                  </select>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Confirm button if PENDING */}
                   {activeOrder.status === 'PENDING' && (
                     <button
                       onClick={() => handleConfirmOrder(activeOrder)}
@@ -1584,7 +1671,31 @@ export default function OrdersManager({
                       <span>Confirm order</span>
                     </button>
                   )}
-                  {activeOrder.status !== 'CANCELLED' && (
+
+                  {/* Mark Delivered if SHIPPED */}
+                  {activeOrder.status === 'SHIPPED' && (
+                    <button
+                      onClick={() => handleMarkDelivered(activeOrder)}
+                      className="px-3 py-1.5 bg-[#1F6B43] hover:bg-[#185334] text-white text-xs font-bold rounded-[8px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Mark Delivered</span>
+                    </button>
+                  )}
+
+                  {/* Mark Returned if SHIPPED or DELIVERED */}
+                  {(activeOrder.status === 'SHIPPED' || activeOrder.status === 'DELIVERED') && (
+                    <button
+                      onClick={() => handleMarkReturned(activeOrder)}
+                      className="px-3 py-1.5 bg-[#FFF3E0] hover:bg-[#FFE0B2] text-[#E65100] border border-[#FFCC80] text-xs font-bold rounded-[8px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Mark Returned</span>
+                    </button>
+                  )}
+
+                  {/* Cancel order if not CANCELLED and not DELIVERED */}
+                  {activeOrder.status !== 'CANCELLED' && activeOrder.status !== 'DELIVERED' && (
                     <button
                       onClick={() => handleCancelOrder(activeOrder)}
                       className="px-3 py-1.5 bg-white border border-[#EFE9E0] hover:bg-[#FDE3E1] text-[#9B2420] text-xs font-bold rounded-[8px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
@@ -1593,7 +1704,9 @@ export default function OrdersManager({
                       <span>Cancel order</span>
                     </button>
                   )}
-                  {activeOrder.status === 'CANCELLED' && (
+
+                  {/* Restore to Confirmed if CANCELLED or RETURNED */}
+                  {(activeOrder.status === 'CANCELLED' || activeOrder.status === 'RETURNED') && (
                     <button
                       onClick={() => handleConfirmOrder(activeOrder)}
                       className="px-3 py-1.5 bg-[#1F6B43] hover:bg-[#185334] text-white text-xs font-bold rounded-[8px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
@@ -2294,6 +2407,41 @@ export default function OrdersManager({
                         <span>Send to Steadfast</span>
                       </Button>
                     )
+                  )}
+
+                  {/* Mark Delivered / Returned if order is SHIPPED */}
+                  {activeOrder.status === 'SHIPPED' && (
+                    <>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleMarkReturned(activeOrder)}
+                        className="text-[#E65100] border-[#FFCC80] hover:bg-[#FFF3E0]"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Mark Returned</span>
+                      </Button>
+                      <button
+                        onClick={() => handleMarkDelivered(activeOrder)}
+                        className="px-4 py-2 bg-[#1F6B43] hover:bg-[#185334] text-white text-xs sm:text-sm font-bold rounded-[10px] shadow-sm flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Mark Delivered</span>
+                      </button>
+                    </>
+                  )}
+
+                  {/* Mark Returned if order is DELIVERED */}
+                  {activeOrder.status === 'DELIVERED' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleMarkReturned(activeOrder)}
+                      className="text-[#E65100] border-[#FFCC80] hover:bg-[#FFF3E0]"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Mark Returned</span>
+                    </Button>
                   )}
                 </div>
               </div>
