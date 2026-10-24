@@ -22,6 +22,7 @@ import {
   Eye,
   ShieldCheck,
   CheckCircle2,
+  PackageCheck,
 } from 'lucide-react';
 import { SampleCategory, getVideoEmbedInfo } from '@/lib/sample-data';
 import { BRAND_NAME } from '@/lib/brand';
@@ -112,7 +113,32 @@ export default function AddProductForm({
   const [shortDescBn, setShortDescBn] = useState(() => initialProduct?.shortDescriptionBn || '');
   const [shortDescEn, setShortDescEn] = useState(() => initialProduct?.shortDescriptionEn || '');
   const [fullDescBn, setFullDescBn] = useState(() => initialProduct?.descriptionBn || initialProduct?.description || '');
-  const [whatsInTheBox, setWhatsInTheBox] = useState(() => initialProduct?.pieces || '');
+
+  // What's in the Box & Technical Specifications
+  const initialBoxText = (() => {
+    if (initialProduct?.boxItems && Array.isArray(initialProduct.boxItems) && initialProduct.boxItems.length > 0) {
+      return initialProduct.boxItems.join('\n');
+    }
+    if (initialProduct?.pieces) {
+      if (initialProduct.pieces.includes('\n')) return initialProduct.pieces;
+      if (initialProduct.pieces.includes('+')) {
+        return initialProduct.pieces.split('+').map((s: string) => s.trim()).join('\n');
+      }
+      return initialProduct.pieces;
+    }
+    return 'প্রিমিয়াম কোয়ালিটি মোল্ডেড মোমের শেপ ও কালার সেট\n১০০% নিরাপদ নন-টক্সিক ওয়াটার কালার বোতল ও রঙ\nশিশুদের উপযোগী নরম গ্রিপ ফাইন আর্ট ব্রাশ\nরঙ মেলানোর কালার প্যালেট ও ডেমো গাইডবুক\nনিরাপদ গিফট প্যাকেজিং বক্স';
+  })();
+
+  const [boxItemsText, setBoxItemsText] = useState<string>(initialBoxText);
+  const [materials, setMaterials] = useState<string>(
+    () => initialProduct?.materials || 'প্রাকৃতিক মৌমাছির মোম ও ফুড কালার'
+  );
+  const [safetyStandards, setSafetyStandards] = useState<string>(
+    () => initialProduct?.safetyStandards || '১০০% নন-টক্সিক সার্টিফাইড'
+  );
+  const [ageAppropriate, setAgeAppropriate] = useState<string>(
+    () => initialProduct?.ageAppropriate || '২+ থেকে ৮ বছর'
+  );
 
   // 3. Pricing and Stock
   const [regularPrice, setRegularPrice] = useState<number | ''>(
@@ -483,6 +509,10 @@ export default function AddProductForm({
           videoUrl2,
           mainImage,
           galleryImages,
+          boxItemsText,
+          materials,
+          safetyStandards,
+          ageAppropriate,
           timestamp: new Date().toLocaleTimeString(),
         };
         try {
@@ -493,7 +523,7 @@ export default function AddProductForm({
     }, 30000);
 
     return () => clearInterval(timer);
-  }, [isDirty, isEditing, titleBn, titleEn, regularPrice, salePrice, categorySlug, videoUrl1, videoUrl2, mainImage, galleryImages]);
+  }, [isDirty, isEditing, titleBn, titleEn, regularPrice, salePrice, categorySlug, videoUrl1, videoUrl2, mainImage, galleryImages, boxItemsText, materials, safetyStandards, ageAppropriate]);
 
   // Warn before browser unload if unsaved changes exist
   useEffect(() => {
@@ -610,6 +640,11 @@ export default function AddProductForm({
       });
     }
 
+    const parsedBoxItems = boxItemsText
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
     const payload = {
       titleBn: titleBn.trim(),
       titleEn: titleEn.trim(),
@@ -633,7 +668,11 @@ export default function AddProductForm({
       description: fullDescBn.trim() || shortDescBn.trim(),
       descriptionBn: fullDescBn.trim() || shortDescBn.trim(),
       descriptionEn: shortDescEn.trim(),
-      pieces: whatsInTheBox.trim(),
+      pieces: parsedBoxItems.join(' + '),
+      boxItems: parsedBoxItems,
+      materials: materials.trim(),
+      safetyStandards: safetyStandards.trim(),
+      ageAppropriate: ageAppropriate.trim(),
       imageUrl: primaryImage,
       image: primaryImage,
       galleryImages: allGalleryImages,
@@ -1244,17 +1283,99 @@ export default function AddProductForm({
                 rows={4}
               />
 
-              <Input
-                id="prod-whats-in-the-box"
-                label="What is in the box"
-                value={whatsInTheBox}
-                onChange={(e) => {
-                  setWhatsInTheBox(e.target.value);
-                  markDirty();
-                }}
-                placeholder="যেমন: ১২টি মোমের রং, ২টি আর্ট শিট, ১টি ব্রাশ"
-                helperText="Displayed in the 'বাক্সে কী আছে' tab on the storefront product page"
-              />
+            </CardContent>
+          </Card>
+
+          {/* What's in the Box & Specifications Card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <PackageCheck className="w-5 h-5 text-[#D6403B]" />
+                    <span>What&apos;s in the Box &amp; Specifications (বাক্সে কী আছে ও টেকনিক্যাল বিবরণ)</span>
+                  </CardTitle>
+                  <p className="text-xs text-[#6B6B6B] mt-0.5">
+                    Customize the contents list and technical specifications displayed on the product page tab &quot;বাক্সে কী আছে&quot;.
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Box Items Textarea */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#2B2B2B] flex items-center gap-1.5">
+                    <span>প্যাকেজে অন্তর্ভুক্ত উপাদানসমূহ (What&apos;s in the box items):</span>
+                    <span className="text-[11px] font-normal text-[#6B6B6B]">(প্রতি লাইনে একটি করে উপাদান লিখুন)</span>
+                  </label>
+                  <span className="text-[11px] text-[#6B6B6B] font-mono bg-[#FAF7F2] px-2 py-0.5 rounded border border-[#EFE9E0]">
+                    {boxItemsText.split('\n').filter((l) => l.trim()).length} টি উপাদান
+                  </span>
+                </div>
+                <Textarea
+                  id="prod-box-items"
+                  value={boxItemsText}
+                  onChange={(e) => {
+                    setBoxItemsText(e.target.value);
+                    markDirty();
+                  }}
+                  rows={5}
+                  placeholder={`প্রতি লাইনে একটি করে আইটেম লিখুন:
+প্রিমিয়াম কোয়ালিটি মোল্ডেড মোমের শেপ ও কালার সেট
+১০০% নিরাপদ নন-টক্সিক ওয়াটার কালার বোতল ও রঙ
+শিশুদের উপযোগী নরম গ্রিপ ফাইন আর্ট ব্রাশ
+রঙ মেলানোর কালার প্যালেট ও ডেমো গাইডবুক
+নিরাপদ গিফট প্যাকেজিং বক্স`}
+                  helperText="Each line will appear as a bullet point with an icon in the 'বাক্সে কী আছে' tab on the storefront product page."
+                />
+              </div>
+
+              {/* Technical Specifications Grid */}
+              <div className="pt-3 border-t border-[#EFE9E0] space-y-3">
+                <h4 className="text-xs font-bold text-[#2B2B2B] uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#1F6B43]" />
+                  <span>টেকনিক্যাল স্পেসিফিকেশন টেবিল (Technical Specifications):</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Input
+                    id="prod-materials"
+                    label="কাঁচামাল / উপাদান (Materials)"
+                    value={materials}
+                    onChange={(e) => {
+                      setMaterials(e.target.value);
+                      markDirty();
+                    }}
+                    placeholder="যেমন: প্রাকৃতিক মৌমাছির মোম ও ফুড কালার"
+                    helperText="Product page spec row 1"
+                  />
+
+                  <Input
+                    id="prod-age-appropriate"
+                    label="উপযুক্ত বয়স (Suitable Age)"
+                    value={ageAppropriate}
+                    onChange={(e) => {
+                      setAgeAppropriate(e.target.value);
+                      markDirty();
+                    }}
+                    placeholder="যেমন: ২+ থেকে ৮ বছর"
+                    helperText="Product page spec row 2"
+                  />
+
+                  <Input
+                    id="prod-safety-standards"
+                    label="নিরাপত্তা মান (Safety Standards)"
+                    value={safetyStandards}
+                    onChange={(e) => {
+                      setSafetyStandards(e.target.value);
+                      markDirty();
+                    }}
+                    placeholder="যেমন: ১০০% নন-টক্সিক সার্টিফাইড"
+                    helperText="Product page spec row 3"
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
 

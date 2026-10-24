@@ -84,6 +84,10 @@ export interface SampleProduct {
   shortDescriptionBn?: string;
   shortDescriptionEn?: string;
   pieces?: string;
+  boxItems?: string[];
+  materials?: string;
+  safetyStandards?: string;
+  ageAppropriate?: string;
   specifications?: { label: string; value: string }[];
   careInstructions?: string;
   faqs?: { question: string; answer: string }[];

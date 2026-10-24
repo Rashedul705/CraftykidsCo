@@ -109,6 +109,16 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
       updateFields.shortDescriptionEn = typeof body.shortDescriptionEn === 'string' ? body.shortDescriptionEn.trim() : '';
     }
     if (body.pieces !== undefined) updateFields.pieces = body.pieces;
+    if (body.boxItems !== undefined) {
+      updateFields.boxItems = Array.isArray(body.boxItems)
+        ? body.boxItems
+        : typeof body.boxItems === 'string'
+        ? body.boxItems.split('\n').map((s: string) => s.trim()).filter(Boolean)
+        : [];
+    }
+    if (body.materials !== undefined) updateFields.materials = body.materials;
+    if (body.safetyStandards !== undefined) updateFields.safetyStandards = body.safetyStandards;
+    if (body.ageAppropriate !== undefined) updateFields.ageAppropriate = body.ageAppropriate;
     if (body.badge !== undefined) updateFields.badge = body.badge;
     if (body.isNewArrival !== undefined) updateFields.isNewArrival = Boolean(body.isNewArrival);
     if (body.isBestSeller !== undefined) updateFields.isBestSeller = Boolean(body.isBestSeller);

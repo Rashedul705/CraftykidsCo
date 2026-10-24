@@ -59,6 +59,10 @@ export interface IProduct extends Document {
   shortDescriptionBn?: string;
   shortDescriptionEn?: string;
   pieces?: string;
+  boxItems?: string[];
+  materials?: string;
+  safetyStandards?: string;
+  ageAppropriate?: string;
   badge?: string;
   rating?: number;
   reviewsCount?: number;
@@ -122,6 +126,10 @@ const ProductSchema = new Schema<IProduct>(
     shortDescriptionBn: { type: String },
     shortDescriptionEn: { type: String },
     pieces: { type: String },
+    boxItems: [{ type: String }],
+    materials: { type: String },
+    safetyStandards: { type: String },
+    ageAppropriate: { type: String },
     badge: { type: String },
     rating: { type: Number, default: 4.9 },
     reviewsCount: { type: Number, default: 0 },

@@ -160,6 +160,14 @@ export async function POST(req: NextRequest) {
       shortDescriptionBn: body.shortDescriptionBn || '',
       shortDescriptionEn: body.shortDescriptionEn || '',
       pieces: body.pieces || '',
+      boxItems: Array.isArray(body.boxItems)
+        ? body.boxItems
+        : typeof body.boxItems === 'string'
+        ? body.boxItems.split('\n').map((s: string) => s.trim()).filter(Boolean)
+        : [],
+      materials: body.materials || 'প্রাকৃতিক মৌমাছির মোম ও ফুড কালার',
+      safetyStandards: body.safetyStandards || '১০০% নন-টক্সিক সার্টিফাইড',
+      ageAppropriate: body.ageAppropriate || '',
       badge: body.badge || 'New',
       image: imageUrl,
       imageUrl,
@@ -221,6 +229,11 @@ export async function POST(req: NextRequest) {
       isNewArrival: newProductData.isNewArrival,
       targetAgeMin: newProductData.targetAgeMin,
       targetAgeMax: newProductData.targetAgeMax,
+      pieces: newProductData.pieces,
+      boxItems: newProductData.boxItems,
+      materials: newProductData.materials,
+      safetyStandards: newProductData.safetyStandards,
+      ageAppropriate: newProductData.ageAppropriate,
       variations: newProductData.variations,
       videoUrl: newProductData.videoUrl,
       videoUrl2: newProductData.videoUrl2,
