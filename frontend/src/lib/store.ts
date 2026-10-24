@@ -39,6 +39,7 @@ export interface OrderRecord {
   customerName: string;
   customerPhone: string;
   district: string;
+  thana?: string;
   fullAddress: string;
   customerNote?: string;
   subtotal: number;

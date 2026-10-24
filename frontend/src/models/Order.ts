@@ -33,6 +33,7 @@ export interface IOrder extends Document {
   customerName: string;
   customerPhone: string;
   district: string;
+  thana?: string;
   area?: string;
   fullAddress: string;
   customerNote?: string;
@@ -115,6 +116,7 @@ const OrderSchema = new Schema<IOrder>(
     customerName: { type: String, required: true },
     customerPhone: { type: String, required: true, index: true },
     district: { type: String, required: true },
+    thana: { type: String },
     area: { type: String },
     fullAddress: { type: String, required: true },
     customerNote: { type: String },

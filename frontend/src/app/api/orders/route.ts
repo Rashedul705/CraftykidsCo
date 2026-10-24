@@ -174,9 +174,11 @@ export async function POST(req: NextRequest) {
       subtotal,
       district: data.district,
     });
-    const deliveryCharge = deliveryRes.deliveryCharge;
+    const deliveryCharge = data.deliveryCharge !== undefined ? data.deliveryCharge : deliveryRes.deliveryCharge;
 
-    const totalAmount = Math.max(0, subtotal - discountAmount + deliveryCharge);
+    const totalAmount = data.totalAmount !== undefined
+      ? data.totalAmount
+      : Math.max(0, subtotal - discountAmount + deliveryCharge);
 
     // 5. Stock check & deduction
     const stockDeductRes = deductInventoryStock(data.items);
@@ -199,6 +201,7 @@ export async function POST(req: NextRequest) {
       customerName: data.customerName,
       customerPhone: data.customerPhone,
       district: data.district,
+      thana: data.thana || '',
       fullAddress: data.fullAddress,
       customerNote: data.customerNote,
       subtotal,
@@ -206,8 +209,9 @@ export async function POST(req: NextRequest) {
       discountAmount,
       totalAmount,
       couponCode: data.couponCode,
+      source: data.source || 'website',
       status: 'PENDING' as const,
-      paymentStatus: 'UNPAID' as const,
+      paymentStatus: (data.paymentMethod === 'BKASH' || data.paymentMethod === 'NAGAD') ? ('PAID' as const) : ('UNPAID' as const),
       paymentMethod: data.paymentMethod,
       items: data.items.map((it, idx) => ({
         id: `item-${Date.now()}-${idx}`,
@@ -259,6 +263,7 @@ export async function POST(req: NextRequest) {
       customerName: data.customerName,
       customerPhone: data.customerPhone,
       district: data.district,
+      thana: data.thana || '',
       fullAddress: data.fullAddress,
       customerNote: data.customerNote,
       subtotal,
@@ -266,8 +271,9 @@ export async function POST(req: NextRequest) {
       discountAmount,
       totalAmount,
       couponCode: data.couponCode,
+      source: (data.source as any) || 'website',
       status: 'PENDING',
-      paymentStatus: 'UNPAID',
+      paymentStatus: (data.paymentMethod === 'BKASH' || data.paymentMethod === 'NAGAD') ? 'PAID' : 'UNPAID',
       paymentMethod: data.paymentMethod,
       items: orderPayload.items,
     });

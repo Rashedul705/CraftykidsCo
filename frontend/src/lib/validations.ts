@@ -23,10 +23,14 @@ export const OrderCreateInputSchema = z.object({
       message: 'সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)',
     }),
   district: z.string().trim().min(2, 'ডেলিভারি জেলা নির্বাচন করুন'),
+  thana: z.string().trim().optional(),
   fullAddress: z.string().trim().min(6, 'সম্পূর্ণ ঠিকানা বিস্তারিত লিখুন (কমপক্ষে ৬ অক্ষর)'),
   customerNote: z.string().trim().max(300, 'নোট ৩০০ অক্ষরের মধ্যে হতে হবে').optional(),
   paymentMethod: z.enum(['COD', 'BKASH', 'NAGAD']).default('COD'),
   couponCode: z.string().trim().optional(),
+  source: z.string().trim().optional(),
+  deliveryCharge: z.number().int().optional(),
+  totalAmount: z.number().int().optional(),
   items: z.array(OrderItemSchema).min(1, 'কার্টে অন্তত একটি পণ্য থাকতে হবে'),
 });
 

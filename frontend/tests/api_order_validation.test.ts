@@ -87,4 +87,39 @@ describe('Server-Side Zod Validation Rules for Orders', () => {
       assert.match(res.error.issues[0].message, /integer/i);
     }
   });
+
+  it('accepts manual order input with thana, product variant, quantity, deliveryCharge, and totalAmount', () => {
+    const manualOrderData = {
+      customerName: 'নুসরাত জাহান',
+      customerPhone: '01912345678',
+      district: 'Dhaka',
+      thana: 'Dhanmondi',
+      fullAddress: 'বাড়ি #১২, রোড #৫, ধানমন্ডি, ঢাকা',
+      paymentMethod: 'COD',
+      source: 'facebook',
+      deliveryCharge: 60,
+      totalAmount: 1559,
+      items: [
+        {
+          productId: 'prod-car-painting',
+          title: 'কার পেইন্টিং কিট - ১২ পিস সেট',
+          variationSku: 'CAR-PAINT-24',
+          variationTitle: '২৪ পিস মেগা বক্স',
+          variationTitleBn: '২৪ পিস মেগা বক্স',
+          price: 1499,
+          quantity: 1,
+        },
+      ],
+    };
+
+    const res = OrderCreateInputSchema.safeParse(manualOrderData);
+    assert.strictEqual(res.success, true);
+    if (res.success) {
+      assert.strictEqual(res.data.thana, 'Dhanmondi');
+      assert.strictEqual(res.data.source, 'facebook');
+      assert.strictEqual(res.data.totalAmount, 1559);
+      assert.strictEqual(res.data.items[0].variationTitle, '২৪ পিস মেগা বক্স');
+      assert.strictEqual(res.data.items[0].quantity, 1);
+    }
+  });
 });

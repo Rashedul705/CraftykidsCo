@@ -31,10 +31,12 @@ import {
   Layers,
   Sparkles,
 } from 'lucide-react';
-import { OrderRecord } from '@/lib/store';
+import { OrderRecord, getAllProducts } from '@/lib/store';
 import { SampleProduct } from '@/lib/sample-data';
 import { formatBDT } from '@/lib/utils';
 import { calculateAmountToCollect, formatTaka } from '@/lib/order-calc';
+import { getDistrictOptions, getThanasByDistrict } from '@/lib/bd-locations';
+import { calculateDelivery } from '@/lib/delivery-store';
 import { Button } from '@/components/ui/Button';
 import { StatusPill } from '@/components/ui/Pill';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -143,9 +145,171 @@ export default function OrdersManager({
   const [newOrderPhone, setNewOrderPhone] = useState('');
   const [newOrderAddress, setNewOrderAddress] = useState('');
   const [newOrderDistrict, setNewOrderDistrict] = useState('Dhaka');
-  const [newOrderAmount, setNewOrderAmount] = useState<number>(999);
-  const [newOrderPayment, setNewOrderPayment] = useState<'COD' | 'BKASH'>('COD');
-  const [newOrderSource, setNewOrderSource] = useState<'facebook' | 'whatsapp' | 'phone'>('facebook');
+  const [newOrderThana, setNewOrderThana] = useState('');
+  const [newOrderCustomThana, setNewOrderCustomThana] = useState('');
+  const [newOrderPayment, setNewOrderPayment] = useState<'COD' | 'BKASH' | 'NAGAD'>('COD');
+  const [newOrderSource, setNewOrderSource] = useState<'facebook' | 'whatsapp' | 'phone' | 'manual'>('facebook');
+
+  // Product, Variant & Pricing for Manual Order Creation
+  const [storeProducts, setStoreProducts] = useState<SampleProduct[]>(() => {
+    try {
+      return getAllProducts();
+    } catch {
+      return [];
+    }
+  });
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [selectedVariantSku, setSelectedVariantSku] = useState<string>('');
+  const [customProductName, setCustomProductName] = useState<string>('');
+  const [customVariantName, setCustomVariantName] = useState<string>('');
+  const [itemQuantity, setItemQuantity] = useState<number>(1);
+  const [itemUnitPrice, setItemUnitPrice] = useState<number>(999);
+  const [deliveryFee, setDeliveryFee] = useState<number>(60);
+  const [newOrderAmount, setNewOrderAmount] = useState<number>(1059);
+  const [isAmountManuallyOverridden, setIsAmountManuallyOverridden] = useState<boolean>(false);
+
+  // Fetch live products from database on mount
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data.products) && data.products.length > 0) {
+          setStoreProducts(data.products);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Set initial product selection when products are loaded
+  useEffect(() => {
+    if (!selectedProductId && storeProducts.length > 0) {
+      const firstProd = storeProducts[0];
+      setSelectedProductId(firstProd.id);
+      if (firstProd.variations && firstProd.variations.length > 0) {
+        const firstVar = firstProd.variations[0];
+        setSelectedVariantSku(firstVar.sku || firstVar.id || 'var-1');
+        const p = firstVar.salePrice || firstVar.price || firstProd.baseSalePrice || firstProd.basePrice || 999;
+        setItemUnitPrice(p);
+        if (!isAmountManuallyOverridden) {
+          setNewOrderAmount(p * itemQuantity + deliveryFee);
+        }
+      } else {
+        setSelectedVariantSku('standard');
+        const p = firstProd.baseSalePrice || firstProd.basePrice || firstProd.price || 999;
+        setItemUnitPrice(p);
+        if (!isAmountManuallyOverridden) {
+          setNewOrderAmount(p * itemQuantity + deliveryFee);
+        }
+      }
+    }
+  }, [storeProducts]);
+
+  const districtOptions = useMemo(() => getDistrictOptions(), []);
+  const availableThanas = useMemo(() => getThanasByDistrict(newOrderDistrict), [newOrderDistrict]);
+
+  const currentProduct = useMemo(() => {
+    return storeProducts.find((p) => p.id === selectedProductId) || null;
+  }, [storeProducts, selectedProductId]);
+
+  const currentProductVariations = useMemo(() => {
+    if (!currentProduct || !currentProduct.variations) return [];
+    return currentProduct.variations;
+  }, [currentProduct]);
+
+  const handleDistrictChange = (districtName: string) => {
+    setNewOrderDistrict(districtName);
+    setNewOrderThana('');
+    setNewOrderCustomThana('');
+    let fee = 120;
+    try {
+      const calc = calculateDelivery(districtName, itemUnitPrice * itemQuantity);
+      fee = calc.charge;
+    } catch {
+      fee = districtName.toLowerCase().includes('dhaka') ? 60 : 120;
+    }
+    setDeliveryFee(fee);
+    if (!isAmountManuallyOverridden) {
+      setNewOrderAmount(itemUnitPrice * itemQuantity + fee);
+    }
+  };
+
+  const handleProductChange = (prodId: string) => {
+    setSelectedProductId(prodId);
+    if (prodId === 'CUSTOM') {
+      setSelectedVariantSku('');
+      setCustomProductName('');
+      setCustomVariantName('');
+      return;
+    }
+    const prod = storeProducts.find((p) => p.id === prodId);
+    if (prod) {
+      if (prod.variations && prod.variations.length > 0) {
+        const firstVar = prod.variations[0];
+        setSelectedVariantSku(firstVar.sku || firstVar.id || '');
+        const p = firstVar.salePrice || firstVar.price || prod.baseSalePrice || prod.basePrice || 0;
+        setItemUnitPrice(p);
+        if (!isAmountManuallyOverridden) {
+          setNewOrderAmount(p * itemQuantity + deliveryFee);
+        }
+      } else {
+        setSelectedVariantSku('standard');
+        const p = prod.baseSalePrice || prod.basePrice || prod.price || 0;
+        setItemUnitPrice(p);
+        if (!isAmountManuallyOverridden) {
+          setNewOrderAmount(p * itemQuantity + deliveryFee);
+        }
+      }
+    }
+  };
+
+  const handleVariantChange = (skuOrId: string) => {
+    setSelectedVariantSku(skuOrId);
+    const prod = storeProducts.find((p) => p.id === selectedProductId);
+    if (prod && prod.variations) {
+      const v = prod.variations.find((item) => (item.sku || item.id) === skuOrId);
+      if (v) {
+        const p = v.salePrice || v.price || prod.baseSalePrice || prod.basePrice || 0;
+        setItemUnitPrice(p);
+        if (!isAmountManuallyOverridden) {
+          setNewOrderAmount(p * itemQuantity + deliveryFee);
+        }
+      }
+    }
+  };
+
+  const handleQuantityChange = (qty: number) => {
+    const safeQty = Math.max(1, qty);
+    setItemQuantity(safeQty);
+    if (!isAmountManuallyOverridden) {
+      setNewOrderAmount(itemUnitPrice * safeQty + deliveryFee);
+    }
+  };
+
+  const handleUnitPriceChange = (price: number) => {
+    const safePrice = Math.max(0, price);
+    setItemUnitPrice(safePrice);
+    if (!isAmountManuallyOverridden) {
+      setNewOrderAmount(safePrice * itemQuantity + deliveryFee);
+    }
+  };
+
+  const handleDeliveryFeeChange = (fee: number) => {
+    const safeFee = Math.max(0, fee);
+    setDeliveryFee(safeFee);
+    if (!isAmountManuallyOverridden) {
+      setNewOrderAmount(itemUnitPrice * itemQuantity + safeFee);
+    }
+  };
+
+  const handleTotalAmountChange = (amt: number) => {
+    setNewOrderAmount(amt);
+    setIsAmountManuallyOverridden(true);
+  };
+
+  const handleRecalculateAmount = () => {
+    setIsAmountManuallyOverridden(false);
+    setNewOrderAmount(itemUnitPrice * itemQuantity + deliveryFee);
+  };
 
   // Live Customer Delivery Fraud Check Cache
   const [customerRisk, setCustomerRisk] = useState<{
@@ -683,8 +847,43 @@ export default function OrdersManager({
   const handleCreateManualOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newOrderCustomer.trim() || !newOrderPhone.trim() || !newOrderAddress.trim()) {
-      error('Please fill in customer name, phone number, and address.');
+      error('গ্রাহকের নাম, মোবাইল নম্বর এবং সম্পূর্ণ ঠিকানা আবশ্যক।');
       return;
+    }
+    if (!newOrderDistrict.trim()) {
+      error('দয়া করে ডেলিভারি জেলা নির্বাচন করুন।');
+      return;
+    }
+
+    const finalThana = newOrderThana === 'OTHER' ? newOrderCustomThana.trim() : newOrderThana.trim();
+    if (!finalThana) {
+      error('দয়া করে থানা / উপজেলা নির্বাচন বা উল্লেখ করুন।');
+      return;
+    }
+
+    let productTitle = 'Manual Custom Item';
+    let variantTitle = 'Standard';
+    let variationSku = 'MANUAL-VAR';
+    let productImage = 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg';
+    let productId = 'manual-custom';
+
+    if (selectedProductId === 'CUSTOM') {
+      productTitle = customProductName.trim() || 'Custom Order Item';
+      variantTitle = customVariantName.trim() || 'Standard';
+      variationSku = 'CUSTOM-SKU';
+    } else {
+      const prod = storeProducts.find((p) => p.id === selectedProductId);
+      if (prod) {
+        productId = prod.id;
+        productTitle = prod.titleBn || prod.titleEn;
+        productImage = prod.imageUrl || productImage;
+        if (prod.variations && prod.variations.length > 0) {
+          const v = prod.variations.find((item) => (item.sku || item.id) === selectedVariantSku) || prod.variations[0];
+          variantTitle = v.titleBn || v.titleEn || v.name || 'Standard';
+          variationSku = v.sku || v.id || 'SKU-VAR';
+          if (v.imageUrl) productImage = v.imageUrl;
+        }
+      }
     }
 
     try {
@@ -694,17 +893,23 @@ export default function OrdersManager({
         body: JSON.stringify({
           customerName: newOrderCustomer.trim(),
           customerPhone: newOrderPhone.trim(),
-          fullAddress: newOrderAddress.trim(),
+          fullAddress: `${newOrderAddress.trim()}, থানা: ${finalThana}, জেলা: ${newOrderDistrict}`,
           district: newOrderDistrict,
+          thana: finalThana,
           paymentMethod: newOrderPayment,
+          deliveryCharge: Number(deliveryFee),
           totalAmount: Number(newOrderAmount),
           source: newOrderSource,
           items: [
             {
-              title: 'Manual Custom Kit',
-              quantity: 1,
-              price: Number(newOrderAmount),
-              imageUrl: 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg',
+              productId,
+              title: productTitle,
+              variationSku,
+              variationTitle: variantTitle,
+              variationTitleBn: variantTitle,
+              quantity: Number(itemQuantity) || 1,
+              price: Number(itemUnitPrice),
+              imageUrl: productImage,
             },
           ],
         }),
@@ -712,17 +917,23 @@ export default function OrdersManager({
 
       const data = await resp.json();
       if (data.success) {
-        success('Order created successfully.');
+        success('ম্যানুয়াল অর্ডার সফলভাবে তৈরি হয়েছে! (Order created)');
         setIsCreateModalOpen(false);
         setNewOrderCustomer('');
         setNewOrderPhone('');
         setNewOrderAddress('');
+        setNewOrderThana('');
+        setNewOrderCustomThana('');
+        setCustomProductName('');
+        setCustomVariantName('');
+        setItemQuantity(1);
+        setIsAmountManuallyOverridden(false);
         onRefresh();
       } else {
-        error(data.message || 'Failed to create order.');
+        error(data.message || 'অর্ডার তৈরি করা সম্ভব হয়নি।');
       }
     } catch {
-      error('Server connection error while creating order.');
+      error('সার্ভারে যোগাযোগ করতে সমস্যা হয়েছে।');
     }
   };
 
@@ -2454,87 +2665,257 @@ export default function OrdersManager({
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create Order Manually"
-        description="For orders that arrive via Facebook message, WhatsApp, or phone call"
-        maxWidth="md"
+        title={
+          <div className="flex items-center gap-2">
+            <Plus className="w-5 h-5 text-[#D6403B]" />
+            <span className="font-heading font-black text-lg text-[#2B2B2B]">
+              Create Order Manually (ম্যানুয়াল অর্ডার তৈরি)
+            </span>
+          </div>
+        }
+        description="ফেসবুক, হোয়াটসঅ্যাপ বা ফোনে আসা অর্ডার সরাসরি এডমিন প্যানেল থেকে সিস্টেমে যুক্ত করুন"
+        maxWidth="2xl"
         footer={
-          <>
-            <Button variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" size="sm" onClick={handleCreateManualOrder}>
-              Create order
-            </Button>
-          </>
+          <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
+            <div className="text-xs text-[#6B6B6B]">
+              <span>সর্বমোট প্রদেয় বিল: </span>
+              <strong className="text-sm font-black text-[#D6403B]">৳{newOrderAmount}</strong>
+              <span className="text-[11px] text-[#6B6B6B] ml-1">
+                ({newOrderPayment === 'COD' ? 'ক্যাশ অন ডেলিভারি' : newOrderPayment})
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(false)}>
+                বাতিল (Cancel)
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleCreateManualOrder}>
+                অর্ডার নিশ্চিত করুন (Create Order)
+              </Button>
+            </div>
+          </div>
         }
       >
-        <form onSubmit={handleCreateManualOrder} className="space-y-4">
-          <Input
-            label="Customer Name"
-            value={newOrderCustomer}
-            onChange={(e) => setNewOrderCustomer(e.target.value)}
-            placeholder="Ayesha Rahman"
-            required
-          />
+        <form onSubmit={handleCreateManualOrder} className="space-y-4 text-xs text-[#2B2B2B]">
+          {/* Section 1: Customer & Address Information */}
+          <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EFE9E0] space-y-3">
+            <h5 className="font-heading font-bold text-xs text-[#2B2B2B] uppercase tracking-wider text-[#6B6B6B]">
+              ১. গ্রাহক ও ডেলিভারি তথ্য (Customer &amp; Address)
+            </h5>
 
-          <Input
-            label="Phone Number"
-            value={newOrderPhone}
-            onChange={(e) => setNewOrderPhone(e.target.value)}
-            placeholder="01712345678"
-            required
-          />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="Customer Name (গ্রাহকের নাম)"
+                value={newOrderCustomer}
+                onChange={(e) => setNewOrderCustomer(e.target.value)}
+                placeholder="যেমন: আয়েশা রহমান"
+                required
+              />
 
-          <Textarea
-            label="Delivery Address"
-            value={newOrderAddress}
-            onChange={(e) => setNewOrderAddress(e.target.value)}
-            placeholder="House, road, area..."
-            rows={2}
-            required
-          />
+              <Input
+                label="Phone Number (মোবাইল নম্বর)"
+                value={newOrderPhone}
+                onChange={(e) => setNewOrderPhone(e.target.value)}
+                placeholder="017XXXXXXXX"
+                required
+              />
+            </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Select
-              label="District"
-              value={newOrderDistrict}
-              onChange={(e) => setNewOrderDistrict(e.target.value)}
-            >
-              <option value="Dhaka">Dhaka (৳৬০)</option>
-              <option value="Chattogram">Chattogram (৳১২০)</option>
-              <option value="Rajshahi">Rajshahi (৳১২০)</option>
-              <option value="Sylhet">Sylhet (৳১২০)</option>
-              <option value="Other">Other District (৳১২০)</option>
-            </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Select
+                label="District (জেলা)"
+                value={newOrderDistrict}
+                onChange={(e) => handleDistrictChange(e.target.value)}
+              >
+                {districtOptions.map((d) => (
+                  <option key={d.nameEn} value={d.nameEn}>
+                    {d.nameEn} ({d.nameBn})
+                  </option>
+                ))}
+              </Select>
 
-            <Select
-              label="Payment Method"
-              value={newOrderPayment}
-              onChange={(e) => setNewOrderPayment(e.target.value as any)}
-            >
-              <option value="COD">Cash on delivery (COD)</option>
-              <option value="BKASH">bKash (Prepaid)</option>
-            </Select>
-          </div>
+              <Select
+                label="Thana / Upazila (থানা / উপজেলা)"
+                value={newOrderThana}
+                onChange={(e) => setNewOrderThana(e.target.value)}
+                required
+              >
+                <option value="">-- থানা নির্বাচন করুন --</option>
+                {availableThanas.map((th) => (
+                  <option key={th.nameEn} value={th.nameEn}>
+                    {th.nameBn} ({th.nameEn})
+                  </option>
+                ))}
+                <option value="OTHER">অন্যান্য / ম্যানুয়াল থানা লিখুন (Other)</option>
+              </Select>
+            </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              type="number"
-              label="Total Amount (৳)"
-              value={newOrderAmount}
-              onChange={(e) => setNewOrderAmount(Number(e.target.value))}
+            {newOrderThana === 'OTHER' && (
+              <Input
+                label="Custom Thana Name (থানার নাম)"
+                value={newOrderCustomThana}
+                onChange={(e) => setNewOrderCustomThana(e.target.value)}
+                placeholder="থানার নাম লিখুন"
+                required
+              />
+            )}
+
+            <Textarea
+              label="Delivery Address (বাসা, রোড ও এলাকার বিস্তারিত ঠিকানা)"
+              value={newOrderAddress}
+              onChange={(e) => setNewOrderAddress(e.target.value)}
+              placeholder="যেমন: বাসা নং ১২, রোড নং ৪, সেক্টর ৩..."
+              rows={2}
               required
             />
+          </div>
 
-            <Select
-              label="Order Source"
-              value={newOrderSource}
-              onChange={(e) => setNewOrderSource(e.target.value as any)}
-            >
-              <option value="facebook">Facebook Message</option>
-              <option value="whatsapp">WhatsApp Chat</option>
-              <option value="phone">Phone Call</option>
-            </Select>
+          {/* Section 2: Product Name + Variant & Quantity */}
+          <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EFE9E0] space-y-3">
+            <h5 className="font-heading font-bold text-xs text-[#2B2B2B] uppercase tracking-wider text-[#6B6B6B]">
+              ২. পণ্য, ভ্যারিয়েন্ট ও পরিমাণ (Product Name, Variant &amp; Quantity)
+            </h5>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Select
+                label="Product Name (পণ্য নির্বাচন করুন)"
+                value={selectedProductId}
+                onChange={(e) => handleProductChange(e.target.value)}
+              >
+                {storeProducts.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.titleBn || p.titleEn} (৳{p.baseSalePrice || p.basePrice || p.price})
+                  </option>
+                ))}
+                <option value="CUSTOM">+ কাস্টম পণ্য (Custom / Other Item)</option>
+              </Select>
+
+              {selectedProductId === 'CUSTOM' ? (
+                <Input
+                  label="Custom Product Title (পণ্যের নাম)"
+                  value={customProductName}
+                  onChange={(e) => setCustomProductName(e.target.value)}
+                  placeholder="যেমন: স্পেশাল আর্ট কিট"
+                  required
+                />
+              ) : (
+                <Select
+                  label="Variant (ভ্যারিয়েন্ট নির্বাচন করুন)"
+                  value={selectedVariantSku}
+                  onChange={(e) => handleVariantChange(e.target.value)}
+                  disabled={!currentProductVariations || currentProductVariations.length === 0}
+                >
+                  {currentProductVariations && currentProductVariations.length > 0 ? (
+                    currentProductVariations.map((v) => (
+                      <option key={v.sku || v.id} value={v.sku || v.id}>
+                        {v.titleBn || v.titleEn || v.name} — ৳{v.salePrice || v.price}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="standard">স্ট্যান্ডার্ড ভ্যারিয়েন্ট (Standard)</option>
+                  )}
+                </Select>
+              )}
+            </div>
+
+            {selectedProductId === 'CUSTOM' && (
+              <Input
+                label="Custom Variant (ভ্যারিয়েন্টের নাম/সাইজ)"
+                value={customVariantName}
+                onChange={(e) => setCustomVariantName(e.target.value)}
+                placeholder="যেমন: ১২ পিস সেট / সাইজ L"
+              />
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                type="number"
+                min={1}
+                label="Quantity (পরিমাণ / সংখ্যা)"
+                value={itemQuantity}
+                onChange={(e) => handleQuantityChange(Number(e.target.value))}
+                required
+              />
+
+              <Input
+                type="number"
+                min={0}
+                label="Unit Price (প্রতিটির মূল্য ৳)"
+                value={itemUnitPrice}
+                onChange={(e) => handleUnitPriceChange(Number(e.target.value))}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Section 3: Delivery Fee, Total Amount & Payment */}
+          <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EFE9E0] space-y-3">
+            <h5 className="font-heading font-bold text-xs text-[#2B2B2B] uppercase tracking-wider text-[#6B6B6B]">
+              ৩. বিল ও পেমেন্ট বিবরণ (Pricing &amp; Payment)
+            </h5>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Input
+                  type="number"
+                  min={0}
+                  label="Delivery Charge (ডেলিভারি চার্জ ৳)"
+                  value={deliveryFee}
+                  onChange={(e) => handleDeliveryFeeChange(Number(e.target.value))}
+                  required
+                />
+                <span className="text-[11px] text-[#6B6B6B] block mt-0.5">
+                  {newOrderDistrict.toLowerCase().includes('dhaka') ? 'ঢাকা সিটি (স্বয়ংক্রিয় ৳৬০)' : 'ঢাকার বাইরে (স্বয়ংক্রিয় ৳১২০)'}
+                </span>
+              </div>
+
+              <div>
+                <Input
+                  type="number"
+                  min={0}
+                  label="Total Amount (সর্বমোট প্রদেয় টাকা ৳)"
+                  value={newOrderAmount}
+                  onChange={(e) => handleTotalAmountChange(Number(e.target.value))}
+                  required
+                />
+                <div className="flex items-center justify-between text-[11px] mt-0.5">
+                  <span className="text-[#6B6B6B]">
+                    আইটেম: ৳{itemUnitPrice * itemQuantity} + ডেলিভারি: ৳{deliveryFee}
+                  </span>
+                  {isAmountManuallyOverridden && (
+                    <button
+                      type="button"
+                      onClick={handleRecalculateAmount}
+                      className="text-[#D6403B] font-bold hover:underline cursor-pointer"
+                    >
+                      স্বয়ংক্রিয় হিসাব
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <Select
+                label="Payment Method (পেমেন্ট পদ্ধতি)"
+                value={newOrderPayment}
+                onChange={(e) => setNewOrderPayment(e.target.value as any)}
+              >
+                <option value="COD">Cash on delivery (ক্যাশ অন ডেলিভারি)</option>
+                <option value="BKASH">bKash (বিকাশ প্রিপেইড)</option>
+                <option value="NAGAD">Nagad (নগদ প্রিপেইড)</option>
+              </Select>
+
+              <Select
+                label="Order Source (অর্ডার সোর্স / চ্যানেল)"
+                value={newOrderSource}
+                onChange={(e) => setNewOrderSource(e.target.value as any)}
+              >
+                <option value="facebook">Facebook Message (ফেসবুক)</option>
+                <option value="whatsapp">WhatsApp Chat (হোয়াটসঅ্যাপ)</option>
+                <option value="phone">Phone Call (সরাসরি ফোন কল)</option>
+                <option value="manual">Manual Admin Entry (অন্যান্য)</option>
+              </Select>
+            </div>
           </div>
         </form>
       </Modal>
