@@ -25,6 +25,8 @@ export interface OrderItemRecord {
   productId: string;
   title: string;
   variationTitle?: string;
+  variationTitleBn?: string;
+  variationSku?: string;
   price: number;
   quantity: number;
   total: number;
@@ -549,6 +551,14 @@ export function updateOrderStatus(orderId: string, status: OrderRecord['status']
     }
   }
 
+  return order;
+}
+
+export function updateOrder(orderId: string, updates: Partial<OrderRecord>): OrderRecord | null {
+  const order = globalOrders.find((o) => o.id === orderId || o.orderNumber === orderId);
+  if (!order) return null;
+
+  Object.assign(order, updates);
   return order;
 }
 

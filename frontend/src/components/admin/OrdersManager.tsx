@@ -7,6 +7,7 @@ import {
   Download,
   Phone,
   MessageCircle,
+  MessageSquare,
   Truck,
   Printer,
   FileText,
@@ -176,6 +177,27 @@ export default function OrdersManager({
     if (!selectedOrderId) return null;
     return orders.find((o) => o.id === selectedOrderId || o.orderNumber === selectedOrderId) || null;
   }, [orders, selectedOrderId]);
+
+  // Custom Order Value State
+  const [isCustomizingValue, setIsCustomizingValue] = useState(false);
+  const [customSubtotal, setCustomSubtotal] = useState<number>(0);
+  const [customDeliveryCharge, setCustomDeliveryCharge] = useState<number>(0);
+  const [customDiscount, setCustomDiscount] = useState<number>(0);
+  const [customTotalAmount, setCustomTotalAmount] = useState<number>(0);
+  const [customValueReason, setCustomValueReason] = useState<string>('');
+  const [isSavingCustomValue, setIsSavingCustomValue] = useState(false);
+
+  useEffect(() => {
+    if (activeOrder) {
+      const fin = calculateAmountToCollect(activeOrder);
+      setCustomSubtotal(fin.subtotal);
+      setCustomDeliveryCharge(fin.deliveryCharge);
+      setCustomDiscount(fin.discount);
+      setCustomTotalAmount(activeOrder.totalAmount ?? fin.grossTotal);
+      setCustomValueReason('');
+      setIsCustomizingValue(false);
+    }
+  }, [activeOrder?.id, activeOrder?.totalAmount, activeOrder?.deliveryCharge, activeOrder?.discountAmount]);
 
   // Customer Store Stats (CraftyKidsCo orders for this specific customer)
   const customerStoreStats = useMemo(() => {
@@ -684,6 +706,38 @@ export default function OrdersManager({
     }
   };
 
+  // Save Custom Order Value
+  const handleSaveCustomOrderValue = async () => {
+    if (!activeOrder) return;
+    setIsSavingCustomValue(true);
+    try {
+      const targetId = activeOrder.id || activeOrder.orderNumber;
+      const res = await fetch(`/api/orders/${targetId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          totalAmount: customTotalAmount,
+          deliveryCharge: customDeliveryCharge,
+          discountAmount: customDiscount,
+          subtotal: customSubtotal,
+          note: `মোট বিল পরিবর্তন: ৳${activeOrder.totalAmount} -> ৳${customTotalAmount}${customValueReason.trim() ? ` (${customValueReason.trim()})` : ''}`,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        success(`অর্ডার ভ্যালু সফলভাবে পরিবর্তন করা হয়েছে: ৳${customTotalAmount.toLocaleString()}`);
+        setIsCustomizingValue(false);
+        onRefresh();
+      } else {
+        error(data.message || 'অর্ডার ভ্যালু পরিবর্তন ব্যর্থ হয়েছে');
+      }
+    } catch {
+      error('কানেকশন এরর: অর্ডার ভ্যালু সেভ করা যায়নি');
+    } finally {
+      setIsSavingCustomValue(false);
+    }
+  };
+
   // Render Row Action Button based on status
   const renderRowMainAction = (ord: OrderRecord) => {
     if (ord.status === 'PENDING') {
@@ -1132,7 +1186,7 @@ export default function OrdersManager({
                       </span>
                     </TableCell>
 
-                    {/* Customer Name & Phone */}
+                    {/* Customer Name & Phone & Note */}
                     <TableCell>
                       <span className="font-semibold text-[#2B2B2B] block leading-tight">
                         {ord.customerName}
@@ -1140,6 +1194,15 @@ export default function OrdersManager({
                       <span className="text-xs text-[#6B6B6B] block mt-0.5 font-mono">
                         {ord.customerPhone}
                       </span>
+                      {ord.customerNote && (
+                        <span
+                          title={ord.customerNote}
+                          className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold bg-[#FFF8E7] text-[#B78103] border border-[#FFE082] px-1.5 py-0.5 rounded-md truncate max-w-[150px]"
+                        >
+                          <MessageSquare className="w-2.5 h-2.5 shrink-0" />
+                          <span className="truncate">নোট: {ord.customerNote}</span>
+                        </span>
+                      )}
                     </TableCell>
 
                     {/* District and Area */}
@@ -1154,29 +1217,63 @@ export default function OrdersManager({
 
                     {/* First Item with Thumbnail & +N more */}
                     <TableCell>
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-[10px] bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-[#6B6B6B]">
-                          {firstItem?.imageUrl ? (
-                            <img
-                              src={firstItem.imageUrl}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span>Item</span>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-xs font-medium text-[#2B2B2B] block truncate max-w-[130px]">
-                            {firstItem?.title || 'Natural Crayons'}
-                          </span>
-                          {extraCount > 0 && (
-                            <span className="text-[11px] text-[#6B6B6B] block">
-                              +{extraCount} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      {(() => {
+                        const matchedProd = products.find(
+                          (p) =>
+                            p.id === firstItem?.productId ||
+                            p.slug === firstItem?.productId ||
+                            p.titleBn === firstItem?.title ||
+                            p.titleEn === firstItem?.title
+                        );
+                        const matchedVar = matchedProd?.variations?.find(
+                          (v) =>
+                            (firstItem?.variationSku && v.sku === firstItem.variationSku) ||
+                            (firstItem?.variationTitle &&
+                              (v.titleBn === firstItem.variationTitle ||
+                                v.name === firstItem.variationTitle ||
+                                v.titleEn === firstItem.variationTitle))
+                        );
+                        const itemImg =
+                          firstItem?.imageUrl ||
+                          matchedVar?.imageUrl ||
+                          matchedProd?.imageUrl;
+                        const varLabel =
+                          firstItem?.variationTitle ||
+                          (firstItem as any)?.variationTitleBn ||
+                          matchedVar?.name ||
+                          '';
+
+                        return (
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-[10px] bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-[#6B6B6B]">
+                              {itemImg ? (
+                                <img
+                                  src={itemImg}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span>Item</span>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="text-xs font-semibold text-[#2B2B2B] block truncate max-w-[130px]">
+                                {firstItem?.title || 'Natural Crayons'}
+                              </span>
+                              {varLabel ? (
+                                <span className="text-[10px] text-[#A04000] font-bold block truncate max-w-[130px]">
+                                  {varLabel}
+                                </span>
+                              ) : null}
+                              {extraCount > 0 && (
+                                <span className="text-[11px] text-[#6B6B6B] block">
+                                  +{extraCount} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
 
                     {/* Total with COD or Paid Pill */}
@@ -1731,6 +1828,19 @@ export default function OrdersManager({
                     <p className="font-medium mt-0.5">{activeOrder.fullAddress}</p>
                     <p className="text-[#6B6B6B] mt-0.5">District: {activeOrder.district}</p>
                   </div>
+
+                  {/* Customer Note (বিশেষ নির্দেশনা বা নোট) */}
+                  {activeOrder.customerNote && (
+                    <div className="mt-3 p-3 rounded-[12px] bg-[#FFF8E7] border border-[#FFE082] text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 text-[#B78103] font-bold">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>গ্রাহকের বিশেষ নির্দেশনা বা নোট:</span>
+                      </div>
+                      <p className="text-[#4A3B18] font-medium leading-relaxed pl-5 bg-white/70 p-2 rounded-lg border border-[#FFE082]/60">
+                        "{activeOrder.customerNote}"
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1756,69 +1866,293 @@ export default function OrdersManager({
 
               {/* Items & Money Breakdown with Amount to Collect */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
-                  Items & Payment Breakdown
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
+                    Items & Payment Breakdown
+                  </h4>
+                  {!isCustomizingValue ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomizingValue(true)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#0B5F85] bg-[#DDF1FB] hover:bg-[#BEE4F7] border border-[#BEE4F7] flex items-center gap-1 transition-colors cursor-pointer"
+                      title="মোট বিল ও ডেলিভারি চার্জ পরিবর্তন করুন"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                      <span>ভ্যালু এডিট করুন</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomizingValue(false)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#6B6B6B] hover:bg-[#FAF7F2] border border-[#EFE9E0] transition-colors cursor-pointer"
+                    >
+                      বাতিল
+                    </button>
+                  )}
+                </div>
+
                 <div className="border border-[#EFE9E0] rounded-[16px] overflow-hidden bg-white text-xs sm:text-sm">
                   <div className="divide-y divide-[#EFE9E0]">
-                    {activeOrder.items.map((item, idx) => (
-                      <div key={idx} className="p-3.5 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-[10px] bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-[#6B6B6B]">
-                            {item.imageUrl ? (
-                              <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <span>Item</span>
-                            )}
+                    {activeOrder.items.map((item, idx) => {
+                      const matchedProd = products.find(
+                        (p) =>
+                          p.id === item.productId ||
+                          p.slug === item.productId ||
+                          p.titleBn === item.title ||
+                          p.titleEn === item.title
+                      );
+                      const matchedVar = matchedProd?.variations?.find(
+                        (v) =>
+                          (item.variationSku && v.sku === item.variationSku) ||
+                          (item.variationTitle &&
+                            (v.titleBn === item.variationTitle ||
+                              v.name === item.variationTitle ||
+                              v.titleEn === item.variationTitle))
+                      );
+
+                      const resolvedImage =
+                        item.imageUrl ||
+                        matchedVar?.imageUrl ||
+                        matchedProd?.imageUrl;
+
+                      const resolvedVarTitle =
+                        item.variationTitle ||
+                        (item as any).variationTitleBn ||
+                        matchedVar?.titleBn ||
+                        matchedVar?.name ||
+                        '';
+
+                      const resolvedSku = item.variationSku || matchedVar?.sku || '';
+
+                      return (
+                        <div key={idx} className="p-3.5 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {/* Thumbnail */}
+                            <div className="w-12 h-12 rounded-[12px] bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-[#6B6B6B] shadow-2xs relative">
+                              {resolvedImage ? (
+                                <img
+                                  src={resolvedImage}
+                                  alt={item.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span>Item</span>
+                              )}
+                            </div>
+
+                            {/* Details */}
+                            <div className="min-w-0">
+                              <span className="font-bold text-[#2B2B2B] block text-xs sm:text-sm leading-snug">
+                                {item.title}
+                              </span>
+
+                              {/* Variation Pill */}
+                              {resolvedVarTitle ? (
+                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#FAF0E6] text-[#A04000] border border-[#F0D5BE]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#D6403B]" />
+                                    ভ্যারিয়েন্ট: {resolvedVarTitle}
+                                  </span>
+                                  {resolvedSku && (
+                                    <span className="text-[10px] font-mono text-[#6B6B6B] bg-[#F5F5F5] px-1.5 py-0.5 rounded border border-[#E5E5E5]">
+                                      SKU: {resolvedSku}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : resolvedSku ? (
+                                <span className="inline-block mt-0.5 text-[10px] font-mono text-[#6B6B6B] bg-[#F5F5F5] px-1.5 py-0.5 rounded border border-[#E5E5E5]">
+                                  SKU: {resolvedSku}
+                                </span>
+                              ) : null}
+
+                              <span className="text-xs text-[#6B6B6B] mt-0.5 block">
+                                Qty: <strong className="text-[#2B2B2B]">{item.quantity}</strong> &times; ৳{item.price.toLocaleString()}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="font-semibold text-[#2B2B2B] block">{item.title}</span>
-                            <span className="text-xs text-[#6B6B6B]">
-                              Qty: {item.quantity} &times; ৳{item.price}
-                            </span>
-                          </div>
+
+                          <span className="font-bold text-[#2B2B2B] whitespace-nowrap text-sm">
+                            ৳{(item.price * item.quantity).toLocaleString()}
+                          </span>
                         </div>
-                        <span className="font-bold text-[#2B2B2B]">
-                          ৳{(item.price * item.quantity).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
-                  {(() => {
-                    const fin = calculateAmountToCollect(activeOrder);
-                    return (
-                      <div className="p-4 bg-[#FAF7F2] border-t border-[#EFE9E0] space-y-1.5 text-xs text-[#6B6B6B]">
-                        <div className="flex justify-between">
-                          <span>Subtotal:</span>
-                          <span className="font-semibold text-[#2B2B2B]">{formatTaka(fin.subtotal)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Delivery charge ({activeOrder.district || 'Standard'}):</span>
-                          <span className="font-semibold text-[#2B2B2B]">
-                            {fin.deliveryCharge === 0 ? 'Free (৳0)' : formatTaka(fin.deliveryCharge)}
-                          </span>
-                        </div>
-                        {fin.discount > 0 && (
-                          <div className="flex justify-between text-[#1F6B43] font-semibold">
-                            <span>Coupon discount:</span>
-                            <span>- {formatTaka(fin.discount)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-bold text-sm text-[#2B2B2B] pt-2 border-t border-[#EFE9E0]">
-                          <span>Amount to collect ({activeOrder.paymentMethod || 'COD'}):</span>
-                          <span className={fin.isPaid ? 'text-[#1F6B43]' : 'text-[#C23631]'}>
-                            {fin.collectDisplayBn}
-                          </span>
-                        </div>
-                        {fin.isPaid && (
-                          <span className="text-[11px] text-[#1F6B43] font-bold block text-right">
-                            ✓ পেইড (অগ্রিম পরিশোধিত)
-                          </span>
-                        )}
+                  {isCustomizingValue ? (
+                    <div className="p-4 bg-[#FFF9F3] border-t-2 border-[#D6403B] space-y-3 text-xs">
+                      <div className="flex items-center justify-between pb-2 border-b border-[#EFE9E0]">
+                        <span className="font-bold text-[#2B2B2B] text-sm flex items-center gap-1.5">
+                          <Edit2 className="w-3.5 h-3.5 text-[#D6403B]" />
+                          অর্ডার ভ্যালু কাস্টমাইজ করুন
+                        </span>
+                        <span className="text-[11px] text-[#6B6B6B]">
+                          Subtotal: <strong>{formatTaka(customSubtotal)}</strong>
+                        </span>
                       </div>
-                    );
-                  })()}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Delivery Charge */}
+                        <div>
+                          <label className="block text-[#6B6B6B] font-semibold mb-1">
+                            ডেলিভারি চার্জ (৳):
+                          </label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={customDeliveryCharge}
+                            onChange={(e) => {
+                              const d = Math.max(0, parseInt(e.target.value, 10) || 0);
+                              setCustomDeliveryCharge(d);
+                              setCustomTotalAmount(Math.max(0, customSubtotal + d - customDiscount));
+                            }}
+                            className="text-xs font-semibold h-9"
+                          />
+                          <div className="flex gap-1.5 mt-1">
+                            {[0, 60, 120].map((amt) => (
+                              <button
+                                key={amt}
+                                type="button"
+                                onClick={() => {
+                                  setCustomDeliveryCharge(amt);
+                                  setCustomTotalAmount(Math.max(0, customSubtotal + amt - customDiscount));
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                                  customDeliveryCharge === amt
+                                    ? 'bg-[#0B5F85] text-white border-[#0B5F85]'
+                                    : 'bg-white text-[#6B6B6B] border-[#EFE9E0] hover:bg-[#FAF7F2]'
+                                }`}
+                              >
+                                {amt === 0 ? 'ফ্রি (৳০)' : `৳${amt}`}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Discount */}
+                        <div>
+                          <label className="block text-[#6B6B6B] font-semibold mb-1">
+                            অতিরিক্ত ছাড় / ডিসকাউন্ট (৳):
+                          </label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={customDiscount}
+                            onChange={(e) => {
+                              const disc = Math.max(0, parseInt(e.target.value, 10) || 0);
+                              setCustomDiscount(disc);
+                              setCustomTotalAmount(Math.max(0, customSubtotal + customDeliveryCharge - disc));
+                            }}
+                            className="text-xs font-semibold h-9"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Direct Custom Total */}
+                      <div className="pt-2 border-t border-[#EFE9E0]">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block font-bold text-[#2B2B2B] text-xs">
+                            মোট বিল / Amount to Collect (৳):
+                          </label>
+                          <span className="text-[10px] text-[#A04000] font-medium">
+                            (সরাসরি মোট বিল টাইপ করলে ডিসকাউন্ট স্বয়ংক্রিয়ভাবে মিলবে)
+                          </span>
+                        </div>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={customTotalAmount}
+                          onChange={(e) => {
+                            const tot = Math.max(0, parseInt(e.target.value, 10) || 0);
+                            setCustomTotalAmount(tot);
+                            const impliedDisc = Math.max(0, customSubtotal + customDeliveryCharge - tot);
+                            setCustomDiscount(impliedDisc);
+                          }}
+                          className="text-sm font-black text-[#C23631] h-10 border-[#D6403B]/40 focus:border-[#D6403B]"
+                        />
+                      </div>
+
+                      {/* Optional reason / note */}
+                      <div>
+                        <label className="block text-[#6B6B6B] font-semibold mb-1">
+                          পরিবর্তনের কারণ বা নোট (ঐচ্ছিক):
+                        </label>
+                        <Input
+                          type="text"
+                          value={customValueReason}
+                          onChange={(e) => setCustomValueReason(e.target.value)}
+                          placeholder="যেমন: ফোনে কাস্টমারকে ১০০ টাকা ছাড় দেওয়া হয়েছে"
+                          className="text-xs h-9"
+                        />
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EFE9E0]">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={isSavingCustomValue}
+                          onClick={() => setIsCustomizingValue(false)}
+                        >
+                          বাতিল
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          disabled={isSavingCustomValue}
+                          onClick={handleSaveCustomOrderValue}
+                        >
+                          {isSavingCustomValue ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    (() => {
+                      const fin = calculateAmountToCollect(activeOrder);
+                      return (
+                        <div className="p-4 bg-[#FAF7F2] border-t border-[#EFE9E0] space-y-1.5 text-xs text-[#6B6B6B]">
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span className="font-semibold text-[#2B2B2B]">{formatTaka(fin.subtotal)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Delivery charge ({activeOrder.district || 'Standard'}):</span>
+                            <span className="font-semibold text-[#2B2B2B]">
+                              {fin.deliveryCharge === 0 ? 'Free (৳0)' : formatTaka(fin.deliveryCharge)}
+                            </span>
+                          </div>
+                          {fin.discount > 0 && (
+                            <div className="flex justify-between text-[#1F6B43] font-semibold">
+                              <span>Coupon / Manual discount:</span>
+                              <span>- {formatTaka(fin.discount)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-bold text-sm text-[#2B2B2B] pt-2 border-t border-[#EFE9E0]">
+                            <div className="flex items-center gap-1.5">
+                              <span>Amount to collect ({activeOrder.paymentMethod || 'COD'}):</span>
+                              <button
+                                type="button"
+                                onClick={() => setIsCustomizingValue(true)}
+                                className="text-[11px] text-[#0B5F85] hover:underline flex items-center gap-0.5 ml-1 font-semibold cursor-pointer"
+                                title="এডিট করুন"
+                              >
+                                <Edit2 className="w-2.5 h-2.5" />
+                                <span>এডিট</span>
+                              </button>
+                            </div>
+                            <span className={fin.isPaid ? 'text-[#1F6B43]' : 'text-[#C23631]'}>
+                              {fin.collectDisplayBn}
+                            </span>
+                          </div>
+                          {fin.isPaid && (
+                            <span className="text-[11px] text-[#1F6B43] font-bold block text-right">
+                              ✓ পেইড (অগ্রিম পরিশোধিত)
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()
+                  )}
                 </div>
               </div>
 

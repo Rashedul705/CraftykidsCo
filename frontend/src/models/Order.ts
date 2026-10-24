@@ -161,12 +161,16 @@ const OrderSchema = new Schema<IOrder>(
     shipmentId: { type: Schema.Types.ObjectId, ref: 'Shipment' },
     paymentId: { type: Schema.Types.ObjectId, ref: 'Payment' },
   },
-  { timestamps: true }
+  { timestamps: true, strict: false }
 );
 
 // Compound indexes for admin queries
 OrderSchema.index({ status: 1, createdAt: -1 });
 OrderSchema.index({ customerPhone: 1, createdAt: -1 });
+
+if (process.env.NODE_ENV !== 'production' && mongoose.models && mongoose.models.Order) {
+  delete (mongoose.models as any).Order;
+}
 
 export const Order: Model<IOrder> =
   mongoose.models.Order || mongoose.model<IOrder>('Order', OrderSchema);

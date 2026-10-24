@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOrderByIdOrNumber, updateOrderStatus, OrderRecord } from '@/lib/store';
+import { getOrderByIdOrNumber, updateOrderStatus, updateOrder, OrderRecord } from '@/lib/store';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Order } from '@/models/Order';
 import { getNotificationProvider } from '@/core/notification';
@@ -61,7 +61,18 @@ export async function PATCH(
 
     const { id } = await context.params;
     const body = await req.json();
-    const { status, note } = body;
+    const {
+      status,
+      note,
+      totalAmount,
+      deliveryCharge,
+      discountAmount,
+      subtotal,
+      fullAddress,
+      customerNote,
+      internalNote,
+      paymentStatus,
+    } = body;
 
     const validStatuses = [
       'PENDING',
@@ -72,11 +83,75 @@ export async function PATCH(
       'CANCELLED',
     ];
 
-    if (!validStatuses.includes(status)) {
-      return NextResponse.json(
-        { success: false, message: 'অকার্যকর অর্ডার স্ট্যাটাস' },
-        { status: 400 }
-      );
+    const now = new Date();
+    const setFields: any = { updatedAt: now };
+    const timelineEntries: any[] = [];
+    const statusHistoryEntries: any[] = [];
+
+    if (status !== undefined) {
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json(
+          { success: false, message: 'অকার্যকর অর্ডার স্ট্যাটাস' },
+          { status: 400 }
+        );
+      }
+      setFields.status = status;
+      timelineEntries.push({
+        status,
+        timestamp: now.toISOString(),
+        note: note || `স্ট্যাটাস পরিবর্তন: ${status}`,
+      });
+      statusHistoryEntries.push({
+        status,
+        note: note || `Status updated to ${status}`,
+        changedBy: 'ADMIN',
+        timestamp: now,
+      });
+    }
+
+    if (totalAmount !== undefined) {
+      const val = Math.round(Number(totalAmount));
+      if (!isNaN(val) && val >= 0) {
+        setFields.totalAmount = val;
+        if (!status) {
+          timelineEntries.push({
+            status: 'UPDATED',
+            timestamp: now.toISOString(),
+            note: note || `মোট বিল পরিবর্তন: ৳${val.toLocaleString()}`,
+          });
+        }
+      }
+    }
+
+    if (deliveryCharge !== undefined) {
+      const val = Math.round(Number(deliveryCharge));
+      if (!isNaN(val) && val >= 0) setFields.deliveryCharge = val;
+    }
+
+    if (discountAmount !== undefined) {
+      const val = Math.round(Number(discountAmount));
+      if (!isNaN(val) && val >= 0) setFields.discountAmount = val;
+    }
+
+    if (subtotal !== undefined) {
+      const val = Math.round(Number(subtotal));
+      if (!isNaN(val) && val >= 0) setFields.subtotal = val;
+    }
+
+    if (fullAddress !== undefined && typeof fullAddress === 'string') {
+      setFields.fullAddress = fullAddress.trim();
+    }
+
+    if (customerNote !== undefined && typeof customerNote === 'string') {
+      setFields.customerNote = customerNote.trim();
+    }
+
+    if (internalNote !== undefined && typeof internalNote === 'string') {
+      setFields.internalNote = internalNote.trim();
+    }
+
+    if (paymentStatus !== undefined && ['UNPAID', 'PAID', 'REFUNDED'].includes(paymentStatus)) {
+      setFields.paymentStatus = paymentStatus;
     }
 
     let updated: any = null;
@@ -89,41 +164,36 @@ export async function PATCH(
         $or: [
           { orderNumber: id },
           { id: id },
-          ...(isObjectId ? [{ _id: id }] : [])
-        ]
+          ...(isObjectId ? [{ _id: id }] : []),
+        ],
       };
 
-      const now = new Date();
+      const updateOp: any = { $set: setFields };
+      if (timelineEntries.length > 0) {
+        updateOp.$push = {
+          timeline: { $each: timelineEntries },
+          ...(statusHistoryEntries.length > 0 ? { statusHistory: { $each: statusHistoryEntries } } : {}),
+        };
+      }
+
       const updatedDoc = await Order.findOneAndUpdate(
         query,
-        {
-          $set: { status, updatedAt: now },
-          $push: {
-            timeline: {
-              status,
-              timestamp: now.toISOString(),
-              note: note || `স্ট্যাটাস পরিবর্তন: ${status}`
-            },
-            statusHistory: {
-              status,
-              note: note || `Status updated to ${status}`,
-              changedBy: 'ADMIN',
-              timestamp: now
-            }
-          }
-        },
-        { new: true }
+        updateOp,
+        { returnDocument: 'after' }
       ).lean();
 
       if (updatedDoc) {
         updated = updatedDoc;
       }
     } catch (dbErr) {
-      console.error('MongoDB status update error:', dbErr);
+      console.error('MongoDB order update error:', dbErr);
     }
 
     // 2. Update memory store as sync/fallback
-    const memUpdated = updateOrderStatus(id, status as OrderRecord['status'], note);
+    if (status) {
+      updateOrderStatus(id, status as OrderRecord['status'], note);
+    }
+    const memUpdated = updateOrder(id, setFields);
     if (!updated && memUpdated) {
       updated = memUpdated;
     }
@@ -136,28 +206,30 @@ export async function PATCH(
     }
 
     // Send SMS Notification on important status transitions
-    try {
-      const notification = getNotificationProvider();
-      if (status === 'CONFIRMED') {
-        await notification.sendSms({
-          toPhone: updated.customerPhone,
-          message: `CraftyKidsCo: প্রিয় গ্রাহক, আপনার অর্ডার #${updated.orderNumber} কনফার্ম করা হয়েছে। শীঘ্রই প্যাকেজিং শুরু হচ্ছে।`,
-          templateKey: 'ORDER_CONFIRMED',
-        });
-      } else if (status === 'SHIPPED') {
-        await notification.sendSms({
-          toPhone: updated.customerPhone,
-          message: `CraftyKidsCo: আপনার অর্ডার #${updated.orderNumber} কুরিয়ারে হস্তান্তর করা হয়েছে। ট্র্যাকিং কোড: ${updated.trackingCode || 'TRK-Pending'}।`,
-          templateKey: 'ORDER_SHIPPED',
-        });
+    if (status) {
+      try {
+        const notification = getNotificationProvider();
+        if (status === 'CONFIRMED') {
+          await notification.sendSms({
+            toPhone: updated.customerPhone,
+            message: `CraftyKidsCo: প্রিয় গ্রাহক, আপনার অর্ডার #${updated.orderNumber} কনফার্ম করা হয়েছে। শীঘ্রই প্যাকেজিং শুরু হচ্ছে।`,
+            templateKey: 'ORDER_CONFIRMED',
+          });
+        } else if (status === 'SHIPPED') {
+          await notification.sendSms({
+            toPhone: updated.customerPhone,
+            message: `CraftyKidsCo: আপনার অর্ডার #${updated.orderNumber} কুরিয়ারে হস্তান্তর করা হয়েছে। ট্র্যাকিং কোড: ${updated.trackingCode || 'TRK-Pending'}।`,
+            templateKey: 'ORDER_SHIPPED',
+          });
+        }
+      } catch (notifErr) {
+        console.warn('[Notification Error]:', notifErr);
       }
-    } catch (notifErr) {
-      console.warn('[Notification Error]:', notifErr);
     }
 
     return NextResponse.json({
       success: true,
-      message: `অর্ডারের স্ট্যাটাস '${status}' করা হয়েছে`,
+      message: status ? `অর্ডারের স্ট্যাটাস '${status}' করা হয়েছে` : 'অর্ডার তথ্য সফলভাবে আপডেট হয়েছে',
       order: updated,
     });
   } catch (error) {

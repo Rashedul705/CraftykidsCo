@@ -8,6 +8,8 @@ export const OrderItemSchema = z.object({
   title: z.string().min(1, 'Product title is required'),
   variationSku: z.string().optional(),
   variationTitle: z.string().optional(),
+  variationTitleBn: z.string().optional(),
+  imageUrl: z.string().optional(),
   price: z.number().int({ message: 'Price must be a whole integer in Taka' }).positive(),
   quantity: z.number().int().min(1, 'Quantity must be at least 1'),
 });
