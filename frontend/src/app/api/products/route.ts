@@ -174,6 +174,8 @@ export async function POST(req: NextRequest) {
       safetyBadges: body.safetyBadges || ['১০০% নিরাপদ ও নন-টক্সিক'],
       variations: body.variations || [],
       videoUrl: body.videoUrl || undefined,
+      videoUrl2: body.videoUrl2 || undefined,
+      videos: Array.isArray(body.videos) ? body.videos : [],
       weight: body.weight !== undefined && body.weight !== '' ? Number(body.weight) : 350,
       packageSize: body.packageSize || '20 x 15 x 5 cm',
       handlingTime: body.handlingTime || '1-2 Days',
@@ -221,6 +223,8 @@ export async function POST(req: NextRequest) {
       targetAgeMax: newProductData.targetAgeMax,
       variations: newProductData.variations,
       videoUrl: newProductData.videoUrl,
+      videoUrl2: newProductData.videoUrl2,
+      videos: newProductData.videos,
     };
     addMemoryProduct(sampleProd);
 

@@ -83,19 +83,28 @@ export default function AddProductForm({
   // ==========================================
 
   // 1. Photos & Video
-  const [images, setImages] = useState<string[]>(() => {
-    if (initialProduct?.galleryImages && initialProduct.galleryImages.length > 0) {
-      return initialProduct.galleryImages;
-    }
-    if (initialProduct?.imageUrl || initialProduct?.image) {
-      return [initialProduct.imageUrl || initialProduct.image];
-    }
-    return [];
-  });
-  const [videoUrl, setVideoUrl] = useState<string>(() => {
+  const initialMainImage =
+    initialProduct?.imageUrl ||
+    initialProduct?.image ||
+    (initialProduct?.galleryImages && initialProduct.galleryImages[0]) ||
+    '';
+
+  const initialGalleryImages = initialProduct?.galleryImages
+    ? initialProduct.galleryImages.filter((img: string) => img && img !== initialMainImage)
+    : [];
+
+  const [mainImage, setMainImage] = useState<string>(initialMainImage);
+  const [galleryImages, setGalleryImages] = useState<string[]>(initialGalleryImages);
+  const [isUploadingMainImage, setIsUploadingMainImage] = useState(false);
+  const [isUploadingGalleryImage, setIsUploadingGalleryImage] = useState(false);
+
+  // 2 Product Videos
+  const [videoUrl1, setVideoUrl1] = useState<string>(() => {
     return initialProduct?.videoUrl || initialProduct?.videos?.[0]?.url || '';
   });
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [videoUrl2, setVideoUrl2] = useState<string>(() => {
+    return initialProduct?.videoUrl2 || initialProduct?.videos?.[1]?.url || '';
+  });
 
   // 2. Basic Information
   const [titleBn, setTitleBn] = useState(() => initialProduct?.titleBn || '');
@@ -233,15 +242,15 @@ export default function AddProductForm({
     return `CKC-${cleanPrefix}-001`;
   };
 
-  // Upload image to cloud storage interface
-  const handlePhotoUpload = async (file: File) => {
+  // Upload main cover photo
+  const handleMainPhotoUpload = async (file: File) => {
     try {
-      setIsUploadingImage(true);
+      setIsUploadingMainImage(true);
       markDirty();
 
       const formData = new FormData();
       formData.append('image', file);
-      formData.append('name', `craftykidsco_${Date.now()}`);
+      formData.append('name', `craftykidsco_main_${Date.now()}`);
 
       const res = await fetch('/api/upload-image', {
         method: 'POST',
@@ -251,22 +260,67 @@ export default function AddProductForm({
       const data = await res.json();
       if (data.success && (data.url || data.display_url)) {
         const cdnUrl = data.url || data.display_url;
-        setImages((prev) => (prev.length < 8 ? [...prev, cdnUrl] : prev));
-        success('Photo uploaded successfully.');
+        setMainImage(cdnUrl);
+        success('Main cover photo uploaded successfully.');
       } else {
         toastError(data.message || 'Image upload failed. Please try again.');
       }
     } catch {
       toastError('Connection error uploading image.');
     } finally {
-      setIsUploadingImage(false);
+      setIsUploadingMainImage(false);
     }
   };
 
-  // Remove photo
-  const handleRemovePhoto = (idx: number) => {
+  // Upload gallery photo
+  const handleGalleryPhotoUpload = async (file: File) => {
+    try {
+      setIsUploadingGalleryImage(true);
+      markDirty();
+
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('name', `craftykidsco_gallery_${Date.now()}`);
+
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && (data.url || data.display_url)) {
+        const cdnUrl = data.url || data.display_url;
+        setGalleryImages((prev) => (prev.length < 8 ? [...prev, cdnUrl] : prev));
+        success('Gallery photo added successfully.');
+      } else {
+        toastError(data.message || 'Image upload failed. Please try again.');
+      }
+    } catch {
+      toastError('Connection error uploading image.');
+    } finally {
+      setIsUploadingGalleryImage(false);
+    }
+  };
+
+  // Remove gallery photo
+  const handleRemoveGalleryPhoto = (idx: number) => {
     markDirty();
-    setImages((prev) => prev.filter((_, i) => i !== idx));
+    setGalleryImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Set a gallery photo as main cover
+  const handleSetGalleryAsMain = (idx: number) => {
+    markDirty();
+    const target = galleryImages[idx];
+    if (!target) return;
+    const oldMain = mainImage;
+    const newGallery = galleryImages.filter((_, i) => i !== idx);
+    if (oldMain && !newGallery.includes(oldMain)) {
+      newGallery.unshift(oldMain);
+    }
+    setMainImage(target);
+    setGalleryImages(newGallery);
+    success('Selected photo set as Main Cover image.');
   };
 
   // Upload variation specific photo
@@ -289,7 +343,7 @@ export default function AddProductForm({
       if (data.success && (data.url || data.display_url)) {
         const cdnUrl = data.url || data.display_url;
         updateVariationRow(varId, 'imageUrl', cdnUrl);
-        setImages((prev) => (prev.includes(cdnUrl) ? prev : [...prev, cdnUrl]));
+        setGalleryImages((prev) => (prev.includes(cdnUrl) || mainImage === cdnUrl ? prev : [...prev, cdnUrl]));
         success('Variation photo uploaded successfully.');
       } else {
         toastError(data.message || 'Image upload failed. Please try again.');
@@ -344,7 +398,7 @@ export default function AddProductForm({
         price: existing?.price || baseRegular,
         salePrice: existing?.salePrice || baseSale,
         stock: existing?.stock ?? baseStock,
-        imageUrl: existing?.imageUrl || images[0] || '',
+        imageUrl: existing?.imageUrl || mainImage || galleryImages[0] || '',
       };
     });
 
@@ -383,7 +437,7 @@ export default function AddProductForm({
         price: Number(regularPrice || 1200),
         salePrice: Number(salePrice || 999),
         stock: Number(stockQuantity || 20),
-        imageUrl: images[0] || '',
+        imageUrl: mainImage || galleryImages[0] || '',
       },
     ]);
     markDirty();
@@ -425,7 +479,10 @@ export default function AddProductForm({
           regularPrice,
           salePrice,
           categorySlug,
-          videoUrl,
+          videoUrl1,
+          videoUrl2,
+          mainImage,
+          galleryImages,
           timestamp: new Date().toLocaleTimeString(),
         };
         try {
@@ -436,7 +493,7 @@ export default function AddProductForm({
     }, 30000);
 
     return () => clearInterval(timer);
-  }, [isDirty, isEditing, titleBn, titleEn, regularPrice, salePrice, categorySlug, videoUrl]);
+  }, [isDirty, isEditing, titleBn, titleEn, regularPrice, salePrice, categorySlug, videoUrl1, videoUrl2, mainImage, galleryImages]);
 
   // Warn before browser unload if unsaved changes exist
   useEffect(() => {
@@ -487,7 +544,8 @@ export default function AddProductForm({
       urlSlug.trim() ||
       titleEn.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-') ||
       `product-${Date.now()}`;
-    const primaryImage = images[0] || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg';
+    const primaryImage =
+      mainImage || galleryImages[0] || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg';
 
     const effectiveSku = getEffectiveSku();
 
@@ -519,7 +577,10 @@ export default function AddProductForm({
           })
         : [];
 
-    const allGalleryImages = [...images];
+    const allGalleryImages = [
+      ...(mainImage ? [mainImage] : []),
+      ...galleryImages.filter((img) => img !== mainImage),
+    ];
     formattedVariations.forEach((v) => {
       if (v.imageUrl && !allGalleryImages.includes(v.imageUrl)) {
         allGalleryImages.push(v.imageUrl);
@@ -527,6 +588,26 @@ export default function AddProductForm({
     });
     if (allGalleryImages.length === 0) {
       allGalleryImages.push(primaryImage);
+    }
+
+    const videosPayload: Array<{ id: string; titleBn: string; titleEn: string; url: string; duration: string }> = [];
+    if (videoUrl1.trim()) {
+      videosPayload.push({
+        id: 'vid-1',
+        titleBn: 'প্রোডাক্ট ডেমো ভিডিও',
+        titleEn: 'Product Demo Video',
+        url: videoUrl1.trim(),
+        duration: '১:০০',
+      });
+    }
+    if (videoUrl2.trim()) {
+      videosPayload.push({
+        id: 'vid-2',
+        titleBn: 'প্রোডাক্ট রিয়েল রিভিউ ভিডিও',
+        titleEn: 'Real Product Review Video',
+        url: videoUrl2.trim(),
+        duration: '১:৩০',
+      });
     }
 
     const payload = {
@@ -556,7 +637,9 @@ export default function AddProductForm({
       imageUrl: primaryImage,
       image: primaryImage,
       galleryImages: allGalleryImages,
-      videoUrl: videoUrl.trim(),
+      videoUrl: videoUrl1.trim(),
+      videoUrl2: videoUrl2.trim(),
+      videos: videosPayload,
       weight: Number(weightGrams || 350),
       packageSize: packageSize.trim(),
       seoTitle: seoTitle.trim() || titleEn.trim(),
@@ -672,126 +755,420 @@ export default function AddProductForm({
             LEFT COLUMN (8 cols): Main Form Sections
            ===================================================================== */}
         <div className="lg:col-span-8 space-y-6">
-          {/* 1. Photos & Video */}
+          {/* 1. Main Product Image (Cover) */}
           <Card>
             <CardHeader>
-              <CardTitle>Photos and video</CardTitle>
-              <p className="text-xs text-[#6B6B6B]">
-                First photo is the cover. Up to 8 photos. Drag or click to add photos.
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-[#D6403B]" />
+                    <span>Main Product Image (প্রধান কভার ছবি)</span>
+                  </CardTitle>
+                  <p className="text-xs text-[#6B6B6B] mt-0.5">
+                    This is the main photo displayed on product cards, catalog, and checkout.
+                  </p>
+                </div>
+                {mainImage && (
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                    ✓ Cover Set
+                  </span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {mainImage ? (
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0]">
+                  <div className="relative w-40 h-40 rounded-2xl border-2 border-[#D6403B] overflow-hidden bg-white shadow-xs shrink-0 group">
+                    <Image src={mainImage} alt="Main product cover" fill className="object-cover" />
+                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#D6403B] text-white text-[9px] font-bold uppercase tracking-wider shadow-sm">
+                      Main Cover
+                    </span>
+                  </div>
+                  <div className="space-y-3 flex-1 text-center sm:text-left min-w-0">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#2B2B2B]">Current Primary Image</h4>
+                      <p className="text-xs text-[#6B6B6B] mt-0.5 truncate max-w-md">
+                        {mainImage}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                      <label className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#2B2B2B] bg-white rounded-xl border border-[#D1D5DB] hover:bg-[#FAF7F2] transition-colors cursor-pointer shadow-2xs">
+                        {isUploadingMainImage ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-[#D6403B]" />
+                        ) : (
+                          <Upload className="w-4 h-4 text-[#6B6B6B]" />
+                        )}
+                        <span>Change Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={isUploadingMainImage}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleMainPhotoUpload(file);
+                          }}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          markDirty();
+                          setMainImage('');
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#9B2420] bg-white rounded-xl border border-[#F5C2BF] hover:bg-[#FDF0EF] transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="border-2 border-dashed border-[#D6403B]/40 hover:border-[#D6403B] bg-[#FFF9F5] hover:bg-[#FFF3EC] transition-colors rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer group">
+                    {isUploadingMainImage ? (
+                      <Loader2 className="w-8 h-8 animate-spin text-[#D6403B]" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-[#FDE8E7] flex items-center justify-center text-[#D6403B] group-hover:scale-110 transition-transform">
+                        <Upload className="w-6 h-6" />
+                      </div>
+                    )}
+                    <span className="font-bold text-sm text-[#2B2B2B] mt-3 block">
+                      Upload Main Cover Image
+                    </span>
+                    <span className="text-xs text-[#6B6B6B] mt-0.5 block">
+                      Click to browse or drag image (PNG, JPG, WebP)
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={isUploadingMainImage}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleMainPhotoUpload(file);
+                      }}
+                    />
+                  </label>
+
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="main-img-url"
+                      placeholder="Or paste main image URL directly (e.g. https://...)"
+                      value={mainImage}
+                      onChange={(e) => {
+                        setMainImage(e.target.value);
+                        markDirty();
+                      }}
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 2. Product Gallery Images */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-[#3C6E71]" />
+                    <span>Product Gallery Images (অতিরিক্ত গ্যালারি ছবি)</span>
+                  </CardTitle>
+                  <p className="text-xs text-[#6B6B6B] mt-0.5">
+                    Additional product views, package contents, and lifestyle photos. Up to 8 photos.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[#6B6B6B] bg-[#FAF7F2] px-2.5 py-1 rounded-full border border-[#EFE9E0]">
+                  {galleryImages.length} / 8 photos
+                </span>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {/* Upload Slot */}
-                <label className="aspect-square rounded-[16px] border-2 border-dashed border-[#EFE9E0] bg-[#FAF7F2] hover:bg-[#F3EFE8] transition-colors p-4 flex flex-col items-center justify-center text-center cursor-pointer group">
-                  {isUploadingImage ? (
-                    <Loader2 className="w-6 h-6 animate-spin text-[#D6403B]" />
-                  ) : (
-                    <Upload className="w-6 h-6 text-[#6B6B6B] group-hover:scale-105 transition-transform" />
-                  )}
-                  <span className="font-semibold text-xs text-[#2B2B2B] mt-2 block">Upload photo</span>
-                  <span className="text-[10px] text-[#6B6B6B] mt-0.5 block">PNG, JPG, WebP</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={isUploadingImage}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handlePhotoUpload(file);
-                    }}
-                  />
-                </label>
+                {/* Upload Slot for Gallery */}
+                {galleryImages.length < 8 && (
+                  <label className="aspect-square rounded-[16px] border-2 border-dashed border-[#EFE9E0] bg-[#FAF7F2] hover:bg-[#F3EFE8] transition-colors p-4 flex flex-col items-center justify-center text-center cursor-pointer group">
+                    {isUploadingGalleryImage ? (
+                      <Loader2 className="w-6 h-6 animate-spin text-[#3C6E71]" />
+                    ) : (
+                      <Upload className="w-6 h-6 text-[#6B6B6B] group-hover:scale-105 transition-transform" />
+                    )}
+                    <span className="font-semibold text-xs text-[#2B2B2B] mt-2 block">Add Gallery Photo</span>
+                    <span className="text-[10px] text-[#6B6B6B] mt-0.5 block">PNG, JPG, WebP</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={isUploadingGalleryImage}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleGalleryPhotoUpload(file);
+                      }}
+                    />
+                  </label>
+                )}
 
                 {/* Existing Gallery Slots */}
-                {images.map((imgUrl, idx) => (
+                {galleryImages.map((imgUrl, idx) => (
                   <div
                     key={idx}
-                    className="relative aspect-square rounded-[16px] border border-[#EFE9E0] overflow-hidden bg-white group"
+                    className="relative aspect-square rounded-[16px] border border-[#EFE9E0] overflow-hidden bg-white group shadow-2xs"
                   >
-                    <Image src={imgUrl} alt={`Photo ${idx + 1}`} fill className="object-cover" />
-                    {idx === 0 && (
-                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#2B2B2B] text-white text-[9px] font-bold uppercase tracking-wider z-10">
-                        Cover
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePhoto(idx)}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 text-[#9B2420] opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-white cursor-pointer z-10"
-                      aria-label="Remove photo"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <Image src={imgUrl} alt={`Gallery photo ${idx + 1}`} fill className="object-cover" />
+                    <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-black/60 text-white text-[9px] font-bold z-10 backdrop-blur-xs">
+                      #{idx + 1}
+                    </span>
+
+                    {/* Actions overlay on hover */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2 z-10">
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveGalleryPhoto(idx)}
+                          className="p-1.5 rounded-full bg-white/90 text-[#9B2420] hover:bg-white cursor-pointer shadow-sm transition-colors"
+                          title="Remove from gallery"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSetGalleryAsMain(idx)}
+                        className="w-full py-1 px-1.5 text-[10px] font-bold text-[#2B2B2B] bg-white hover:bg-[#FAF7F2] rounded-lg shadow-sm text-center cursor-pointer transition-colors"
+                      >
+                        ⭐ Set as Cover
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
 
-              {/* Video URL Field */}
-              <div className="pt-2 border-t border-[#EFE9E0]">
+              {/* Direct URL input for gallery */}
+              <div className="pt-2 border-t border-[#EFE9E0] flex gap-2">
+                <input
+                  id="add-gallery-url-input"
+                  type="url"
+                  placeholder="Or paste an image URL to add to gallery..."
+                  className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#D6403B]"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val && !galleryImages.includes(val) && galleryImages.length < 8) {
+                        setGalleryImages([...galleryImages, val]);
+                        markDirty();
+                        (e.target as HTMLInputElement).value = '';
+                        success('Image URL added to gallery.');
+                      }
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('add-gallery-url-input') as HTMLInputElement;
+                    const val = input?.value?.trim();
+                    if (val && !galleryImages.includes(val) && galleryImages.length < 8) {
+                      setGalleryImages([...galleryImages, val]);
+                      markDirty();
+                      input.value = '';
+                      success('Image URL added to gallery.');
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold text-[#2B2B2B] bg-[#FAF7F2] hover:bg-[#EFE9E0] border border-[#EFE9E0] rounded-xl cursor-pointer transition-colors"
+                >
+                  Add URL
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 3. Product Videos (Option for 2 Videos) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Video className="w-5 h-5 text-[#D6403B]" />
+                <span>Product Videos (প্রোডাক্ট ভিডিও - সর্বোচ্চ ২টি)</span>
+              </CardTitle>
+              <p className="text-xs text-[#6B6B6B]">
+                Add up to 2 videos (YouTube watch links, Shorts, Vimeo, or MP4) showcasing real product demos and play experience.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Video 1 */}
+              <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-[#D6403B] text-white text-xs font-extrabold flex items-center justify-center">
+                      1
+                    </span>
+                    <strong className="text-sm font-bold text-[#2B2B2B]">
+                      Primary Video / প্রধান ভিডিও ১
+                    </strong>
+                  </div>
+                  {videoUrl1.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVideoUrl1('');
+                        markDirty();
+                      }}
+                      className="text-xs text-[#9B2420] hover:underline cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
                 <Input
-                  id="prod-video"
-                  label="Demo video URL (optional)"
-                  value={videoUrl}
+                  id="prod-video-1"
+                  value={videoUrl1}
                   onChange={(e) => {
-                    setVideoUrl(e.target.value);
+                    setVideoUrl1(e.target.value);
                     markDirty();
                   }}
-                  placeholder="https://youtube.com/shorts/... or https://youtube.com/watch?v=... or MP4 link"
-                  helperText="Supports YouTube links (watch, shorts, embed), Vimeo, or direct MP4/WebM videos. Leave blank if product has no video."
+                  placeholder="https://youtube.com/shorts/... or https://youtube.com/watch?v=..."
+                  helperText="Supports YouTube (watch, shorts, embed), Vimeo, or direct MP4/WebM video link."
                 />
 
-                {videoUrl.trim() && (() => {
-                  const embedInfo = getVideoEmbedInfo(videoUrl);
+                {videoUrl1.trim() && (() => {
+                  const embedInfo = getVideoEmbedInfo(videoUrl1);
                   return (
-                    <div className="mt-2.5 p-3 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="relative w-16 h-12 rounded-lg overflow-hidden bg-black shrink-0 border border-[#EFE9E0] flex items-center justify-center">
-                            {embedInfo.thumbnailUrl ? (
-                              <img
-                                src={embedInfo.thumbnailUrl}
-                                alt="Video Thumbnail"
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <Video className="w-5 h-5 text-white/80" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                              <span className="text-xs font-bold text-[#1F6B43]">
-                                {embedInfo.type === 'youtube'
-                                  ? '✓ YouTube Video Detected'
-                                  : embedInfo.type === 'vimeo'
-                                  ? '✓ Vimeo Video Detected'
-                                  : '✓ Direct Video Link'}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-[#6B6B6B] truncate max-w-sm mt-0.5">
-                              {videoUrl}
-                            </p>
-                          </div>
+                    <div className="p-3 rounded-xl bg-white border border-[#EFE9E0] flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative w-16 h-12 rounded-lg overflow-hidden bg-black shrink-0 border border-[#EFE9E0] flex items-center justify-center">
+                          {embedInfo.thumbnailUrl ? (
+                            <img
+                              src={embedInfo.thumbnailUrl}
+                              alt="Video 1 Thumbnail"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Video className="w-5 h-5 text-white/80" />
+                          )}
                         </div>
-
-                        <a
-                          href={videoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-2.5 py-1 text-xs font-bold text-[#0B5F85] bg-white rounded-lg border border-[#BEE4F7] hover:bg-[#DDF1FB] transition-colors shrink-0"
-                        >
-                          Open Video ↗
-                        </a>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span className="text-xs font-bold text-[#1F6B43]">
+                              {embedInfo.type === 'youtube'
+                                ? '✓ YouTube Video Detected'
+                                : embedInfo.type === 'vimeo'
+                                ? '✓ Vimeo Video Detected'
+                                : '✓ Direct Video Link'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#6B6B6B] truncate max-w-sm mt-0.5">
+                            {videoUrl1}
+                          </p>
+                        </div>
                       </div>
 
-                      <p className="text-[11px] text-[#0B5F85] font-semibold bg-[#DDF1FB]/60 px-2.5 py-1 rounded-lg">
-                        💡 Remember to click &quot;{isEditing ? 'Save changes' : 'Publish product'}&quot; in the top bar to save this video to your storefront.
-                      </p>
+                      <a
+                        href={videoUrl1}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 text-xs font-bold text-[#0B5F85] bg-white rounded-lg border border-[#BEE4F7] hover:bg-[#DDF1FB] transition-colors shrink-0"
+                      >
+                        Open Video ↗
+                      </a>
                     </div>
                   );
                 })()}
               </div>
+
+              {/* Video 2 */}
+              <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-[#3C6E71] text-white text-xs font-extrabold flex items-center justify-center">
+                      2
+                    </span>
+                    <strong className="text-sm font-bold text-[#2B2B2B]">
+                      Secondary Video / বাস্তব রিভিউ ভিডিও ২ (Optional)
+                    </strong>
+                  </div>
+                  {videoUrl2.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVideoUrl2('');
+                        markDirty();
+                      }}
+                      className="text-xs text-[#9B2420] hover:underline cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                <Input
+                  id="prod-video-2"
+                  value={videoUrl2}
+                  onChange={(e) => {
+                    setVideoUrl2(e.target.value);
+                    markDirty();
+                  }}
+                  placeholder="https://youtube.com/shorts/... or https://youtube.com/watch?v=..."
+                  helperText="Second video showcasing customer unboxing, real kids play, or detailed demo."
+                />
+
+                {videoUrl2.trim() && (() => {
+                  const embedInfo = getVideoEmbedInfo(videoUrl2);
+                  return (
+                    <div className="p-3 rounded-xl bg-white border border-[#EFE9E0] flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative w-16 h-12 rounded-lg overflow-hidden bg-black shrink-0 border border-[#EFE9E0] flex items-center justify-center">
+                          {embedInfo.thumbnailUrl ? (
+                            <img
+                              src={embedInfo.thumbnailUrl}
+                              alt="Video 2 Thumbnail"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Video className="w-5 h-5 text-white/80" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span className="text-xs font-bold text-[#1F6B43]">
+                              {embedInfo.type === 'youtube'
+                                ? '✓ YouTube Video Detected'
+                                : embedInfo.type === 'vimeo'
+                                ? '✓ Vimeo Video Detected'
+                                : '✓ Direct Video Link'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#6B6B6B] truncate max-w-sm mt-0.5">
+                            {videoUrl2}
+                          </p>
+                        </div>
+                      </div>
+
+                      <a
+                        href={videoUrl2}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 text-xs font-bold text-[#0B5F85] bg-white rounded-lg border border-[#BEE4F7] hover:bg-[#DDF1FB] transition-colors shrink-0"
+                      >
+                        Open Video ↗
+                      </a>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <p className="text-[11px] text-[#0B5F85] font-semibold bg-[#DDF1FB]/60 p-2.5 rounded-xl">
+                💡 Note: Both videos will be available on the product detail page under the &quot;প্রোডাক্ট রিয়েল ভিডিও&quot; section with tab switches.
+              </p>
             </CardContent>
           </Card>
 
@@ -992,7 +1369,7 @@ export default function AddProductForm({
                               price: Number(regularPrice || 1200),
                               salePrice: Number(salePrice || 999),
                               stock: Number(stockQuantity || 25),
-                              imageUrl: images[0] || '',
+                              imageUrl: mainImage || galleryImages[0] || '',
                             },
                           ]);
                           setOptionValues(['12 Piece Set']);

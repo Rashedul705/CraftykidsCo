@@ -124,6 +124,12 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
     if (body.videoUrl !== undefined) {
       updateFields.videoUrl = typeof body.videoUrl === 'string' ? body.videoUrl.trim() : '';
     }
+    if (body.videoUrl2 !== undefined) {
+      updateFields.videoUrl2 = typeof body.videoUrl2 === 'string' ? body.videoUrl2.trim() : '';
+    }
+    if (body.videos !== undefined) {
+      updateFields.videos = Array.isArray(body.videos) ? body.videos : [];
+    }
     if (body.weight !== undefined) updateFields.weight = body.weight;
     if (body.packageSize !== undefined) updateFields.packageSize = body.packageSize;
     if (body.handlingTime !== undefined) updateFields.handlingTime = body.handlingTime;

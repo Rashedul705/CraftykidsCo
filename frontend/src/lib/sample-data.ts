@@ -74,6 +74,7 @@ export interface SampleProduct {
   imageUrl: string;
   galleryImages?: string[];
   videoUrl?: string;
+  videoUrl2?: string;
   videos?: ProductVideo[];
   badge?: string;
   safetyBadges?: string[];
@@ -151,22 +152,33 @@ export function getProductMedia(product: SampleProduct): {
   let videos: ProductVideo[] = [];
   if (product.videos && product.videos.length > 0) {
     videos = product.videos;
-  } else if (product.videoUrl && product.videoUrl.trim()) {
-    const rawUrl = product.videoUrl.trim();
-    const embedInfo = getVideoEmbedInfo(rawUrl);
-    videos = [
-      {
-        id: 'vid-custom-1',
-        title: product.titleEn ? `${product.titleEn} Video` : 'Product Video',
-        titleBn: 'পণ্য ভিডিও',
-        url: rawUrl,
-        duration: 'ভিডিও',
-        thumbnailUrl: embedInfo.thumbnailUrl || images[0] || product.imageUrl,
-      },
-    ];
   } else {
-    // Only show videos if explicitly added by admin
-    videos = [];
+    const list: ProductVideo[] = [];
+    if (product.videoUrl && product.videoUrl.trim()) {
+      const rawUrl1 = product.videoUrl.trim();
+      const embedInfo1 = getVideoEmbedInfo(rawUrl1);
+      list.push({
+        id: 'vid-custom-1',
+        title: product.titleEn ? `${product.titleEn} Video 1` : 'Product Video 1',
+        titleBn: 'প্রোডাক্ট ভিডিও ১',
+        url: rawUrl1,
+        duration: 'ভিডিও',
+        thumbnailUrl: embedInfo1.thumbnailUrl || images[0] || product.imageUrl,
+      });
+    }
+    if ((product as any).videoUrl2 && (product as any).videoUrl2.trim()) {
+      const rawUrl2 = (product as any).videoUrl2.trim();
+      const embedInfo2 = getVideoEmbedInfo(rawUrl2);
+      list.push({
+        id: 'vid-custom-2',
+        title: product.titleEn ? `${product.titleEn} Video 2` : 'Product Video 2',
+        titleBn: 'প্রোডাক্ট ভিডিও ২',
+        url: rawUrl2,
+        duration: 'ভিডিও',
+        thumbnailUrl: embedInfo2.thumbnailUrl || images[1] || images[0] || product.imageUrl,
+      });
+    }
+    videos = list;
   }
 
   return { images, videos };

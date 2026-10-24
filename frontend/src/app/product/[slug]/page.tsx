@@ -186,6 +186,7 @@ function ProductContent() {
   const [overrideHeroImage, setOverrideHeroImage] = useState<string | null>(null);
   const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
   const [activeVideoModal, setActiveVideoModal] = useState<ProductVideo | null>(null);
+  const [activeHighlightVideoIndex, setActiveHighlightVideoIndex] = useState<number>(0);
 
   // Variations list - Only products that explicitly have variations
   const variations = useMemo(() => {
@@ -1282,7 +1283,7 @@ function ProductContent() {
             PRODUCT VIDEO DEMO HIGHLIGHT (Prominent Embedded Showcase)
            ===================================================================== */}
         {productVideos.length > 0 && (() => {
-          const mainVideo = productVideos[0];
+          const mainVideo = productVideos[activeHighlightVideoIndex] || productVideos[0];
           const embedInfo = getVideoEmbedInfo(mainVideo.url);
           return (
             <div className="bg-gradient-to-br from-[#FFF9F3] via-[#FAF7F2] to-white rounded-2xl border-2 border-[#FFE8D6] p-5 sm:p-7 shadow-xs space-y-4">
@@ -1294,29 +1295,55 @@ function ProductContent() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-[#D6403B] bg-[#FDE8E7] px-2 py-0.5 rounded-full">
-                        ভিডিও ডেমো
+                        রিয়েল ভিডিও
                       </span>
-                      <span className="text-xs text-[#6B6B6B]">বাস্তব অভিজ্ঞতা</span>
+                      <span className="text-xs text-[#6B6B6B]">Product Video / আসল ভিডিও</span>
                     </div>
                     <h3 className="text-lg sm:text-xl font-extrabold text-[#2B2B2B]">
-                      বাচ্চাদের খেলার আসল ভিডিও ডেমো
+                      প্রোডাক্ট রিয়েল ভিডিও (Real Product Video)
                     </h3>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveVideoModal(mainVideo)}
-                  className="inline-flex items-center gap-2 text-xs font-bold text-[#D6403B] hover:text-[#B02824] bg-white px-4 py-2 rounded-xl border border-[#EFE9E0] hover:border-[#D6403B] shadow-2xs transition-all cursor-pointer self-start sm:self-auto"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  <span>ফুল স্ক্রিনে দেখুন</span>
-                </button>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                  {productVideos.length > 1 && (
+                    <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#EFE9E0] shadow-2xs">
+                      {productVideos.map((vid, vIdx) => {
+                        const isSelected = (activeHighlightVideoIndex === vIdx) || (!productVideos[activeHighlightVideoIndex] && vIdx === 0);
+                        return (
+                          <button
+                            key={vid.id || vIdx}
+                            type="button"
+                            onClick={() => setActiveHighlightVideoIndex(vIdx)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#D6403B] text-white shadow-2xs'
+                                : 'text-[#6B6B6B] hover:text-[#2B2B2B] hover:bg-[#FAF7F2]'
+                            }`}
+                          >
+                            ভিডিও {toBanglaDigits(vIdx + 1)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveVideoModal(mainVideo)}
+                    className="inline-flex items-center gap-2 text-xs font-bold text-[#D6403B] hover:text-[#B02824] bg-white px-4 py-2 rounded-xl border border-[#EFE9E0] hover:border-[#D6403B] shadow-2xs transition-all cursor-pointer"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>ফুল স্ক্রিনে দেখুন</span>
+                  </button>
+                </div>
               </div>
 
               {/* Video Player Frame */}
               <div className="relative aspect-video max-w-3xl mx-auto rounded-2xl overflow-hidden bg-black shadow-lg border border-[#EFE9E0]">
                 {embedInfo.isEmbed ? (
                   <iframe
+                    key={mainVideo.url}
                     src={embedInfo.embedUrl.replace('autoplay=1', 'autoplay=0')}
                     title={mainVideo.titleBn}
                     className="w-full h-full border-0"
@@ -1325,6 +1352,7 @@ function ProductContent() {
                   />
                 ) : (
                   <video
+                    key={mainVideo.url}
                     src={mainVideo.url}
                     controls
                     poster={mainVideo.thumbnailUrl}
