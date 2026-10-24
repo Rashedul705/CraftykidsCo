@@ -1875,10 +1875,10 @@ export default function OrdersManager({
                       type="button"
                       onClick={() => setIsCustomizingValue(true)}
                       className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#0B5F85] bg-[#DDF1FB] hover:bg-[#BEE4F7] border border-[#BEE4F7] flex items-center gap-1 transition-colors cursor-pointer"
-                      title="মোট বিল ও ডেলিভারি চার্জ পরিবর্তন করুন"
+                      title="Edit order total and delivery charge"
                     >
                       <Edit2 className="w-3 h-3" />
-                      <span>ভ্যালু এডিট করুন</span>
+                      <span>Edit Value</span>
                     </button>
                   ) : (
                     <button
@@ -1886,7 +1886,7 @@ export default function OrdersManager({
                       onClick={() => setIsCustomizingValue(false)}
                       className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#6B6B6B] hover:bg-[#FAF7F2] border border-[#EFE9E0] transition-colors cursor-pointer"
                     >
-                      বাতিল
+                      Cancel
                     </button>
                   )}
                 </div>
@@ -1984,7 +1984,7 @@ export default function OrdersManager({
                       <div className="flex items-center justify-between pb-2 border-b border-[#EFE9E0]">
                         <span className="font-bold text-[#2B2B2B] text-sm flex items-center gap-1.5">
                           <Edit2 className="w-3.5 h-3.5 text-[#D6403B]" />
-                          অর্ডার ভ্যালু কাস্টমাইজ করুন
+                          Customize Order Value
                         </span>
                         <span className="text-[11px] text-[#6B6B6B]">
                           Subtotal: <strong>{formatTaka(customSubtotal)}</strong>
@@ -1995,7 +1995,7 @@ export default function OrdersManager({
                         {/* Delivery Charge */}
                         <div>
                           <label className="block text-[#6B6B6B] font-semibold mb-1">
-                            ডেলিভারি চার্জ (৳):
+                            Delivery Charge (৳):
                           </label>
                           <Input
                             type="number"
@@ -2017,13 +2017,13 @@ export default function OrdersManager({
                                   setCustomDeliveryCharge(amt);
                                   setCustomTotalAmount(Math.max(0, customSubtotal + amt - customDiscount));
                                 }}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
                                   customDeliveryCharge === amt
                                     ? 'bg-[#0B5F85] text-white border-[#0B5F85]'
                                     : 'bg-white text-[#6B6B6B] border-[#EFE9E0] hover:bg-[#FAF7F2]'
                                 }`}
                               >
-                                {amt === 0 ? 'ফ্রি (৳০)' : `৳${amt}`}
+                                {amt === 0 ? 'Free (৳0)' : `৳${amt}`}
                               </button>
                             ))}
                           </div>
@@ -2032,7 +2032,7 @@ export default function OrdersManager({
                         {/* Discount */}
                         <div>
                           <label className="block text-[#6B6B6B] font-semibold mb-1">
-                            অতিরিক্ত ছাড় / ডিসকাউন্ট (৳):
+                            Additional Discount (৳):
                           </label>
                           <Input
                             type="number"
@@ -2052,10 +2052,10 @@ export default function OrdersManager({
                       <div className="pt-2 border-t border-[#EFE9E0]">
                         <div className="flex items-center justify-between mb-1">
                           <label className="block font-bold text-[#2B2B2B] text-xs">
-                            মোট বিল / Amount to Collect (৳):
+                            Total / Amount to Collect (৳):
                           </label>
                           <span className="text-[10px] text-[#A04000] font-medium">
-                            (সরাসরি মোট বিল টাইপ করলে ডিসকাউন্ট স্বয়ংক্রিয়ভাবে মিলবে)
+                            (Direct total entry auto-adjusts discount)
                           </span>
                         </div>
                         <Input
@@ -2075,13 +2075,13 @@ export default function OrdersManager({
                       {/* Optional reason / note */}
                       <div>
                         <label className="block text-[#6B6B6B] font-semibold mb-1">
-                          পরিবর্তনের কারণ বা নোট (ঐচ্ছিক):
+                          Reason / Internal Note (optional):
                         </label>
                         <Input
                           type="text"
                           value={customValueReason}
                           onChange={(e) => setCustomValueReason(e.target.value)}
-                          placeholder="যেমন: ফোনে কাস্টমারকে ১০০ টাকা ছাড় দেওয়া হয়েছে"
+                          placeholder="e.g. Special phone discount of ৳100 agreed with customer"
                           className="text-xs h-9"
                         />
                       </div>
@@ -2094,7 +2094,7 @@ export default function OrdersManager({
                           disabled={isSavingCustomValue}
                           onClick={() => setIsCustomizingValue(false)}
                         >
-                          বাতিল
+                          Cancel
                         </Button>
                         <Button
                           size="sm"
@@ -2102,7 +2102,7 @@ export default function OrdersManager({
                           disabled={isSavingCustomValue}
                           onClick={handleSaveCustomOrderValue}
                         >
-                          {isSavingCustomValue ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+                          {isSavingCustomValue ? 'Saving...' : 'Save Changes'}
                         </Button>
                       </div>
                     </div>
@@ -2134,10 +2134,10 @@ export default function OrdersManager({
                                 type="button"
                                 onClick={() => setIsCustomizingValue(true)}
                                 className="text-[11px] text-[#0B5F85] hover:underline flex items-center gap-0.5 ml-1 font-semibold cursor-pointer"
-                                title="এডিট করুন"
+                                title="Edit order total"
                               >
                                 <Edit2 className="w-2.5 h-2.5" />
-                                <span>এডিট</span>
+                                <span>Edit</span>
                               </button>
                             </div>
                             <span className={fin.isPaid ? 'text-[#1F6B43]' : 'text-[#C23631]'}>
