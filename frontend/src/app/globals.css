@@ -1,5 +1,75 @@
 @import "tailwindcss";
 
+/* Hind Siliguri Local Fonts */
+@font-face {
+  font-family: 'Hind Siliguri';
+  src: url('/fonts/HindSiliguri-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Hind Siliguri';
+  src: url('/fonts/HindSiliguri-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Hind Siliguri';
+  src: url('/fonts/HindSiliguri-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Hind Siliguri';
+  src: url('/fonts/HindSiliguri-Bold.ttf') format('truetype');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Map Bengali digits (০-৯, U+09E6-U+09EF) to Hind Siliguri so '১' has a clear circular loop */
+@font-face {
+  font-family: 'Noto Sans Bengali';
+  src: url('/fonts/HindSiliguri-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+09E6-09EF;
+}
+
+@font-face {
+  font-family: 'Noto Sans Bengali';
+  src: url('/fonts/HindSiliguri-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+09E6-09EF;
+}
+
+@font-face {
+  font-family: 'Noto Sans Bengali';
+  src: url('/fonts/HindSiliguri-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+09E6-09EF;
+}
+
+@font-face {
+  font-family: 'Noto Sans Bengali';
+  src: url('/fonts/HindSiliguri-Bold.ttf') format('truetype');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+09E6-09EF;
+}
+
 :root {
   /* Page & Surfaces */
   --bg-page: #FAF7F2;
@@ -63,9 +133,11 @@
   --color-pill-red-bg: #FDE3E1;
   --color-pill-red-text: #9B2420;
 
-  --font-bangla: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+  --font-sans: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+  --font-bangla: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
   --font-heading: 'Fredoka', cursive, sans-serif;
-  --font-body: 'Hind Siliguri', sans-serif;
+  --font-body: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+  --font-siliguri: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
 }
 
 html {
@@ -77,7 +149,7 @@ html {
 body {
   background-color: #FAF7F2;
   color: #2B2B2B;
-  font-family: 'Hind Siliguri', sans-serif;
+  font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -95,6 +167,17 @@ body {
 /* Admin body text at least 14px */
 .admin-body {
   font-size: 14px;
+}
+
+/* Primary Bangla font utility */
+.font-bangla {
+  font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+}
+
+/* Hind Siliguri utility for Bengali digits and headings */
+.font-siliguri,
+.font-bengali-num {
+  font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
 }
 
 /* English headings and numbers in admin use Fredoka */

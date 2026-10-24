@@ -4,6 +4,7 @@ import assert from 'node:assert';
 interface DeliveryCalculationInput {
   subtotal: number;
   district: string;
+  freeShippingEnabled?: boolean;
   freeDeliveryThreshold?: number;
 }
 
@@ -12,11 +13,12 @@ export function calculateDeliveryCharge(input: DeliveryCalculationInput): {
   isFreeDelivery: boolean;
   remainingForFreeDelivery: number;
 } {
+  const freeEnabled = input.freeShippingEnabled !== false;
   const threshold = input.freeDeliveryThreshold ?? 1000;
   const isInsideDhaka = input.district.trim().toLowerCase().includes('dhaka');
   const baseCharge = isInsideDhaka ? 60 : 120;
 
-  if (input.subtotal >= threshold) {
+  if (freeEnabled && input.subtotal >= threshold) {
     return {
       deliveryCharge: 0,
       isFreeDelivery: true,
@@ -27,7 +29,7 @@ export function calculateDeliveryCharge(input: DeliveryCalculationInput): {
   return {
     deliveryCharge: baseCharge,
     isFreeDelivery: false,
-    remainingForFreeDelivery: Math.max(0, threshold - input.subtotal),
+    remainingForFreeDelivery: freeEnabled ? Math.max(0, threshold - input.subtotal) : 0,
   };
 }
 
@@ -55,5 +57,46 @@ describe('Delivery Charge Calculation Rules', () => {
     assert.strictEqual(outsideOrder.deliveryCharge, 0);
     assert.strictEqual(outsideOrder.isFreeDelivery, true);
     assert.strictEqual(outsideOrder.remainingForFreeDelivery, 0);
+  });
+
+  it('applies standard delivery charges when freeShippingEnabled is toggled false regardless of subtotal', () => {
+    const dhakaBigOrder = calculateDeliveryCharge({
+      subtotal: 5000,
+      district: 'Dhaka',
+      freeShippingEnabled: false,
+    });
+    assert.strictEqual(dhakaBigOrder.deliveryCharge, 60);
+    assert.strictEqual(dhakaBigOrder.isFreeDelivery, false);
+    assert.strictEqual(dhakaBigOrder.remainingForFreeDelivery, 0);
+
+    const outsideBigOrder = calculateDeliveryCharge({
+      subtotal: 8000,
+      district: 'Khulna',
+      freeShippingEnabled: false,
+    });
+    assert.strictEqual(outsideBigOrder.deliveryCharge, 120);
+    assert.strictEqual(outsideBigOrder.isFreeDelivery, false);
+    assert.strictEqual(outsideBigOrder.remainingForFreeDelivery, 0);
+  });
+
+  it('honors custom threshold limit (e.g. ৳1500) when freeShippingEnabled is true', () => {
+    const underCustom = calculateDeliveryCharge({
+      subtotal: 1200,
+      district: 'Dhaka',
+      freeShippingEnabled: true,
+      freeDeliveryThreshold: 1500,
+    });
+    assert.strictEqual(underCustom.deliveryCharge, 60);
+    assert.strictEqual(underCustom.isFreeDelivery, false);
+    assert.strictEqual(underCustom.remainingForFreeDelivery, 300);
+
+    const overCustom = calculateDeliveryCharge({
+      subtotal: 1600,
+      district: 'Dhaka',
+      freeShippingEnabled: true,
+      freeDeliveryThreshold: 1500,
+    });
+    assert.strictEqual(overCustom.deliveryCharge, 0);
+    assert.strictEqual(overCustom.isFreeDelivery, true);
   });
 });

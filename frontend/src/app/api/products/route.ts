@@ -184,6 +184,7 @@ export async function POST(req: NextRequest) {
       videoUrl: body.videoUrl || undefined,
       videoUrl2: body.videoUrl2 || undefined,
       videos: Array.isArray(body.videos) ? body.videos : [],
+      faqs: Array.isArray(body.faqs) ? body.faqs : [],
       weight: body.weight !== undefined && body.weight !== '' ? Number(body.weight) : 350,
       packageSize: body.packageSize || '20 x 15 x 5 cm',
       handlingTime: body.handlingTime || '1-2 Days',
@@ -238,6 +239,7 @@ export async function POST(req: NextRequest) {
       videoUrl: newProductData.videoUrl,
       videoUrl2: newProductData.videoUrl2,
       videos: newProductData.videos,
+      faqs: newProductData.faqs,
     };
     addMemoryProduct(sampleProd);
 

@@ -432,22 +432,6 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* Quick Category Selection Chips / Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {categoriesWithProducts.map(({ category, products: catProds }) => (
-              <a
-                key={category.slug}
-                href={`#cat-${category.slug}`}
-                className="px-4 py-2 rounded-xl bg-white border border-[#EFE9E0] hover:border-[#D6403B] hover:bg-[#FAF7F2] text-xs font-bold text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0"
-              >
-                <span>{isBn ? category.nameBn : category.nameEn}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FAF7F2] border border-[#EFE9E0] text-[#6B6B6B]">
-                  {catProds.length}
-                </span>
-              </a>
-            ))}
-          </div>
-
           {/* Row of circular category buttons */}
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 sm:gap-4">
             {categoriesWithProducts.map(({ category }) => (
@@ -640,74 +624,7 @@ export default function HomePage() {
           </section>
         ))}
 
-        {/* ========================================================================= */}
-        {/* 6. Offer and Flash Sale Banners (Combo Offer & Shop Now)                   */}
-        {/* ========================================================================= */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          <div className="rounded-2xl border border-[#EFE9E0] p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center text-center sm:text-left gap-5 shadow-xs bg-gradient-to-r from-[#FFF5F5] to-[#FFF0E6]">
-            <div className="space-y-2.5 flex-1">
-              <span className="text-xs font-bold uppercase text-[#D6403B] bg-white px-3 py-1 rounded-full shadow-2xs inline-block border border-[#EFE9E0]">
-                {isBn ? 'সীমিত সময়ের অফার' : 'Limited Time Offer'}
-              </span>
-              <h3 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                {isBn ? 'গিফট কম্বো ও বান্ডেল সেট' : 'Gift Combo & Bundle Sets'}
-              </h3>
-              <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-sm leading-relaxed">
-                {isBn
-                  ? 'পেইন্টিং কিট ও ওয়াটার কালার একসাথে নিলে পাচ্ছেন বিশেষ ছাড় ও ফ্রি গিফট র্যাপিং'
-                  : 'Special discounts, bundle savings and free gift wrapping for complete creative kits'}
-              </p>
-              <div className="pt-1">
-                <Link
-                  href="/bundles"
-                  className="inline-block px-6 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm shadow-2xs transition-colors"
-                >
-                  Combo Offer
-                </Link>
-              </div>
-            </div>
-            <div className="relative w-36 h-36 sm:w-40 sm:h-40 rounded-2xl overflow-hidden shrink-0 border-2 border-white shadow-xs">
-              <Image
-                src="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=500&q=80"
-                alt="Combo Offer"
-                fill
-                className="object-cover"
-              />
-            </div>
-          </div>
 
-          <div className="rounded-2xl border border-[#EFE9E0] p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center text-center sm:text-left gap-5 shadow-xs bg-gradient-to-r from-[#F0FDF4] to-[#E6F4EA]">
-            <div className="space-y-2.5 flex-1">
-              <span className="text-xs font-bold uppercase text-[#1F6B43] bg-white px-3 py-1 rounded-full shadow-2xs inline-block border border-[#EFE9E0]">
-                {isBn ? 'ফ্রি ডেলিভারি' : 'Free Delivery'}
-              </span>
-              <h3 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                ৳{BRAND_CONFIG.freeDeliveryThreshold}+ অর্ডারে ডেলিভারি ফ্রি
-              </h3>
-              <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-sm leading-relaxed">
-                {isBn
-                  ? 'সারা দেশে যে কোনো অর্ডারে ক্যাশ অন ডেলিভারি সুবিধা এবং সম্পূর্ণ ফ্রি শিপিং উপভোগ করুন'
-                  : 'Cash on delivery available all over Bangladesh with zero delivery charge on qualifying orders'}
-              </p>
-              <div className="pt-1">
-                <Link
-                  href="/shop"
-                  className="inline-block px-6 py-2.5 rounded-xl bg-[#1F6B43] hover:bg-[#185334] text-white font-bold text-xs sm:text-sm shadow-2xs transition-colors"
-                >
-                  Shop Now
-                </Link>
-              </div>
-            </div>
-            <div className="relative w-36 h-36 sm:w-40 sm:h-40 rounded-2xl overflow-hidden shrink-0 border-2 border-white shadow-xs">
-              <Image
-                src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=500&q=80"
-                alt="Free Delivery Offer"
-                fill
-                className="object-cover"
-              />
-            </div>
-          </div>
-        </section>
 
         {/* ========================================================================= */}
         {/* 7. Why Buy From Us (Food-grade, fast shipping, returns, support)           */}
@@ -870,63 +787,69 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
-        {/* 9. Welcome Coupon Code Signup                                             */}
+        {/* 9. Welcome Coupon Code Signup (Controlled via Admin Panel)                */}
         {/* ========================================================================= */}
-        <section className="rounded-2xl bg-white border border-[#EFE9E0] p-6 sm:p-8 max-w-4xl mx-auto shadow-xs text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF3CC] text-[#7A4E00] text-xs font-bold">
-            <Tag className="w-3.5 h-3.5" />
-            <span>Special Welcome Offer</span>
-          </div>
-
-          <div className="space-y-1">
-            <h3 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
-              {isBn ? 'প্রথম অর্ডারে ১০% বিশেষ ছাড়!' : 'Get 10% Off On Your First Order!'}
-            </h3>
-            <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-lg mx-auto">
-              {isBn
-                ? 'আপনার মোবাইল নম্বর দিয়ে প্রথম অর্ডারের জন্য প্রোমো কোড সংগ্রহ করুন এবং চেকআউটে সরাসরি ছাড় উপভোগ করুন'
-                : 'Enter your phone number to claim your first order promo code at checkout'}
-            </p>
-          </div>
-
-          {/* Coupon Code Pill & Copy Button */}
-          <div className="flex items-center justify-center gap-3 pt-1">
-            <div className="flex items-center gap-2 bg-[#FAF7F2] border-2 border-dashed border-[#D6403B] px-4 py-2 rounded-xl">
-              <span className="text-xs font-bold text-[#6B6B6B] uppercase">Coupon Code:</span>
-              <span className="font-mono font-black text-lg text-[#D6403B] tracking-wider">
-                CRAFTY10
-              </span>
-              <button
-                type="button"
-                onClick={() => handleCopyCoupon('CRAFTY10')}
-                className="p-1 rounded hover:bg-black/5 text-[#6B6B6B] hover:text-[#D6403B] transition-colors cursor-pointer"
-                title="Copy Code"
-              >
-                {couponCopied ? <Check className="w-4 h-4 text-[#1F6B43]" /> : <Copy className="w-4 h-4" />}
-              </button>
+        {settings.welcomeOffer?.enabled !== false && (
+          <section className="rounded-2xl bg-white border border-[#EFE9E0] p-6 sm:p-8 max-w-4xl mx-auto shadow-xs text-center space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF3CC] text-[#7A4E00] text-xs font-bold">
+              <Tag className="w-3.5 h-3.5" />
+              <span>{settings.welcomeOffer?.tag || 'Special Welcome Offer'}</span>
             </div>
-          </div>
 
-          {/* Quick Input Form */}
-          <form
-            onSubmit={handleCouponSignup}
-            className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-md mx-auto pt-2"
-          >
-            <input
-              type="text"
-              value={subscriberInput}
-              onChange={(e) => setSubscriberInput(e.target.value)}
-              placeholder={isBn ? 'মোবাইল নম্বর লিখুন (যেমন: 01700-000000)' : 'Phone number (e.g., 01700-000000)'}
-              className="w-full px-4 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs sm:text-sm text-[#2B2B2B] focus:bg-white focus:outline-none focus:border-[#D6403B]"
-            />
-            <button
-              type="submit"
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors shrink-0 cursor-pointer"
+            <div className="space-y-1">
+              <h3 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
+                {isBn
+                  ? (settings.welcomeOffer?.titleBn || 'প্রথম অর্ডারে ১০% বিশেষ ছাড়!')
+                  : (settings.welcomeOffer?.titleEn || 'Get 10% Off On Your First Order!')}
+              </h3>
+              <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-lg mx-auto">
+                {isBn
+                  ? (settings.welcomeOffer?.descBn ||
+                      'আপনার মোবাইল নম্বর দিয়ে প্রথম অর্ডারের জন্য প্রোমো কোড সংগ্রহ করুন এবং চেকআউটে সরাসরি ছাড় উপভোগ করুন')
+                  : (settings.welcomeOffer?.descEn ||
+                      'Enter your phone number to claim your first order promo code at checkout')}
+              </p>
+            </div>
+
+            {/* Coupon Code Pill & Copy Button */}
+            <div className="flex items-center justify-center gap-3 pt-1">
+              <div className="flex items-center gap-2 bg-[#FAF7F2] border-2 border-dashed border-[#D6403B] px-4 py-2 rounded-xl">
+                <span className="text-xs font-bold text-[#6B6B6B] uppercase">Coupon Code:</span>
+                <span className="font-mono font-black text-lg text-[#D6403B] tracking-wider">
+                  {settings.welcomeOffer?.couponCode || 'CRAFTY10'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopyCoupon(settings.welcomeOffer?.couponCode || 'CRAFTY10')}
+                  className="p-1 rounded hover:bg-black/5 text-[#6B6B6B] hover:text-[#D6403B] transition-colors cursor-pointer"
+                  title="Copy Code"
+                >
+                  {couponCopied ? <Check className="w-4 h-4 text-[#1F6B43]" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Input Form */}
+            <form
+              onSubmit={handleCouponSignup}
+              className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-md mx-auto pt-2"
             >
-              Get Code
-            </button>
-          </form>
-        </section>
+              <input
+                type="text"
+                value={subscriberInput}
+                onChange={(e) => setSubscriberInput(e.target.value)}
+                placeholder={isBn ? 'মোবাইল নম্বর লিখুন (যেমন: 01700-000000)' : 'Phone number (e.g., 01700-000000)'}
+                className="w-full px-4 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs sm:text-sm text-[#2B2B2B] focus:bg-white focus:outline-none focus:border-[#D6403B]"
+              />
+              <button
+                type="submit"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors shrink-0 cursor-pointer"
+              >
+                Get Code
+              </button>
+            </form>
+          </section>
+        )}
 
         {/* ========================================================================= */}
         {/* 10. Bulk Orders Banner (School & Kindergarten)                            */}

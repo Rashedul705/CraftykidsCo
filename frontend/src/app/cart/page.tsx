@@ -39,7 +39,10 @@ export default function CartPage() {
   const [couponInput, setCouponInput] = useState('');
   const [couponFeedback, setCouponFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [locale, setLocale] = useState<'bn' | 'en'>('bn');
-  const [deliverySettings, setDeliverySettings] = useState({ freeDeliveryThreshold: 1000 });
+  const [deliverySettings, setDeliverySettings] = useState<{
+    freeDeliveryThreshold?: number;
+    freeShippingEnabled?: boolean;
+  }>({ freeDeliveryThreshold: 1000, freeShippingEnabled: true });
 
   React.useEffect(() => {
     fetch('/api/delivery-charges')
@@ -52,8 +55,10 @@ export default function CartPage() {
       .catch(() => {});
   }, []);
 
-  // Delivery estimation based on live threshold
-  const isFreeDelivery = subtotal >= (deliverySettings.freeDeliveryThreshold || 1000);
+  // Delivery estimation based on live threshold and toggle
+  const isFreeDelivery =
+    deliverySettings.freeShippingEnabled !== false &&
+    subtotal >= (deliverySettings.freeDeliveryThreshold || 1000);
   const grandTotal = Math.max(0, subtotal - discountAmount);
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
@@ -93,8 +98,14 @@ export default function CartPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             {/* Left: Free delivery progress bar & Item list */}
             <div className="lg:col-span-2 space-y-4">
-              {/* Free delivery progress bar */}
-              <FreeDeliveryBar currentSubtotal={subtotal} freeDeliveryThreshold={1000} locale={locale} />
+              {/* Free delivery progress bar (only when free shipping is enabled) */}
+              {deliverySettings.freeShippingEnabled !== false && (
+                <FreeDeliveryBar
+                  currentSubtotal={subtotal}
+                  freeDeliveryThreshold={deliverySettings.freeDeliveryThreshold || 1000}
+                  locale={locale}
+                />
+              )}
 
               {/* Items Card List */}
               <div className="bg-white rounded-[28px] border border-[#EFE9E0] p-4 sm:p-6 divide-y divide-[#EFE9E0] shadow-sm">

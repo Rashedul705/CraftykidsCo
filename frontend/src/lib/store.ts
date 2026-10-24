@@ -614,6 +614,10 @@ export function updateSiteSettings(newSettings: Partial<SiteSettings>): SiteSett
       ...globalSiteSettings.bulkOrderBanner,
       ...(newSettings.bulkOrderBanner || {}),
     },
+    welcomeOffer: {
+      ...globalSiteSettings.welcomeOffer,
+      ...(newSettings.welcomeOffer || {}),
+    },
     footer: {
       ...globalSiteSettings.footer,
       ...(newSettings.footer || {}),

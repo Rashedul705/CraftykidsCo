@@ -79,7 +79,7 @@ export function getEmbeddedFontsCss(): string {
   } catch (err) {
     console.warn('Failed to embed fonts from disk, falling back to Google Fonts link:', err);
     return `
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Hind+Siliguri:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+Bengali:wght@400;600;700&family=Hind+Siliguri:wght@400;600;700&display=swap');
 `;
   }
 }
@@ -438,7 +438,7 @@ export async function generateInvoiceHtml(
       margin: 0;
       padding: 0;
       background: #FFFFFF;
-      font-family: 'Hind Siliguri', sans-serif;
+      font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
       color: #2B2B2B;
       font-size: 12.5px;
       line-height: 1.45;
@@ -519,7 +519,7 @@ export async function generateInvoiceHtml(
       text-align: right;
     }
     .invoice-title {
-      font-family: 'Hind Siliguri', sans-serif;
+      font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
       font-size: 26px;
       font-weight: 700;
       color: #2B2B2B;
@@ -736,7 +736,7 @@ export async function generateInvoiceHtml(
       margin: 2px 0;
     }
     .collect-box-amount.paid-text {
-      font-family: 'Hind Siliguri', sans-serif;
+      font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
       color: #1F6B43;
       font-size: 24px;
     }
@@ -994,7 +994,7 @@ export async function generateStickerHtml(
       margin: 0;
       padding: 0;
       background: #FFFFFF;
-      font-family: 'Hind Siliguri', sans-serif;
+      font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
     }
 
     @page sticker {
@@ -1162,7 +1162,7 @@ export async function generateStickerHtml(
       letter-spacing: 0.5px;
     }
     .collect-amount {
-      font-family: 'Fredoka', 'Hind Siliguri', sans-serif;
+      font-family: 'Fredoka', 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
       font-size: 24pt;
       font-weight: 700;
       line-height: 1;

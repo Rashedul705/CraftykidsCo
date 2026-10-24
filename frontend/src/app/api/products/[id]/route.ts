@@ -140,6 +140,9 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
     if (body.videos !== undefined) {
       updateFields.videos = Array.isArray(body.videos) ? body.videos : [];
     }
+    if (body.faqs !== undefined) {
+      updateFields.faqs = Array.isArray(body.faqs) ? body.faqs : [];
+    }
     if (body.weight !== undefined) updateFields.weight = body.weight;
     if (body.packageSize !== undefined) updateFields.packageSize = body.packageSize;
     if (body.handlingTime !== undefined) updateFields.handlingTime = body.handlingTime;

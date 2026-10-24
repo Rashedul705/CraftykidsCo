@@ -131,7 +131,7 @@ export default function StyleGuidePage() {
             <div className="p-3 bg-[#FAF7F2] rounded-[12px] border border-[#EFE9E0]">
               <span className="font-semibold block text-[#D6403B]">Language & Numbers</span>
               <p className="text-xs text-[#6B6B6B] mt-1">
-                Storefront: Hind Siliguri (Bangla default with toggle) • Admin: English with Fredoka
+                Storefront: Noto Sans Bengali (Bangla default with toggle) • Admin: English with Fredoka
                 for headings & numbers • Integers with ৳.
               </p>
             </div>
@@ -703,7 +703,7 @@ export default function StyleGuidePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 bg-[#FAF7F2] rounded-[12px] border border-[#EFE9E0] space-y-1">
                   <span className="text-xs font-bold text-[#6B6B6B]">
-                    Bangla Storefront Heading & Body (Hind Siliguri)
+                    Bangla Storefront Heading & Body (Noto Sans Bengali)
                   </span>
                   <h3 className="text-xl font-bold text-[#2B2B2B]">
                     বাচ্চাদের সৃজনশীল কল্পনায় নিরাপদ মোমের রঙ

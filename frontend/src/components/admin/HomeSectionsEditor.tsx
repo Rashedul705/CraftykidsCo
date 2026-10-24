@@ -30,6 +30,7 @@ import {
   MapPin,
   Heart,
   Award,
+  Tag,
 } from 'lucide-react';
 import {
   SiteSettings,
@@ -53,7 +54,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success');
   const [activeTab, setActiveTab] = useState<
-    'hero' | 'announcement' | 'trust' | 'showcases' | 'promos' | 'whylove' | 'reviews' | 'bulk' | 'footer'
+    'hero' | 'announcement' | 'welcome' | 'trust' | 'showcases' | 'promos' | 'whylove' | 'reviews' | 'bulk' | 'footer'
   >('hero');
 
   // Hero Slide Modal State (for adding or editing a slide)
@@ -411,6 +412,7 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
         {[
           { id: 'hero', label: '🎪 Hero Banner (Slider)' },
           { id: 'announcement', label: '📢 Top Announcement' },
+          { id: 'welcome', label: '🎟️ Welcome Offer (১০% ছাড়)' },
           { id: 'trust', label: '🛡️ Trust Badges' },
           { id: 'showcases', label: '🛍️ Product Showcases' },
           { id: 'promos', label: '🎨 Promo Banners' },
@@ -1066,6 +1068,174 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          TAB: WELCOME COUPON OFFER (১০% বিশেষ ছাড়)
+         ===================================================================== */}
+      {activeTab === 'welcome' && (
+        <div className="bg-white rounded-3xl border border-[#EFEAE2] p-5 sm:p-6 shadow-xs space-y-5 max-w-3xl">
+          <div className="pb-3 border-b border-[#EFEAE2] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-heading font-black text-base text-[#1A1A1A] flex items-center gap-2">
+                <span>Welcome Coupon Offer (প্রথম অর্ডারে ১০% বিশেষ ছাড়)</span>
+              </h3>
+              <p className="text-xs text-[#6B6B6B] mt-0.5">
+                হোমপেজের এই সেকশনটি অন/অফ করতে নিচের টগল বাটনটি ব্যবহার করুন।
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span
+                className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                  settings.welcomeOffer?.enabled !== false
+                    ? 'bg-[#F0FDF4] border-[#BBF7D0] text-[#16A34A]'
+                    : 'bg-[#FEF2F2] border-[#FECACA] text-[#DC2626]'
+                }`}
+              >
+                {settings.welcomeOffer?.enabled !== false ? '● দৃশ্যমান (Visible)' : '○ অদৃশ্য (Hidden)'}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-4 text-xs">
+            {/* Primary Toggle Switch */}
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFEAE2] flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <span className="font-bold text-sm text-[#1A1A1A] block">
+                  হোমপেজে এই সেকশনটি প্রদর্শন করুন
+                </span>
+                <span className="text-xs text-[#6B6B6B] block">
+                  টগল অফ থাকলে হোমপেজ থেকে পুরো &quot;প্রথম অর্ডারে ১০% বিশেষ ছাড়&quot; সেকশনটি লুকানো (Invisible) থাকবে।
+                </span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  id="welcome-offer-toggle"
+                  checked={settings.welcomeOffer?.enabled !== false}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      welcomeOffer: {
+                        ...(prev.welcomeOffer || defaultSiteSettings.welcomeOffer),
+                        enabled: e.target.checked,
+                      },
+                    }))
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-12 h-6.5 bg-[#D1D5DB] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2.5px] after:start-[3px] after:bg-white after:border-[#D1D5DB] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#16A34A]"></div>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="font-bold block mb-1 text-[#2B2B2B]">অফার ট্যাগ (Tag):</label>
+                <input
+                  value={settings.welcomeOffer?.tag || ''}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      welcomeOffer: {
+                        ...(prev.welcomeOffer || defaultSiteSettings.welcomeOffer),
+                        tag: e.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="Special Welcome Offer"
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold block mb-1 text-[#2B2B2B]">কুপন কোড (Coupon Code):</label>
+                <input
+                  value={settings.welcomeOffer?.couponCode || ''}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      welcomeOffer: {
+                        ...(prev.welcomeOffer || defaultSiteSettings.welcomeOffer),
+                        couponCode: e.target.value.toUpperCase(),
+                      },
+                    }))
+                  }
+                  placeholder="CRAFTY10"
+                  className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] font-mono font-bold"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-bold block mb-1 text-[#2B2B2B]">ব্যানার শিরোনাম (বাংলা):</label>
+              <input
+                value={settings.welcomeOffer?.titleBn || ''}
+                onChange={(e) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    welcomeOffer: {
+                      ...(prev.welcomeOffer || defaultSiteSettings.welcomeOffer),
+                      titleBn: e.target.value,
+                    },
+                  }))
+                }
+                placeholder="প্রথম অর্ডারে ১০% বিশেষ ছাড়!"
+                className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
+              />
+            </div>
+
+            <div>
+              <label className="font-bold block mb-1 text-[#2B2B2B]">বিবরণ (বাংলা):</label>
+              <textarea
+                rows={2}
+                value={settings.welcomeOffer?.descBn || ''}
+                onChange={(e) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    welcomeOffer: {
+                      ...(prev.welcomeOffer || defaultSiteSettings.welcomeOffer),
+                      descBn: e.target.value,
+                    },
+                  }))
+                }
+                placeholder="আপনার মোবাইল নম্বর দিয়ে প্রথম অর্ডারের জন্য প্রোমো কোড সংগ্রহ করুন..."
+                className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2] resize-none"
+              />
+            </div>
+
+            {/* Live Preview Box */}
+            <div className="pt-3 border-t border-[#EFEAE2] space-y-2">
+              <span className="font-bold text-xs text-[#6B6B6B] block">
+                লাইভ প্রিভিউ ({settings.welcomeOffer?.enabled !== false ? 'হোমপেজে দৃশ্যমান থাকবে' : 'হোমপেজে লুকানো থাকবে'}):
+              </span>
+              <div
+                className={`rounded-2xl border p-5 text-center space-y-3 transition-opacity ${
+                  settings.welcomeOffer?.enabled !== false
+                    ? 'bg-white border-[#EFE9E0] shadow-xs'
+                    : 'bg-[#FAF7F2] border-dashed border-[#D1D5DB] opacity-50'
+                }`}
+              >
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FFF3CC] text-[#7A4E00] text-[11px] font-bold">
+                  <Tag className="w-3 h-3" />
+                  <span>{settings.welcomeOffer?.tag || 'Special Welcome Offer'}</span>
+                </div>
+                <h4 className="font-black text-lg text-[#2B2B2B]">
+                  {settings.welcomeOffer?.titleBn || 'প্রথম অর্ডারে ১০% বিশেষ ছাড়!'}
+                </h4>
+                <p className="text-xs text-[#6B6B6B] max-w-md mx-auto">
+                  {settings.welcomeOffer?.descBn ||
+                    'আপনার মোবাইল নম্বর দিয়ে প্রথম অর্ডারের জন্য প্রোমো কোড সংগ্রহ করুন এবং চেকআউটে সরাসরি ছাড় উপভোগ করুন'}
+                </p>
+                <div className="inline-flex items-center gap-2 bg-[#FAF7F2] border-2 border-dashed border-[#D6403B] px-3 py-1 rounded-xl">
+                  <span className="text-[10px] font-bold text-[#6B6B6B] uppercase">Coupon:</span>
+                  <span className="font-mono font-black text-sm text-[#D6403B]">
+                    {settings.welcomeOffer?.couponCode || 'CRAFTY10'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

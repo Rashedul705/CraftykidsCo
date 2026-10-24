@@ -11,13 +11,15 @@ export interface DeliveryCalculationResult {
 export function calculateDeliveryCharge(input: {
   subtotal: number;
   district: string;
+  freeShippingEnabled?: boolean;
   freeDeliveryThreshold?: number;
 }): DeliveryCalculationResult {
+  const freeEnabled = input.freeShippingEnabled !== false;
   const threshold = input.freeDeliveryThreshold ?? 1000;
   const isInsideDhaka = input.district.trim().toLowerCase().includes('dhaka');
   const baseCharge = isInsideDhaka ? 60 : 120;
 
-  if (input.subtotal >= threshold) {
+  if (freeEnabled && input.subtotal >= threshold) {
     return {
       deliveryCharge: 0,
       isFreeDelivery: true,
@@ -28,7 +30,7 @@ export function calculateDeliveryCharge(input: {
   return {
     deliveryCharge: baseCharge,
     isFreeDelivery: false,
-    remainingForFreeDelivery: Math.max(0, threshold - input.subtotal),
+    remainingForFreeDelivery: freeEnabled ? Math.max(0, threshold - input.subtotal) : 0,
   };
 }
 

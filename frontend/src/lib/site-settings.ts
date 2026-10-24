@@ -52,6 +52,16 @@ export interface PromoBanner {
   enabled: boolean;
 }
 
+export interface WelcomeOfferConfig {
+  enabled: boolean;
+  tag: string;
+  titleBn: string;
+  titleEn: string;
+  descBn: string;
+  descEn: string;
+  couponCode: string;
+}
+
 export interface WhyLoveCard {
   id: string;
   titleBn: string;
@@ -125,7 +135,10 @@ export interface SiteSettings {
     whatsappNumber: string;
   };
 
-  // 9. Footer Info
+  // 9. Welcome Offer (10% Off Coupon Signup)
+  welcomeOffer: WelcomeOfferConfig;
+
+  // 10. Footer Info
   footer: {
     aboutBn: string;
     phone: string;
@@ -430,6 +443,15 @@ export const defaultSiteSettings: SiteSettings = {
     descBn: 'আপনার স্কুলের আর্ট ক্লাস বা বাচ্চার জন্মদিনের স্মরণীয় উপহার হিসেবে ক্রাফট কিট নিতে আমাদের সাথে যোগাযোগ করুন। বিশেষ বাল্ক ডিসকাউন্ট দেওয়া হয়!',
     ctaText: 'হোয়াটসঅ্যাপে যোগাযোগ করুন',
     whatsappNumber: '+8801731376498',
+  },
+  welcomeOffer: {
+    enabled: true,
+    tag: 'Special Welcome Offer',
+    titleBn: 'প্রথম অর্ডারে ১০% বিশেষ ছাড়!',
+    titleEn: 'Get 10% Off On Your First Order!',
+    descBn: 'আপনার মোবাইল নম্বর দিয়ে প্রথম অর্ডারের জন্য প্রোমো কোড সংগ্রহ করুন এবং চেকআউটে সরাসরি ছাড় উপভোগ করুন',
+    descEn: 'Enter your phone number to claim your first order promo code at checkout',
+    couponCode: 'CRAFTY10',
   },
   footer: {
     aboutBn: 'শিশুদের সুস্থ শৈশব ও সৃজনশীল মেধা বিকাশে ১০০% নিরাপদ নন-টক্সিক মোমের রঙ ও শিক্ষণীয় খেলনার নির্ভরযোগ্য ব্র্যান্ড।',

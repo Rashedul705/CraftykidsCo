@@ -2,6 +2,7 @@ export interface DeliverySettings {
   dhakaRate: number;
   suburbsRate: number;
   outsideDhakaRate: number;
+  freeShippingEnabled: boolean;
   freeDeliveryThreshold: number;
   codFee: number;
   suburbsDistricts: string[];
@@ -11,6 +12,7 @@ export const defaultDeliverySettings: DeliverySettings = {
   dhakaRate: 60,
   suburbsRate: 100,
   outsideDhakaRate: 120,
+  freeShippingEnabled: true,
   freeDeliveryThreshold: 1000,
   codFee: 0,
   suburbsDistricts: ['Gazipur', 'Narayanganj', 'Savar', 'Keraniganj', 'গাজীপুর', 'নারায়ণগঞ্জ', 'সাভার', 'কেরানীগঞ্জ'],
@@ -43,7 +45,7 @@ export function calculateDelivery(
   zone: 'DHAKA' | 'SUBURBS' | 'OUTSIDE' | 'NONE';
   descriptionBn: string;
 } {
-  const isFree = subtotal >= settings.freeDeliveryThreshold;
+  const isFree = settings.freeShippingEnabled !== false && subtotal >= settings.freeDeliveryThreshold;
 
   if (!district || district.trim() === '') {
     // District not selected yet!
@@ -65,7 +67,7 @@ export function calculateDelivery(
       charge: 0,
       isFree: true,
       zone: d.includes('dhaka') || d.includes('ঢাকা') ? 'DHAKA' : 'OUTSIDE',
-      descriptionBn: 'ফ্রি ডেলিভারি (অর্ডার ৳1,000+)',
+      descriptionBn: `ফ্রি ডেলিভারি (অর্ডার ৳${settings.freeDeliveryThreshold}+)`,
     };
   }
 

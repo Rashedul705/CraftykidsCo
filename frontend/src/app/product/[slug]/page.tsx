@@ -96,10 +96,10 @@ function parseVariationDetails(
   // If name has "12 piece" or "24 piece" or "48 piece", format nicely into Bangla
   if (!explicitName && (/12\s*piece/i.test(name) || /১২\s*পিস/.test(name))) {
     name = '১২ পিস সেট';
-    if (!included) included = '১২টি শেপ + ৬টি রঙ + ১ ব্রাশ';
+    if (!included) included = '১২টি শেপ + ৬টি রঙ + ১টি ব্রাশ';
   } else if (!explicitName && (/24\s*piece/i.test(name) || /২৪\s*পিস/.test(name))) {
     name = '২৪ পিস মেগা বক্স';
-    if (!included) included = '২৪টি শেপ + ১২টি রঙ + ২ ব্রাশ';
+    if (!included) included = '২৪টি শেপ + ১২টি রঙ + ২টি ব্রাশ';
   } else if (!explicitName && (/48\s*piece/i.test(name) || /৪৮\s*পিস/.test(name) || /36\s*piece/i.test(name) || /৩৬\s*পিস/.test(name))) {
     name = '৩৬ পিস ডিলাক্স গিফট সেট';
     if (!included) included = 'সম্পূর্ণ কালেকশন বক্স + সব কালার';
@@ -139,6 +139,29 @@ function ProductContent() {
   const [product, setProduct] = useState<SampleProduct | null>(initialProduct);
   const [isLoading, setIsLoading] = useState<boolean>(!initialProduct);
   const [notFound, setNotFound] = useState<boolean>(false);
+
+  const [deliverySettings, setDeliverySettings] = useState<{
+    dhakaRate?: number;
+    outsideDhakaRate?: number;
+    freeShippingEnabled?: boolean;
+    freeDeliveryThreshold?: number;
+  }>({
+    dhakaRate: BRAND_CONFIG.defaultDeliveryDhaka,
+    outsideDhakaRate: BRAND_CONFIG.defaultDeliveryOutside,
+    freeShippingEnabled: true,
+    freeDeliveryThreshold: BRAND_CONFIG.freeDeliveryThreshold,
+  });
+
+  useEffect(() => {
+    fetch('/api/delivery-charges')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings) {
+          setDeliverySettings(data.settings);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Sync when slug changes or fetch latest from DB
   useEffect(() => {
@@ -211,6 +234,30 @@ function ProductContent() {
       'শিশুদের উপযোগী নরম গ্রিপ ফাইন আর্ট ব্রাশ',
       'রঙ মেলানোর কালার প্যালেট ও ডেমো গাইডবুক',
       'নিরাপদ গিফট প্যাকেজিং বক্স',
+    ];
+  }, [product]);
+
+  // Dynamic FAQ list
+  const faqsList = useMemo(() => {
+    if (product?.faqs && Array.isArray(product.faqs) && product.faqs.length > 0) {
+      return product.faqs.filter((f) => f && f.question && f.answer);
+    }
+    return [
+      {
+        question: 'বাচ্চা মুখে দিলে কি কোনো ক্ষতি হবে?',
+        answer:
+          'না, আমাদের সব রঙ ও উপাদান ১০০% ফুড-গ্রেড ও প্রাকৃতিকভাবে তৈরি। এতে কোনো ক্ষতিকর রাসায়নিক বা সীসা নেই।',
+      },
+      {
+        question: 'কাপড়ে বা দেওয়ালে রঙ লাগলে কীভাবে তুলব?',
+        answer:
+          'এটি সম্পূর্ণ ওয়াশেবল রঙ। সাধারণ পানিতে সাবান দিয়ে ধুয়ে নিলেই কাপড় বা মেঝে থেকে সহজেই উঠে যায়।',
+      },
+      {
+        question: 'পণ্য পছন্দ না হলে কি রিটার্ন করা যাবে?',
+        answer:
+          `জি, ডেলিভারির ${toBanglaDigits(BRAND_CONFIG.defaultReturnDays)} দিনের মধ্যে কোনো ত্রুটি থাকলে সরাসরি সম্পূর্ণ মূল্য ফেরত বা ফ্রি রিপ্লেসমেন্ট সুবিধা রয়েছে।`,
+      },
     ];
   }, [product]);
 
@@ -315,7 +362,7 @@ function ProductContent() {
   }, [variations.length, isMultiSelectMode, currentPrice, quantity, selectedVariationsList]);
 
   // Below fold tabs
-  const [activeTab, setActiveTab] = useState<'desc' | 'box' | 'videos' | 'reviews' | 'faq'>('desc');
+  const [activeTab, setActiveTab] = useState<'desc' | 'box' | 'videos' | 'faq'>('desc');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   // Recently Viewed state
@@ -543,25 +590,6 @@ function ProductContent() {
     }
 
     router.push('/checkout');
-  };
-
-  // Add Combo Bundle
-  const handleAddCombo = () => {
-    handleAddToCart();
-    const sketchbook = allProducts.find((p) => p.categorySlug === 'sketchbooks') || allProducts[1];
-    if (sketchbook) {
-      addItem({
-        id: `${sketchbook.id}-combo`,
-        productId: sketchbook.id,
-        productSlug: sketchbook.slug,
-        title: sketchbook.titleEn,
-        titleBn: sketchbook.titleBn,
-        imageUrl: sketchbook.imageUrl,
-        price: sketchbook.baseSalePrice || 350,
-        quantity: 1,
-      });
-      toast.success('কম্বো প্যাকেজ কার্টে যোগ করা হয়েছে!');
-    }
   };
 
   // Share handler
@@ -917,29 +945,16 @@ function ProductContent() {
               )}
             </div>
 
-            {/* 3. Rating row: stars, average, "N টি রিভিউ দেখুন" link that scrolls to reviews */}
-            {(product.reviewCount || 48) > 0 && (
-              <div className="flex items-center gap-2 text-sm sm:text-base">
-                <div className="flex items-center text-[#FFC93C]">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-current text-[#FFC93C]" />
-                  ))}
-                </div>
-                <span className="font-bold text-[#2B2B2B]">{product.rating || 4.9}</span>
-                <span className="text-[#D1D5DB]">•</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const el = document.getElementById('reviews-section');
-                    el?.scrollIntoView({ behavior: 'smooth' });
-                    setActiveTab('reviews');
-                  }}
-                  className="text-[#C23631] hover:underline font-medium cursor-pointer"
-                >
-                  {toBanglaDigits(product.reviewCount || 48)}টি রিভিউ দেখুন
-                </button>
+            {/* 3. Rating row: stars and average */}
+            <div className="flex items-center gap-2 text-sm sm:text-base">
+              <div className="flex items-center text-[#FFC93C]">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current text-[#FFC93C]" />
+                ))}
               </div>
-            )}
+              <span className="font-bold text-[#2B2B2B]">{product.rating || 4.9}</span>
+              <span className="text-[#6B6B6B] text-xs font-medium">/ ৫.০</span>
+            </div>
 
             {/* Short Description */}
             {displayShortDesc && (
@@ -1077,7 +1092,7 @@ function ProductContent() {
                             </div>
 
                             {parsed.included && (
-                              <p className="text-xs sm:text-sm text-[#555] leading-snug mt-1">
+                              <p className="text-xs sm:text-sm text-[#555] leading-snug mt-1 font-siliguri">
                                 {parsed.included}
                               </p>
                             )}
@@ -1126,7 +1141,7 @@ function ProductContent() {
                               >
                                 <Minus className="w-3.5 h-3.5" />
                               </button>
-                              <span className="px-2.5 text-xs font-bold text-[#2B2B2B] min-w-[24px] text-center">
+                              <span className="px-2.5 text-xs font-bold text-[#2B2B2B] min-w-[24px] text-center font-siliguri">
                                 {toBanglaDigits(varQty)}
                               </span>
                               <button
@@ -1169,7 +1184,7 @@ function ProductContent() {
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <span className="w-12 text-center font-extrabold text-base sm:text-lg">
+                    <span className="w-12 text-center font-extrabold text-lg sm:text-xl font-siliguri tracking-wider">
                       {toBanglaDigits(quantity)}
                     </span>
                     <button
@@ -1187,12 +1202,22 @@ function ProductContent() {
 
               {/* Live Total Line */}
               <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 border border-[#EFE9E0] text-sm sm:text-base font-medium text-[#2B2B2B] flex items-center justify-between gap-2 flex-wrap">
-                <span className="truncate max-w-xs">
-                  {isMultiSelectMode
-                    ? `নির্বাচিত ${toBanglaDigits(totalSelectedCount)}টি আইটেম (${selectedVariationsList.map((s) => `${s.variation.name} x${toBanglaDigits(s.quantity)}`).join(', ')})`
-                    : `${selectedParsed.name} x ${toBanglaDigits(quantity)}`}
+                <span className="truncate max-w-xs flex items-center gap-1.5 flex-wrap">
+                  {isMultiSelectMode ? (
+                    <span>
+                      নির্বাচিত <strong className="font-siliguri font-bold">{toBanglaDigits(totalSelectedCount)}</strong>টি আইটেম (
+                      {selectedVariationsList
+                        .map((s) => `${s.variation.name} × ${toBanglaDigits(s.quantity)}টি`)
+                        .join(', ')}
+                      )
+                    </span>
+                  ) : (
+                    <span>
+                      {selectedParsed.name} × <strong className="font-siliguri font-bold text-base sm:text-lg">{toBanglaDigits(quantity)}টি</strong>
+                    </span>
+                  )}
                 </span>
-                <span className="font-black text-base sm:text-xl text-[#C23631] shrink-0">
+                <span className="font-black text-base sm:text-xl text-[#C23631] shrink-0 font-siliguri">
                   মোট {formatBDT(totalSelectedPrice, { locale: 'bn' })}
                 </span>
               </div>
@@ -1273,7 +1298,8 @@ function ProductContent() {
                 <div>
                   <strong className="block text-[#2B2B2B]">সারা বাংলাদেশে হোম ডেলিভারি</strong>
                   <span className="text-[#6B6B6B] text-[11px]">
-                    ঢাকা ৳{BRAND_CONFIG.defaultDeliveryDhaka}, বাইরে ৳{BRAND_CONFIG.defaultDeliveryOutside}। ৳{BRAND_CONFIG.freeDeliveryThreshold}+ এ ফ্রি!
+                    ঢাকা ৳{deliverySettings.dhakaRate ?? BRAND_CONFIG.defaultDeliveryDhaka}, বাইরে ৳{deliverySettings.outsideDhakaRate ?? BRAND_CONFIG.defaultDeliveryOutside}।
+                    {deliverySettings.freeShippingEnabled !== false && ` ৳${deliverySettings.freeDeliveryThreshold ?? BRAND_CONFIG.freeDeliveryThreshold}+ এ ফ্রি!`}
                   </span>
                 </div>
               </div>
@@ -1400,8 +1426,7 @@ function ProductContent() {
               { id: 'desc', label: 'বিবরণ' },
               { id: 'box', label: 'বাক্সে কী আছে' },
               ...(productVideos.length > 0 ? [{ id: 'videos', label: `ডেমো ভিডিও (${toBanglaDigits(productVideos.length)})` }] : []),
-              { id: 'reviews', label: `রিভিউ (${toBanglaDigits(product.reviewCount || 48)})` },
-              { id: 'faq', label: 'প্রশ্নোত্তর' },
+              { id: 'faq', label: `প্রশ্নোত্তর (${toBanglaDigits(faqsList.length)})` },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1425,30 +1450,6 @@ function ProductContent() {
                 {product.description ||
                   `${product.titleBn} শিশুদের সৃজনশীলতা, কল্পনাশক্তি ও আনন্দময় সময়ের জন্য বিশেষভাবে প্রস্তুত করা হয়েছে। এটি শিশুদের জন্য সম্পূর্ণ নন-টক্সিক ও নিরাপদ।`}
               </p>
-
-              {/* 3 Pillars Box */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-1">
-                  <strong className="text-sm font-bold text-[#2B2B2B] block">🎨 কী এবং কীভাবে তৈরি?</strong>
-                  <p className="text-xs text-[#6B6B6B]">
-                    ১০০% খাঁটি প্রাকৃতিক মোম ও ফুড-গ্রেড পিগমেন্ট। ক্ষতিকর সিন্থেটিক কেমিক্যাল ও ভারী ধাতু মুক্ত।
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-1">
-                  <strong className="text-sm font-bold text-[#2B2B2B] block">👶 কার জন্য উপযুক্ত?</strong>
-                  <p className="text-xs text-[#6B6B6B]">
-                    {toBanglaDigits(product.targetAgeMin || 2)} থেকে {toBanglaDigits(product.targetAgeMax || 8)} বছর বয়সী শিশুদের হ্যান্ড-আই কোঅর্ডিনেশন ও মেধার বিকাশের জন্য উপযুক্ত।
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-1">
-                  <strong className="text-sm font-bold text-[#2B2B2B] block">🛡️ কেন অভিভাবকেরা নিশ্চিন্ত?</strong>
-                  <p className="text-xs text-[#6B6B6B]">
-                    বাচ্চা মুখে দিলেও কোনো ভয় নেই, এবং সাধারণ সাবান পানিতেই কাপড় বা ফ্লোরের দাগ সহজে উঠে যায়।
-                  </p>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1548,118 +1549,10 @@ function ProductContent() {
             </div>
           )}
 
-          {/* TAB 4: রিভিউ (Customer Reviews) */}
-          {activeTab === 'reviews' && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#EFE9E0]">
-                <div>
-                  <h3 className="font-bold text-lg text-[#2B2B2B]">
-                    গ্রাহকদের রিভিউ ও রেটিং ({toBanglaDigits(product.reviewCount || 48)})
-                  </h3>
-                  <p className="text-xs text-[#6B6B6B]">
-                    আমাদের সম্মানিত ক্রেতাদের বাস্তব অনুভূতি ও ছবির অভিজ্ঞতা
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center text-[#FFC93C]">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-current text-[#FFC93C]" />
-                    ))}
-                  </div>
-                  <span className="font-bold text-base text-[#2B2B2B]">
-                    {product.rating || 4.9} / ৫.০
-                  </span>
-                </div>
-              </div>
-
-              {/* Review Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(product.reviews || [
-                  {
-                    id: 'rev-1',
-                    author: 'আফসানা রহমান',
-                    location: 'মিরপুর, ঢাকা',
-                    rating: 5,
-                    date: '২ দিন আগে',
-                    comment: 'পণ্যটির ফিনিশিং ও রঙ অসাধারণ! আমার ৪ বছরের মেয়ে খুবই খুশি। কাপড় থেকেও সহজে রঙ উঠে যাচ্ছে।',
-                    isVerified: true,
-                  },
-                  {
-                    id: 'rev-2',
-                    author: 'তাহসিন মাহমুদ',
-                    location: 'চট্টগ্রাম',
-                    rating: 5,
-                    date: '৫ দিন আগে',
-                    comment: 'খুব দ্রুত ডেলিভারি পেয়েছি। প্যাকেজিং খুবই চমৎকার এবং সম্পূর্ণ অক্ষত অবস্থায় এসেছে। ১০০% রেকমেন্ডেড।',
-                    isVerified: true,
-                  },
-                  {
-                    id: 'rev-3',
-                    author: 'সাবিহা সুলতানা',
-                    location: 'উত্তরা, ঢাকা',
-                    rating: 5,
-                    date: '১ সপ্তাহ আগে',
-                    comment: 'মোমের রঙগুলো মুখে দেওয়ার ভয় নেই তাই নিশ্চিন্তে দিয়েছি। বাচ্চার সৃজনশীলতা চর্চায় দারুণ কিট!',
-                    isVerified: true,
-                  },
-                ]).map((rev) => (
-                  <div
-                    key={rev.id}
-                    className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] flex flex-col justify-between space-y-3"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center text-[#FFC93C]">
-                          {[...Array(rev.rating)].map((_, i) => (
-                            <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                          ))}
-                        </div>
-                        <span className="text-[11px] text-[#6B6B6B]">{rev.date}</span>
-                      </div>
-
-                      <p className="text-xs text-[#2B2B2B] leading-relaxed italic">
-                        &quot;{rev.comment}&quot;
-                      </p>
-                    </div>
-
-                    <div className="pt-2 border-t border-[#EFE9E0] flex items-center justify-between text-[11px]">
-                      <div>
-                        <strong className="text-[#2B2B2B] block">{rev.author}</strong>
-                        {rev.location && <span className="text-[#6B6B6B]">{rev.location}</span>}
-                      </div>
-                      {rev.isVerified && (
-                        <StatusPill variant="green" size="sm">
-                          ভেরিফাইড
-                        </StatusPill>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: প্রশ্নোত্তর (FAQ) */}
+          {/* TAB: প্রশ্নোত্তর (FAQ) */}
           {activeTab === 'faq' && (
             <div className="space-y-3">
-              {(product.faqs || [
-                {
-                  question: 'বাচ্চা মুখে দিলে কি কোনো ক্ষতি হবে?',
-                  answer:
-                    'না, আমাদের সব রঙ ও উপাদান ১০০% ফুড-গ্রেড ও প্রাকৃতিকভাবে তৈরি। এতে কোনো ক্ষতিকর রাসায়নিক বা সীসা নেই।',
-                },
-                {
-                  question: 'কাপড়ে বা দেওয়ালে রঙ লাগলে কীভাবে তুলব?',
-                  answer:
-                    'এটি সম্পূর্ণ ওয়াশেবল রঙ। সাধারণ পানিতে সাবান দিয়ে ধুয়ে নিলেই কাপড় বা মেঝে থেকে সহজেই উঠে যায়।',
-                },
-                {
-                  question: 'পণ্য পছন্দ না হলে কি রিটার্ন করা যাবে?',
-                  answer:
-                    `জি, ডেলিভারির ${toBanglaDigits(BRAND_CONFIG.defaultReturnDays)} দিনের মধ্যে কোনো ত্রুটি থাকলে সরাসরি সম্পূর্ণ মূল্য ফেরত বা ফ্রি রিপ্লেসমেন্ট সুবিধা রয়েছে।`,
-                },
-              ]).map((faq, idx) => (
+              {faqsList.map((faq, idx) => (
                 <div
                   key={idx}
                   className="rounded-2xl border border-[#EFE9E0] bg-[#FAF7F2] overflow-hidden transition-all"
@@ -1685,38 +1578,6 @@ function ProductContent() {
               ))}
             </div>
           )}
-        </div>
-
-        {/* =====================================================================
-            "একসাথে কিনলে ছাড়" BUNDLE STRIP
-           ===================================================================== */}
-        <div className="bg-[#FAF7F2] border border-[#EFE9E0] rounded-2xl p-5 sm:p-7 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
-          <div className="space-y-2 text-center md:text-left">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#D6403B] text-white shadow-xs">
-              <Gift className="w-3.5 h-3.5" />
-              একসাথে কিনলে ছাড়!
-            </span>
-            <h3 className="font-bold text-xl sm:text-2xl text-[#2B2B2B]">
-              {product.titleBn} + আর্ট স্কেচ প্যাড কম্বো
-            </h3>
-            <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-lg">
-              পণ্যটির সাথে ড্রয়িং স্কেচ প্যাড একসাথে নিলে পাচ্ছেন অতিরিক্ত ৳১৫০ ছাড় ও আকর্ষণীয় গিফট প্যাকেজিং।
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4 shrink-0">
-            <div className="text-right">
-              <span className="text-2xl sm:text-3xl font-extrabold text-[#C23631]">৳৪৫০</span>
-              <span className="block text-xs line-through text-[#6B6B6B]">৳৬০০</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleAddCombo}
-              className="py-3 px-5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
-            >
-              Add Combo to Cart
-            </button>
-          </div>
         </div>
 
         {/* =====================================================================

@@ -49,6 +49,7 @@ export async function PUT(req: NextRequest) {
       dhakaRate: Number(body.dhakaRate !== undefined ? body.dhakaRate : 60),
       suburbsRate: Number(body.suburbsRate !== undefined ? body.suburbsRate : 100),
       outsideDhakaRate: Number(body.outsideDhakaRate !== undefined ? body.outsideDhakaRate : 120),
+      freeShippingEnabled: body.freeShippingEnabled !== undefined ? Boolean(body.freeShippingEnabled) : true,
       freeDeliveryThreshold: Number(body.freeDeliveryThreshold !== undefined ? body.freeDeliveryThreshold : 1000),
       codFee: Number(body.codFee !== undefined ? body.codFee : 0),
     };

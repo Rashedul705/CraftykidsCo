@@ -22,6 +22,7 @@ export async function GET() {
           whyLoveUs: { ...defaultSiteSettings.whyLoveUs, ...(parsed.whyLoveUs || {}) },
           testimonials: { ...defaultSiteSettings.testimonials, ...(parsed.testimonials || {}) },
           bulkOrderBanner: { ...defaultSiteSettings.bulkOrderBanner, ...(parsed.bulkOrderBanner || {}) },
+          welcomeOffer: { ...defaultSiteSettings.welcomeOffer, ...(parsed.welcomeOffer || {}) },
           footer: { ...defaultSiteSettings.footer, ...(parsed.footer || {}) },
           print: { ...defaultSiteSettings.print, ...(parsed.print || {}) },
           heroSlides: Array.isArray(parsed.heroSlides) && parsed.heroSlides.length > 0 ? parsed.heroSlides : defaultSiteSettings.heroSlides,

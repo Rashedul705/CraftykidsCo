@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   PackageCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { SampleCategory, getVideoEmbedInfo } from '@/lib/sample-data';
 import { BRAND_NAME } from '@/lib/brand';
@@ -59,6 +60,30 @@ export interface VariationRow {
   stock: number;
   imageUrl?: string;
 }
+
+export interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+const DEFAULT_PRODUCT_FAQS: FaqItem[] = [
+  {
+    id: 'faq-1',
+    question: 'বাচ্চা মুখে দিলে কি কোনো ক্ষতি হবে?',
+    answer: 'না, আমাদের সব রঙ ও উপাদান ১০০% ফুড-গ্রেড ও প্রাকৃতিকভাবে তৈরি। এতে কোনো ক্ষতিকর রাসায়নিক বা সীসা নেই।',
+  },
+  {
+    id: 'faq-2',
+    question: 'কাপড়ে বা দেওয়ালে রঙ লাগলে কীভাবে তুলব?',
+    answer: 'এটি সম্পূর্ণ ওয়াশেবল রঙ। সাধারণ পানিতে সাবান দিয়ে ধুয়ে নিলেই কাপড় বা মেঝে থেকে সহজেই উঠে যায়।',
+  },
+  {
+    id: 'faq-3',
+    question: 'পণ্য পছন্দ না হলে কি রিটার্ন করা যাবে?',
+    answer: 'জি, ডেলিভারির ৭ দিনের মধ্যে কোনো ত্রুটি থাকলে সরাসরি সম্পূর্ণ মূল্য ফেরত বা ফ্রি রিপ্লেসমেন্ট সুবিধা রয়েছে।',
+  },
+];
 
 export default function AddProductForm({
   onCancel,
@@ -139,6 +164,49 @@ export default function AddProductForm({
   const [ageAppropriate, setAgeAppropriate] = useState<string>(
     () => initialProduct?.ageAppropriate || '২+ থেকে ৮ বছর'
   );
+
+  // FAQs State & Handlers
+  const [faqs, setFaqs] = useState<FaqItem[]>(() => {
+    if (initialProduct?.faqs && Array.isArray(initialProduct.faqs) && initialProduct.faqs.length > 0) {
+      return initialProduct.faqs.map((f: any, idx: number) => ({
+        id: f.id || `faq-${idx + 1}-${Date.now()}`,
+        question: f.question || '',
+        answer: f.answer || '',
+      }));
+    }
+    return DEFAULT_PRODUCT_FAQS;
+  });
+
+  const handleAddFaq = () => {
+    setFaqs((prev) => [
+      ...prev,
+      {
+        id: `faq-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        question: '',
+        answer: '',
+      },
+    ]);
+    markDirty();
+  };
+
+  const handleUpdateFaq = (index: number, field: 'question' | 'answer', value: string) => {
+    setFaqs((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+    markDirty();
+  };
+
+  const handleRemoveFaq = (index: number) => {
+    setFaqs((prev) => prev.filter((_, i) => i !== index));
+    markDirty();
+  };
+
+  const handleResetDefaultFaqs = () => {
+    setFaqs(DEFAULT_PRODUCT_FAQS);
+    markDirty();
+  };
 
   // 3. Pricing and Stock
   const [regularPrice, setRegularPrice] = useState<number | ''>(
@@ -513,6 +581,7 @@ export default function AddProductForm({
           materials,
           safetyStandards,
           ageAppropriate,
+          faqs,
           timestamp: new Date().toLocaleTimeString(),
         };
         try {
@@ -523,7 +592,7 @@ export default function AddProductForm({
     }, 30000);
 
     return () => clearInterval(timer);
-  }, [isDirty, isEditing, titleBn, titleEn, regularPrice, salePrice, categorySlug, videoUrl1, videoUrl2, mainImage, galleryImages, boxItemsText, materials, safetyStandards, ageAppropriate]);
+  }, [isDirty, isEditing, titleBn, titleEn, regularPrice, salePrice, categorySlug, videoUrl1, videoUrl2, mainImage, galleryImages, boxItemsText, materials, safetyStandards, ageAppropriate, faqs]);
 
   // Warn before browser unload if unsaved changes exist
   useEffect(() => {
@@ -679,6 +748,9 @@ export default function AddProductForm({
       videoUrl: videoUrl1.trim(),
       videoUrl2: videoUrl2.trim(),
       videos: videosPayload,
+      faqs: faqs
+        .map((f) => ({ question: f.question.trim(), answer: f.answer.trim() }))
+        .filter((f) => f.question || f.answer),
       weight: Number(weightGrams || 350),
       packageSize: packageSize.trim(),
       seoTitle: seoTitle.trim() || titleEn.trim(),
@@ -1376,6 +1448,132 @@ export default function AddProductForm({
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Frequently asked questions (প্রশ্নোত্তর) */}
+          <Card>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-center text-[#D6403B] shrink-0">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <span>প্রশ্নোত্তর (Frequently asked questions)</span>
+                    <span className="text-[11px] font-normal text-[#6B6B6B] bg-[#FAF7F2] px-2 py-0.5 rounded-full border border-[#EFE9E0]">
+                      {faqs.length} টি প্রশ্ন
+                    </span>
+                  </CardTitle>
+                  <p className="text-xs text-[#6B6B6B] mt-0.5">
+                    স্টোরফ্রন্ট প্রোডাক্ট পেজের &quot;প্রশ্নোত্তর&quot; ট্যাবে এই প্রশ্ন ও উত্তরগুলো প্রদর্শিত হবে।
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetDefaultFaqs}
+                  className="text-xs flex items-center gap-1.5"
+                  title="ডিফল্ট ৩টি সাধারণ প্রশ্ন ও উত্তর লোড করুন"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>ডিফল্ট FAQ লোড</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleAddFaq}
+                  className="text-xs flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>নতুন প্রশ্ন যোগ করুন</span>
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              {faqs.length === 0 ? (
+                <div className="text-center py-8 px-4 rounded-xl border border-dashed border-[#EFE9E0] bg-[#FAF7F2]">
+                  <HelpCircle className="w-8 h-8 text-[#9E9E9E] mx-auto mb-2 opacity-60" />
+                  <p className="text-xs font-semibold text-[#2B2B2B]">কোনো প্রশ্নোত্তর যুক্ত করা হয়নি</p>
+                  <p className="text-[11px] text-[#6B6B6B] mt-1 mb-3">
+                    পণ্য সম্পর্কে কাস্টমারদের সাধারণ প্রশ্নের উত্তর দিলে বিক্রয় বাড়ে।
+                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={handleResetDefaultFaqs} className="text-xs">
+                      ডিফল্ট ৩টি প্রশ্ন লোড করুন
+                    </Button>
+                    <Button type="button" size="sm" variant="primary" onClick={handleAddFaq} className="text-xs">
+                      + প্রথম প্রশ্ন লিখুন
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {faqs.map((faq, index) => (
+                    <div
+                      key={faq.id || index}
+                      className="p-4 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2]/60 hover:bg-[#FAF7F2] transition-colors space-y-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-[#D6403B] bg-[#FDE3E1] px-2.5 py-0.5 rounded-full">
+                          প্রশ্ন #{index + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFaq(index)}
+                          className="text-[#9E9E9E] hover:text-[#D6403B] p-1 rounded-lg hover:bg-[#FDE3E1] transition-colors"
+                          title="এই প্রশ্নটি মুছে ফেলুন"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-[#2B2B2B]">
+                          প্রশ্ন (Question):
+                        </label>
+                        <Input
+                          id={`faq-q-${index}`}
+                          value={faq.question}
+                          onChange={(e) => handleUpdateFaq(index, 'question', e.target.value)}
+                          placeholder="যেমন: বাচ্চা মুখে দিলে কি কোনো ক্ষতি হবে?"
+                          className="bg-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-[#2B2B2B]">
+                          উত্তর (Answer):
+                        </label>
+                        <Textarea
+                          id={`faq-a-${index}`}
+                          value={faq.answer}
+                          onChange={(e) => handleUpdateFaq(index, 'answer', e.target.value)}
+                          rows={2}
+                          placeholder="যেমন: না, আমাদের সব রঙ ও উপাদান ১০০% ফুড-গ্রেড ও প্রাকৃতিকভাবে তৈরি..."
+                          className="bg-white"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddFaq}
+                    className="w-full py-2.5 border-dashed border-[#D6403B]/30 hover:border-[#D6403B] hover:bg-[#FDE3E1]/20 text-[#D6403B] font-semibold text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>আরেকটি প্রশ্ন ও উত্তর যোগ করুন</span>
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
