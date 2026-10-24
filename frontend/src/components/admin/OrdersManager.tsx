@@ -30,6 +30,8 @@ import {
   Tag,
   Layers,
   Sparkles,
+  Copy,
+  Package,
 } from 'lucide-react';
 import { OrderRecord, getAllProducts } from '@/lib/store';
 import { SampleProduct } from '@/lib/sample-data';
@@ -998,13 +1000,25 @@ export default function OrdersManager({
     }
   };
 
-  // Render Row Action Button based on status
+  // Copy tracking ID
+  const handleCopyTracking = (code: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!code) return;
+    navigator.clipboard.writeText(code).then(() => {
+      success(`কুরিয়ার ট্র্যাকিং আইডি কপি করা হয়েছে: ${code}`);
+    }).catch(() => {
+      success(`কুরিয়ার ট্র্যাকিং আইডি: ${code}`);
+    });
+  };
+
+  // Render Row Action Button based on status (shown only when relevant)
   const renderRowMainAction = (ord: OrderRecord) => {
     if (ord.status === 'PENDING') {
       return (
         <Button
           size="sm"
           variant="primary"
+          className="px-3 py-1.5 text-xs whitespace-nowrap"
           onClick={(e) => {
             e.stopPropagation();
             onStatusChange(ord.id, 'CONFIRMED');
@@ -1022,11 +1036,16 @@ export default function OrdersManager({
           <Button
             size="sm"
             variant="secondary"
+            className="px-3 py-1.5 text-xs whitespace-nowrap"
             onClick={(e) => {
               e.stopPropagation();
-              handleOpenOrderDetail(ord);
+              window.open(
+                `https://steadfast.com.bd/t/${ord.trackingCode || ord.consignmentId}`,
+                '_blank'
+              );
             }}
           >
+            <Truck className="w-3 h-3 mr-1 text-[#0B5F85]" />
             Track
           </Button>
         );
@@ -1036,11 +1055,13 @@ export default function OrdersManager({
           size="sm"
           variant="primary"
           disabled={isSubmittingDispatch}
+          className="px-2.5 py-1.5 text-xs whitespace-nowrap"
           onClick={(e) => {
             e.stopPropagation();
             handleDispatchOrder(ord);
           }}
         >
+          <Truck className="w-3.5 h-3.5 mr-1" />
           Send to Steadfast
         </Button>
       );
@@ -1051,16 +1072,14 @@ export default function OrdersManager({
         <Button
           size="sm"
           variant="secondary"
+          className="px-3 py-1.5 text-xs whitespace-nowrap text-[#1F6B43] border-[#BDE7CC] hover:bg-[#DDF3E6]"
           onClick={(e) => {
             e.stopPropagation();
-            if (ord.trackingCode) {
-              window.open(`https://steadfast.com.bd/t/${ord.trackingCode}`, '_blank');
-            } else {
-              handleOpenOrderDetail(ord);
-            }
+            handleMarkDelivered(ord);
           }}
         >
-          Track
+          <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+          Delivered
         </Button>
       );
     }
@@ -1070,28 +1089,20 @@ export default function OrdersManager({
         <Button
           size="sm"
           variant="secondary"
+          className="px-3 py-1.5 text-xs whitespace-nowrap"
           onClick={(e) => {
             e.stopPropagation();
             handlePrintInvoices([ord]);
           }}
         >
+          <Printer className="w-3.5 h-3.5 mr-1" />
           Print
         </Button>
       );
     }
 
-    return (
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleOpenOrderDetail(ord);
-        }}
-      >
-        View
-      </Button>
-    );
+    // Cancelled / Returned: No primary action needed
+    return null;
   };
 
   return (
@@ -1367,10 +1378,11 @@ export default function OrdersManager({
 
       {/* 6. ORDERS TABLE CARD */}
       <TableContainer>
-        <Table>
+        <Table className="w-full table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10">
+              {/* 1. Checkbox */}
+              <TableHead className="w-[3.5%] py-3 px-2 text-center">
                 <input
                   type="checkbox"
                   aria-label="Select all orders"
@@ -1382,14 +1394,22 @@ export default function OrdersManager({
                   className="rounded-[4px] accent-[#D6403B] cursor-pointer"
                 />
               </TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>District & area</TableHead>
-              <TableHead>Items</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Courier</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              {/* 2. Order ID and date */}
+              <TableHead className="w-[13.5%] py-3 px-2.5 whitespace-nowrap">Order</TableHead>
+              {/* 3. Customer name and phone */}
+              <TableHead className="w-[17%] py-3 px-2.5">Customer</TableHead>
+              {/* 4. District */}
+              <TableHead className="w-[10%] py-3 px-2.5">District</TableHead>
+              {/* 5. Items count only */}
+              <TableHead className="w-[8%] py-3 px-2.5 whitespace-nowrap text-center">Items</TableHead>
+              {/* 6. Total with payment badge */}
+              <TableHead className="w-[14%] py-3 px-2.5 whitespace-nowrap">Total</TableHead>
+              {/* 7. Status badge */}
+              <TableHead className="w-[11%] py-3 px-2.5 whitespace-nowrap">Status</TableHead>
+              {/* 8. One primary action button */}
+              <TableHead className="w-[17%] py-3 px-2.5 text-center whitespace-nowrap">Action</TableHead>
+              {/* 9. 3-dot menu */}
+              <TableHead className="w-[6%] py-3 px-2 text-right whitespace-nowrap"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1413,10 +1433,8 @@ export default function OrdersManager({
               </TableRow>
             ) : (
               paginatedOrders.map((ord) => {
-                const isSelected = selectedOrderId === ord.id;
                 const isChecked = selectedOrderIds.includes(ord.id);
-                const firstItem = ord.items[0];
-                const extraCount = ord.items.length - 1;
+                const totalItemCount = ord.items.reduce((acc, item) => acc + (item.quantity || 1), 0);
 
                 return (
                   <TableRow
@@ -1425,8 +1443,11 @@ export default function OrdersManager({
                     onClick={() => handleOpenOrderDetail(ord)}
                     className="cursor-pointer"
                   >
-                    {/* Checkbox */}
-                    <TableCell onClick={(e) => toggleSelectOrder(ord.id, e)}>
+                    {/* 1. Checkbox */}
+                    <TableCell
+                      className="py-3 px-2 text-center"
+                      onClick={(e) => toggleSelectOrder(ord.id, e)}
+                    >
                       <input
                         type="checkbox"
                         aria-label={`Select order ${ord.orderNumber}`}
@@ -1436,113 +1457,53 @@ export default function OrdersManager({
                       />
                     </TableCell>
 
-                    {/* Order Number & Relative Time */}
-                    <TableCell>
-                      <span className="font-bold text-[#D6403B] block leading-tight">
+                    {/* 2. Order ID and date (no wrapping, whitespace: nowrap) */}
+                    <TableCell className="py-3 px-2.5 whitespace-nowrap">
+                      <span className="font-bold text-[#D6403B] block leading-tight whitespace-nowrap">
                         {ord.orderNumber}
                       </span>
-                      <span className="text-xs text-[#6B6B6B] block mt-0.5">
+                      <span className="text-xs text-[#6B6B6B] block mt-0.5 whitespace-nowrap">
                         {formatRelativeTime(ord.createdAt)}
                       </span>
                     </TableCell>
 
-                    {/* Customer Name & Phone & Note */}
-                    <TableCell>
-                      <span className="font-semibold text-[#2B2B2B] block leading-tight">
+                    {/* 3. Customer name and phone */}
+                    <TableCell className="py-3 px-2.5 min-w-0">
+                      <span
+                        className="font-semibold text-[#2B2B2B] block leading-tight truncate"
+                        title={ord.customerName}
+                      >
                         {ord.customerName}
                       </span>
-                      <span className="text-xs text-[#6B6B6B] block mt-0.5 font-mono">
+                      <span className="text-xs text-[#6B6B6B] block mt-0.5 font-mono truncate">
                         {ord.customerPhone}
                       </span>
-                      {ord.customerNote && (
-                        <span
-                          title={ord.customerNote}
-                          className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold bg-[#FFF8E7] text-[#B78103] border border-[#FFE082] px-1.5 py-0.5 rounded-md truncate max-w-[150px]"
-                        >
-                          <MessageSquare className="w-2.5 h-2.5 shrink-0" />
-                          <span className="truncate">নোট: {ord.customerNote}</span>
-                        </span>
-                      )}
                     </TableCell>
 
-                    {/* District and Area */}
-                    <TableCell>
-                      <span className="font-medium text-[#2B2B2B] block leading-tight">
-                        {ord.district}
-                      </span>
-                      <span className="text-xs text-[#6B6B6B] block mt-0.5 max-w-[140px] truncate">
-                        {ord.fullAddress}
+                    {/* 4. District */}
+                    <TableCell className="py-3 px-2.5 min-w-0">
+                      <span
+                        className="font-medium text-[#2B2B2B] block leading-tight truncate"
+                        title={ord.district}
+                      >
+                        {ord.district || '—'}
                       </span>
                     </TableCell>
 
-                    {/* First Item with Thumbnail & +N more */}
-                    <TableCell>
-                      {(() => {
-                        const matchedProd = products.find(
-                          (p) =>
-                            p.id === firstItem?.productId ||
-                            p.slug === firstItem?.productId ||
-                            p.titleBn === firstItem?.title ||
-                            p.titleEn === firstItem?.title
-                        );
-                        const matchedVar = matchedProd?.variations?.find(
-                          (v) =>
-                            (firstItem?.variationSku && v.sku === firstItem.variationSku) ||
-                            (firstItem?.variationTitle &&
-                              (v.titleBn === firstItem.variationTitle ||
-                                v.name === firstItem.variationTitle ||
-                                v.titleEn === firstItem.variationTitle))
-                        );
-                        const itemImg =
-                          firstItem?.imageUrl ||
-                          matchedVar?.imageUrl ||
-                          matchedProd?.imageUrl;
-                        const varLabel =
-                          firstItem?.variationTitle ||
-                          (firstItem as any)?.variationTitleBn ||
-                          matchedVar?.name ||
-                          '';
-
-                        return (
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-[10px] bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-center shrink-0 overflow-hidden text-[10px] font-bold text-[#6B6B6B]">
-                              {itemImg ? (
-                                <img
-                                  src={itemImg}
-                                  alt=""
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span>Item</span>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <span className="text-xs font-semibold text-[#2B2B2B] block truncate max-w-[130px]">
-                                {firstItem?.title || 'Natural Crayons'}
-                              </span>
-                              {varLabel ? (
-                                <span className="text-[10px] text-[#A04000] font-bold block truncate max-w-[130px]">
-                                  {varLabel}
-                                </span>
-                              ) : null}
-                              {extraCount > 0 && (
-                                <span className="text-[11px] text-[#6B6B6B] block">
-                                  +{extraCount} more
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
+                    {/* 5. Items count only (e.g. "3 items") */}
+                    <TableCell className="py-3 px-2.5 whitespace-nowrap text-center">
+                      <span className="inline-block px-2 py-0.5 rounded-md text-xs font-semibold bg-[#FAF7F2] text-[#6B6B6B] border border-[#EFE9E0]">
+                        {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}
+                      </span>
                     </TableCell>
 
-                    {/* Total with COD or Paid Pill */}
-                    <TableCell>
+                    {/* 6. Total with payment badge (COD or Paid) */}
+                    <TableCell className="py-3 px-2.5 whitespace-nowrap">
                       {(() => {
                         const rowFin = calculateAmountToCollect(ord);
                         return (
                           <div>
-                            <span className="font-bold text-xs sm:text-sm text-[#2B2B2B] block">
+                            <span className="font-bold text-xs sm:text-sm text-[#2B2B2B] block leading-tight">
                               {formatTaka(rowFin.grossTotal)}
                             </span>
                             {rowFin.isPaid ? (
@@ -1559,8 +1520,8 @@ export default function OrdersManager({
                       })()}
                     </TableCell>
 
-                    {/* Status Pill */}
-                    <TableCell>
+                    {/* 7. Status badge */}
+                    <TableCell className="py-3 px-2.5 whitespace-nowrap">
                       {ord.status === 'CONFIRMED' && (
                         <StatusPill variant="yellow" dot>
                           Confirmed
@@ -1593,63 +1554,144 @@ export default function OrdersManager({
                       )}
                     </TableCell>
 
-                    {/* Courier Name & Tracking ID */}
-                    <TableCell>
-                      {ord.consignmentId || ord.trackingCode ? (
-                        <div>
-                          <span className="text-xs font-semibold text-[#2B2B2B] block">
-                            Steadfast
-                          </span>
-                          <a
-                            href={`https://steadfast.com.bd/t/${ord.trackingCode || ord.consignmentId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-[11px] text-[#0B5F85] hover:underline font-mono font-bold inline-flex items-center gap-1"
-                          >
-                            <span>#{ord.trackingCode || ord.consignmentId}</span>
-                            <ExternalLink className="w-2.5 h-2.5 shrink-0" />
-                          </a>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-[#6B6B6B]">Not dispatched</span>
-                      )}
+                    {/* 8. One primary action button, shown only when relevant */}
+                    <TableCell
+                      className="py-3 px-2.5 text-center whitespace-nowrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {renderRowMainAction(ord)}
                     </TableCell>
 
-                    {/* Dynamic Action Button & "..." Menu */}
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="inline-flex items-center gap-1.5 justify-end relative">
-                        {renderRowMainAction(ord)}
+                    {/* 9. 3-dot menu at end of row */}
+                    <TableCell
+                      className="py-3 px-2 text-right relative"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="relative inline-block text-left">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveDropdownRowId(
+                              activeDropdownRowId === ord.id ? null : ord.id
+                            );
+                          }}
+                          className="p-1.5 rounded-[8px] hover:bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#2B2B2B] transition-colors cursor-pointer"
+                          aria-label="More actions"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
 
-                        {/* "..." Dropdown Toggle */}
-                        <div className="relative">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveDropdownRowId(
-                                activeDropdownRowId === ord.id ? null : ord.id
-                              );
-                            }}
-                            className="p-1.5 rounded-[8px] hover:bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#2B2B2B] transition-colors cursor-pointer"
-                            aria-label="More actions"
+                        {/* Dropdown Menu Card */}
+                        {activeDropdownRowId === ord.id && (
+                          <div
+                            className="absolute right-0 top-full mt-1 w-52 bg-white border border-[#EFE9E0] rounded-[12px] shadow-xl py-1 z-30 text-left text-xs divide-y divide-[#EFE9E0]"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-
-                          {/* "..." Dropdown Menu */}
-                          {activeDropdownRowId === ord.id && (
-                            <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-[#EFE9E0] rounded-[12px] shadow-xl py-1 z-30 text-left text-xs">
+                            {/* 1. View details */}
+                            <div className="py-1">
                               <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveDropdownRowId(null);
+                                  handleOpenOrderDetail(ord);
+                                }}
+                                className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer font-medium"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-[#0B5F85]" />
+                                <span>View details</span>
+                              </button>
+                            </div>
+
+                            {/* 2. Courier tracking ID (with a copy button) */}
+                            <div className="p-2 bg-[#FAF7F2]/60">
+                              <span className="text-[10px] text-[#6B6B6B] uppercase font-bold block mb-1">
+                                Courier Tracking ID
+                              </span>
+                              {ord.trackingCode || ord.consignmentId ? (
+                                <div className="flex items-center justify-between gap-1.5 bg-white px-2 py-1.5 rounded-[8px] border border-[#EFE9E0]">
+                                  <span className="font-mono font-bold text-xs text-[#0B5F85] truncate">
+                                    #{ord.trackingCode || ord.consignmentId}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) =>
+                                      handleCopyTracking(
+                                        ord.trackingCode || ord.consignmentId || '',
+                                        e
+                                      )
+                                    }
+                                    className="p-1 rounded hover:bg-black/5 text-[#6B6B6B] hover:text-[#2B2B2B] transition-colors shrink-0"
+                                    title="Copy tracking ID"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-[#888] italic">
+                                  No tracking ID yet
+                                </span>
+                              )}
+                            </div>
+
+                            {/* 3. Full items list & 4. Customer note */}
+                            <div className="py-1">
+                              <button
+                                type="button"
                                 onClick={() => {
                                   setActiveDropdownRowId(null);
                                   handleOpenOrderDetail(ord);
                                 }}
                                 className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer"
                               >
-                                <Eye className="w-3.5 h-3.5 text-[#6B6B6B]" />
-                                <span>View details</span>
+                                <Package className="w-3.5 h-3.5 text-[#6B6B6B]" />
+                                <span>Full items list ({ord.items.length})</span>
                               </button>
+
+                              {ord.customerNote ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveDropdownRowId(null);
+                                    handleOpenOrderDetail(ord);
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-start gap-2 cursor-pointer"
+                                  title={ord.customerNote}
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 text-[#B78103] shrink-0 mt-0.5" />
+                                  <div className="min-w-0">
+                                    <span className="block font-medium">Customer note</span>
+                                    <span className="block text-[10px] text-[#6B6B6B] truncate max-w-[170px]">
+                                      {ord.customerNote}
+                                    </span>
+                                  </div>
+                                </button>
+                              ) : (
+                                <div className="px-3 py-1.5 text-[11px] text-[#888] flex items-center gap-2">
+                                  <MessageSquare className="w-3.5 h-3.5 opacity-40 shrink-0" />
+                                  <span>No customer note</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 5. Edit address & 6. Print invoice */}
+                            <div className="py-1">
                               <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveDropdownRowId(null);
+                                  setSelectedOrderId(ord.id);
+                                  setEditAddressText(ord.fullAddress);
+                                  setIsEditAddressOpen(true);
+                                }}
+                                className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer"
+                              >
+                                <Edit2 className="w-3.5 h-3.5 text-[#6B6B6B]" />
+                                <span>Edit address</span>
+                              </button>
+
+                              <button
+                                type="button"
                                 onClick={() => {
                                   setActiveDropdownRowId(null);
                                   handlePrintInvoices([ord]);
@@ -1659,82 +1701,26 @@ export default function OrdersManager({
                                 <Printer className="w-3.5 h-3.5 text-[#6B6B6B]" />
                                 <span>Print invoice</span>
                               </button>
-                              <button
-                                onClick={() => {
-                                  setActiveDropdownRowId(null);
-                                  if (!(ord.consignmentId || ord.trackingCode)) {
-                                    warning('আগে কুরিয়ারে পাঠান। কনসাইনমেন্ট আইডি ছাড়া স্টিকার প্রিন্ট করা যাবে না।');
-                                    return;
-                                  }
-                                  openStickerPrintModal([ord]);
-                                }}
-                                className={`w-full px-3 py-2 text-left flex items-center gap-2 cursor-pointer ${
-                                  ord.consignmentId || ord.trackingCode
-                                    ? 'hover:bg-[#FAF7F2] text-[#2B2B2B]'
-                                    : 'opacity-50 text-[#888]'
-                                }`}
-                                title={!(ord.consignmentId || ord.trackingCode) ? 'আগে কুরিয়ারে পাঠান' : 'Print parcel sticker'}
-                              >
-                                <Tag className="w-3.5 h-3.5 text-[#6B6B6B]" />
-                                <span>
-                                  Print sticker {!(ord.consignmentId || ord.trackingCode) ? '(আগে পাঠান)' : ''}
-                                </span>
-                              </button>
+                            </div>
 
-                              {ord.status === 'SHIPPED' && (
+                            {/* 7. Cancel order (styled in red, with confirmation step) */}
+                            {ord.status !== 'CANCELLED' && (
+                              <div className="py-1">
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     setActiveDropdownRowId(null);
-                                    handleMarkDelivered(ord);
+                                    handleCancelOrder(ord);
                                   }}
-                                  className="w-full px-3 py-2 text-left hover:bg-[#E8F5E9] text-[#1F6B43] flex items-center gap-2 cursor-pointer border-t border-[#EFE9E0]"
+                                  className="w-full px-3 py-2 text-left hover:bg-[#FDE3E1] text-[#9B2420] flex items-center gap-2 cursor-pointer font-semibold"
                                 >
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  <span>Mark Delivered</span>
-                                </button>
-                              )}
-
-                              {(ord.status === 'SHIPPED' || ord.status === 'DELIVERED') && (
-                                <button
-                                  onClick={() => {
-                                    setActiveDropdownRowId(null);
-                                    handleMarkReturned(ord);
-                                  }}
-                                  className="w-full px-3 py-2 text-left hover:bg-[#FFF3E0] text-[#E65100] flex items-center gap-2 cursor-pointer border-t border-[#EFE9E0]"
-                                >
-                                  <RotateCcw className="w-3.5 h-3.5" />
-                                  <span>Mark Returned</span>
-                                </button>
-                              )}
-
-                              {ord.status !== 'CANCELLED' && (
-                                <button
-                                  onClick={() => {
-                                    setActiveDropdownRowId(null);
-                                    setConfirmDialogData({
-                                      isOpen: true,
-                                      title: `Cancel Order #${ord.orderNumber}`,
-                                      message: 'Are you sure you want to cancel this order?',
-                                      itemCount: 1,
-                                      isDestructive: true,
-                                      confirmLabel: 'Cancel order',
-                                      action: async () => {
-                                        setConfirmDialogData((prev) => ({ ...prev, isOpen: false }));
-                                        await onStatusChange(ord.id, 'CANCELLED');
-                                        warning(`Order #${ord.orderNumber} was cancelled.`);
-                                        onRefresh();
-                                      },
-                                    });
-                                  }}
-                                  className="w-full px-3 py-2 text-left hover:bg-[#FDE3E1] text-[#9B2420] flex items-center gap-2 border-t border-[#EFE9E0] cursor-pointer"
-                                >
-                                  <X className="w-3.5 h-3.5" />
+                                  <X className="w-3.5 h-3.5 text-[#9B2420]" />
                                   <span>Cancel order</span>
                                 </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -1780,19 +1766,19 @@ export default function OrdersManager({
       {/* 8. CENTERED DETAIL POPUP MODAL FOR SELECTED ORDER */}
       {activeOrder && isSidePanelOpen && (
         <div
-          className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-6"
+          className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-3 sm:p-4"
           role="dialog"
           aria-modal="true"
         >
-          {/* Backdrop */}
+          {/* Dimmed Backdrop */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-150"
             onClick={() => setIsSidePanelOpen(false)}
             aria-hidden="true"
           />
 
-          {/* Centered Modal Card */}
-          <div className="relative w-full max-w-2xl lg:max-w-3xl max-h-[92vh] bg-white rounded-[24px] shadow-2xl flex flex-col border border-[#EFE9E0] overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+          {/* Centered Modal Card: max-width 720px, 90% on small screens, max-height 85vh */}
+          <div className="relative w-[90%] sm:w-full max-w-[720px] max-h-[85vh] bg-white rounded-[20px] shadow-2xl flex flex-col border border-[#EFE9E0] overflow-hidden z-10 transition-all duration-150 animate-in fade-in zoom-in-95">
             {/* Header */}
             <div className="px-5 py-4 sm:px-6 sm:py-4.5 border-b border-[#EFE9E0] flex items-center justify-between shrink-0 bg-[#FAF7F2]">
               <div>
@@ -2168,25 +2154,75 @@ export default function OrdersManager({
                 </div>
               </div>
 
-              {/* Courier Dispatch Status (if present) */}
-              {activeOrder.trackingCode && (
-                <div className="p-3.5 bg-[#DDF1FB] border border-[#BEE4F7] rounded-[16px] text-xs space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#0B5F85]">Steadfast Consignment Dispatched</span>
+              {/* Courier Information with Tracking ID & Copy button */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
+                    Courier Information
+                  </h4>
+                  {activeOrder.trackingCode || activeOrder.consignmentId ? (
                     <StatusPill variant="blue" size="sm">
-                      In Transit
+                      {activeOrder.status === 'DELIVERED' ? 'Delivered' : 'Dispatched'}
                     </StatusPill>
+                  ) : (
+                    <span className="text-[11px] text-[#6B6B6B]">Not dispatched yet</span>
+                  )}
+                </div>
+
+                <div className="p-3.5 bg-[#FAF7F2] border border-[#EFE9E0] rounded-[16px] text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-[#0B5F85]" />
+                      <span className="font-semibold text-[#2B2B2B]">
+                        Courier Partner: <strong className="text-[#0B5F85]">Steadfast Courier</strong>
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-[#0B5F85]">
-                    Tracking Code: <strong>{activeOrder.trackingCode}</strong>
-                  </p>
-                  {activeOrder.consignmentId && (
-                    <p className="text-[#0B5F85] text-[11px]">
-                      Consignment ID: #{activeOrder.consignmentId}
+
+                  {activeOrder.trackingCode || activeOrder.consignmentId ? (
+                    <div className="flex items-center justify-between bg-white p-2.5 rounded-[12px] border border-[#EFE9E0] gap-2">
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-[#6B6B6B] block">
+                          Tracking ID / Consignment:
+                        </span>
+                        <span className="font-mono font-bold text-xs text-[#0B5F85] truncate block">
+                          #{activeOrder.trackingCode || activeOrder.consignmentId}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopyTracking(
+                              activeOrder.trackingCode || activeOrder.consignmentId || ''
+                            )
+                          }
+                          className="px-2.5 py-1 rounded-[8px] bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] text-xs font-semibold inline-flex items-center gap-1 border border-[#EFE9E0] transition-colors cursor-pointer"
+                          title="Copy tracking ID"
+                        >
+                          <Copy className="w-3 h-3 text-[#6B6B6B]" />
+                          <span>Copy</span>
+                        </button>
+                        <a
+                          href={`https://steadfast.com.bd/t/${
+                            activeOrder.trackingCode || activeOrder.consignmentId
+                          }`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1 rounded-[8px] bg-[#0B5F85] hover:bg-[#084865] text-white text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                        >
+                          <span>Track</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-[#6B6B6B]">
+                      অর্ডারটি কনফার্ম হলে নিচের "Send to Steadfast" বাটনে ক্লিক করে এক ক্লিকেই কুরিয়ারে বুকিং দিন।
                     </p>
                   )}
                 </div>
-              )}
+              </div>
 
               {/* Items & Money Breakdown with Amount to Collect */}
               <div className="space-y-3">
