@@ -163,6 +163,91 @@ export interface SiteSettings {
     showFragileTag: boolean;
     defaultStickerSize: '100x150' | '75x50' | 'sheet4' | 'sheet8';
   };
+
+  // 11. Custom Static Pages (Contact, About, Privacy, Terms) Editable from Admin
+  customPages?: CustomPagesSettings;
+}
+
+export interface CustomPagesSettings {
+  contact: {
+    headline: string;
+    subtitle: string;
+    phone: string;
+    whatsapp: string;
+    location: string;
+    openingHours: string;
+    noticeBannerText: string;
+  };
+  about: {
+    badge: string;
+    headline: string;
+    subtitle: string;
+    storyTitle: string;
+    storyPara1: string;
+    storyPara2: string;
+    stat1Val: string;
+    stat1Label: string;
+    stat2Val: string;
+    stat2Label: string;
+    stat3Val: string;
+    stat3Label: string;
+    stat4Val: string;
+    stat4Label: string;
+    pillar1Title: string;
+    pillar1Desc: string;
+    pillar2Title: string;
+    pillar2Desc: string;
+    pillar3Title: string;
+    pillar3Desc: string;
+    pillar4Title: string;
+    pillar4Desc: string;
+    ctaHeading: string;
+    ctaSubtitle: string;
+  };
+  privacy: {
+    headline: string;
+    lastUpdated: string;
+    introText: string;
+    section1Title: string;
+    section1Content: string;
+    section2Title: string;
+    section2Content: string;
+    section3Title: string;
+    section3Content: string;
+    section4Title: string;
+    section4Content: string;
+    section5Title: string;
+    section5Content: string;
+    section6Title: string;
+    section6Content: string;
+    section7Title: string;
+    section7Content: string;
+  };
+  terms: {
+    headline: string;
+    lastUpdated: string;
+    introText: string;
+    section1Title: string;
+    section1Content: string;
+    section2Title: string;
+    section2Content: string;
+    section3Title: string;
+    section3Content: string;
+    section4Title: string;
+    section4Content: string;
+    section5Title: string;
+    section5Content: string;
+    section6Title: string;
+    section6Content: string;
+    section7Title: string;
+    section7Content: string;
+    section8Title: string;
+    section8Content: string;
+    section9Title: string;
+    section9Content: string;
+    section10Title: string;
+    section10Content: string;
+  };
 }
 
 export const defaultSiteSettings: SiteSettings = {
@@ -457,7 +542,7 @@ export const defaultSiteSettings: SiteSettings = {
     aboutBn: 'শিশুদের সুস্থ শৈশব ও সৃজনশীল মেধা বিকাশে ১০০% নিরাপদ নন-টক্সিক মোমের রঙ ও শিক্ষণীয় খেলনার নির্ভরযোগ্য ব্র্যান্ড।',
     phone: '+৮৮০ ১৭৩১-৩৭৬৪৯৮',
     email: 'support@craftykidsco.com',
-    address: 'ধানমন্ডি, ঢাকা, বাংলাদেশ',
+    address: 'তেরখাদিয়া, রাজপাড়া, রাজশাহী। ওপেন ২৪ ঘণ্টা',
     copyrightText: '© ২০২৬ CraftyKidsCo. সর্বস্বত্ব সংরক্ষিত।',
   },
   print: {
@@ -474,5 +559,86 @@ export const defaultSiteSettings: SiteSettings = {
     showCollectAmount: true,
     showFragileTag: false,
     defaultStickerSize: '100x150',
+  },
+  customPages: {
+    contact: {
+      headline: 'যোগাযোগ করুন',
+      subtitle: 'শিশুদের নিরাপদ মোমের রঙ, খেলনা বা আপনার অর্ডার সংক্রান্ত যেকোনো তথ্যের জন্য সরাসরি আমাদের সাথে যুক্ত থাকুন।',
+      phone: '01731-376498',
+      whatsapp: '01731-376498',
+      location: 'তেরখাদিয়া, রাজপাড়া, রাজশাহী।',
+      openingHours: 'ওপেন ২৪ ঘণ্টা',
+      noticeBannerText: 'পণ্য নির্বাচন, বয়স উপযোগী খেলনার পরামর্শ বা যেকোনো প্রশ্নের সরাসরি সমাধানের জন্য আমাদের WhatsApp এ মেসেজ দিন।',
+    },
+    about: {
+      badge: 'শিশুর সুস্থ শৈশব ও নিরাপদ সৃজনশীলতা',
+      headline: 'আমরা শিশুদের প্রতিটি রঙ ও কল্পনায় ছড়িয়ে দিচ্ছি প্রাকৃতিক নিরাপত্তা',
+      subtitle: 'CraftyKidsCo-এর প্রতিটি পণ্য তৈরি হয় শিশুদের স্পর্শকাতর হাতের কথা ভেবে। সাধারণ কেমিক্যাল ও প্যারাফিন নয়, আমাদের ভিত্তি ১০০% খাঁটি প্রাকৃতিক মৌমাছির মোম ও ফুড-গ্রেড নিরাপত্তা।',
+      storyTitle: 'কেন আমরা CraftyKidsCo শুরু করেছিলাম?',
+      storyPara1: 'বাজারে প্রচলিত অধিকাংশ সাধারণ ক্রেয়ন মোম তৈরি হয় পেট্রোলিয়ামের উপজাত প্যারাফিন ওয়াক্স এবং কৃত্রিম হেভি-মেটাল পিগমেন্ট দিয়ে। শিশুরা ছবি আঁকার সময় প্রায়শই রঙ মুখে দেয়, হাতে ঘষাঘষি করে এবং হাত না ধুয়ে খাবার খেয়ে ফেলে। এতে অনিচ্ছাকৃতভাবেই শিশুর শরীরে ক্ষতিকর রাসায়নিক প্রবেশ করে।',
+      storyPara2: 'অভিভাবক হিসেবে আমরা এই ভীতি থেকে পরিত্রাণ খুঁজেছি। ঠিক সেই তাগিদ থেকেই CraftyKidsCo-এর জন্ম। আমরা দেশীয় প্রাকৃতিক মৌমাছির মোম (Beeswax), উদ্ভিজ্জ তেল এবং সার্টিফাইড ফুড কালার দিয়ে তৈরি করেছি সম্পূর্ণ খাওয়ার মতো নিরাপদ (Food-Grade Safe) আর্ট ও ক্রাফটিং পণ্য।',
+      stat1Val: '১০০%',
+      stat1Label: 'প্রাকৃতিক মৌমাছির মোম',
+      stat2Val: '০%',
+      stat2Label: 'নন-টক্সিক ও লেড-মুক্ত',
+      stat3Val: '৫০,০০০+',
+      stat3Label: 'অভিভাবকের বিশ্বস্ততা',
+      stat4Val: '৬৪',
+      stat4Label: 'জেলায় হোম ডেলিভারি',
+      pillar1Title: '১০০% প্রাকৃতিক ও পরিবেশবান্ধব',
+      pillar1Desc: 'কোনো সিন্থেটিক গন্ধ বা কেমিক্যাল নেই। প্রাকৃতিক মৌমাছির মোমের মৃদু সুবাস শিশুদের সংবেদনশীল ঘ্রাণশক্তির জন্য আনন্দদায়ক ও স্বাস্থ্যকর।',
+      pillar2Title: 'ফুড-গ্রেড পিগমেন্ট নিরাপত্তা',
+      pillar2Desc: 'আন্তর্জাতিক খেলনা নিরাপত্তা মানদণ্ড (ASTM D-4236 ও EN71) অনুসরণে তৈরি। ছোট শিশুরা অসাবধানতাবশত জিহ্বায় ছোঁয়ালেও বিষক্রিয়ার ভয় থাকে না।',
+      pillar3Title: 'মোটর স্কিল ও স্ক্রিন-ফ্রি শৈশব',
+      pillar3Desc: 'স্মার্টফোনের স্ক্রিনের বিকল্প হিসেবে শিশুদের কল্পনাশক্তি, হাতের সূক্ষ্ম পেশীর ভারসাম্য ও সৃজনশীল রঙের জগত উন্মোচনে আমাদের প্রতিটি পণ্য ডিজাইন করা।',
+      pillar4Title: 'সহজ গ্রিপ ও ভাঙন-প্রতিরোধী নকশা',
+      pillar4Desc: 'ছোট ছোট আঙুলের উপযোগী প্রশস্ত গ্রিপ, যা সহজে হাত থেকে পিছলে যায় না এবং বারবার মেঝেতে পড়ে ভেঙে গুড়া হওয়ার প্রবণতা রোধ করে।',
+      ctaHeading: 'আপনার সন্তানের জন্য নিরাপদ সৃজনশীলতার দরজা খুলুন',
+      ctaSubtitle: 'আমাদের ক্যাটালগ ঘুরে দেখুন এবং আপনার শিশুর বয়স ও পছন্দের উপযোগী নিরাপদ মোমের রঙ বা খেলনা অর্ডার করুন।',
+    },
+    privacy: {
+      headline: 'গোপনীয়তা নীতিমালা (Privacy Policy)',
+      lastUpdated: '২৫ অক্টোবর, ২০২৬',
+      introText: 'CraftyKidsCo-এ আপনার এবং আপনার পরিবারের ব্যক্তিগত তথ্যের নিরাপত্তা আমাদের কাছে অত্যন্ত গুরুত্বপূর্ণ। এই গোপনীয়তা নীতিমালায় ব্যাখ্যা করা হয়েছে যে কীভাবে আমরা আপনার তথ্য সংগ্রহ, সংরক্ষণ, ব্যবহার ও সুরক্ষিত রাখি।',
+      section1Title: '১. আমরা যেসকল তথ্য সংগ্রহ করি',
+      section1Content: 'আপনার অর্ডার সফলভাবে সম্পন্ন ও ডেলিভারি করার জন্য আমরা কেবল প্রয়োজনীয় তথ্য সংগ্রহ করি: নাম, মোবাইল নম্বর, পূর্ণাঙ্গ ডেলিভারি ঠিকানা (জেলা, থানা ও এলাকা), অর্ডার বিবরণ এবং কুরিয়ার ডেলিভারি সংক্রান্ত তথ্য।',
+      section2Title: '২. শিশুদের তথ্যের বিশেষ সুরক্ষা (Children\'s Privacy)',
+      section2Content: 'যদিও আমাদের পণ্য শিশুদের জন্য নির্মিত, তবে আমাদের ওয়েবসাইট শুধুমাত্র ১৮ বছর বা তদূর্ধ্ব বয়সী অভিভাবক ও প্রাপ্তবয়স্কদের ব্যবহারের জন্য। আমরা সচেতনভাবে কোনো অপ্রাপ্তবয়স্ক শিশুর ব্যক্তিগত তথ্য সংগ্রহ করি না।',
+      section3Title: '৩. তথ্যের ব্যবহার ও উদ্দেশ্য',
+      section3Content: 'আমরা সংগৃহীত তথ্য শুধুমাত্র অর্ডার প্রসেস, কুরিয়ার পার্টনারের মাধ্যমে ডেলিভারি নিশ্চিতকরণ, এসএমএস আপডেট প্রদান এবং কাস্টমার সাপোর্ট সেবায় ব্যবহার করি।',
+      section4Title: '৪. তৃতীয় পক্ষের সাথে তথ্য শেয়ার না করার নিশ্চয়তা',
+      section4Content: 'আমরা আপনার তথ্য কোনো বাণিজ্যিক বিজ্ঞাপনী সংস্থা বা তৃতীয় পক্ষের কাছে বিক্রয়, ভাড়া বা অপব্যবহার করি না। শুধুমাত্র ডেলিভারি পার্টনার (স্টিডফাস্ট)-এর সাথে প্রয়োজনীয় তথ্য শেয়ার করা হয়।',
+      section5Title: '৫. তথ্য নিরাপত্তা ও সুরক্ষা ব্যবস্থা',
+      section5Content: 'আমাদের ওয়েবসাইট সর্বাধুনিক SSL এনক্রিপশন প্রযুক্তি দ্বারা সুরক্ষিত। আপনার ব্যক্তিগত তথ্য নিরাপদ সার্ভারে সংরক্ষিত থাকে।',
+      section6Title: '৬. কুকিজ ও ট্র্যাকিং নীতি',
+      section6Content: 'আপনার কার্ট মেমোরি সংরক্ষণ ও ওয়েবসাইট গতিশীল রাখার জন্য সাধারণ ব্রাউজার কুকিজ ব্যবহৃত হয়।',
+      section7Title: '৭. আপনার অধিকার ও যোগাযোগ',
+      section7Content: 'আপনার সংরক্ষিত তথ্যের কোনো পরিবর্তন বা সংশোধনের জন্য আপনি সরাসরি আমাদের হটলাইন বা WhatsApp-এ যোগাযোগ করতে পারেন।',
+    },
+    terms: {
+      headline: 'ব্যবহারের শর্তাবলী (Terms of Service)',
+      lastUpdated: '২৫ অক্টোবর, ২০২৬',
+      introText: 'CraftyKidsCo ওয়েবসাইটে আপনাকে স্বাগতম। এই সাইটটি ব্রাউজ করা, অ্যাকাউন্ট তৈরি করা বা যেকোনো পণ্য অর্ডার করার ক্ষেত্রে নিচের শর্তাবলী প্রযোজ্য হবে।',
+      section1Title: '১. সাধারণ শর্ত ও গ্রাহক যোগ্যতা',
+      section1Content: 'এই ওয়েবসাইট থেকে কেনাকাটা করার জন্য গ্রাহককে কমপক্ষে ১৮ বছর বা তদূর্ধ্ব বয়সী হতে হবে অথবা পিতামাতা/অভিভাবকের সরাসরি তত্ত্বাবধানে অর্ডার করতে হবে।',
+      section2Title: '২. পণ্যের বিবরণ ও মূল্য নির্ধারণ (BDT / ৳)',
+      section2Content: 'সকল পণ্যের মূল্য বাংলাদেশী টাকায় নির্ধারিত। স্টক থাকা সাপেক্ষে পণ্য সরবরাহ করা হয়।',
+      section3Title: '৩. অর্ডার প্রক্রিয়া ও নিশ্চয়তা',
+      section3Content: 'অর্ডার প্লেস করার পর সিস্টেম বা প্রতিনিধির মাধ্যমে ভেরিফিকেশন কল বা এসএমএস দেওয়া হতে পারে।',
+      section4Title: '৪. মূল্য পরিশোধ ও ক্যাশ অন ডেলিভারি (COD)',
+      section4Content: 'সারা বাংলাদেশে আমাদের সবচেয়ে জনপ্রিয় পেমেন্ট মাধ্যম ক্যাশ অন ডেলিভারি (COD)। পণ্য হাতে পেয়ে মূল্য পরিশোধ করার সুযোগ রয়েছে।',
+      section5Title: '৫. ডেলিভারি নীতিমালা ও সময়সীমা',
+      section5Content: 'ঢাকার ভেতরে ২৪-৪৮ ঘণ্টা (চার্জ ৳৬০) এবং ঢাকার বাইরে ৪৮-৭২ ঘণ্টা (চার্জ ৳১২০)। ৳১,০০০ বা তার বেশি অর্ডারে সারা বাংলাদেশে ফ্রি ডেলিভারি।',
+      section6Title: '৬. ৭ দিনের রিটার্ন ও রিপ্লেসমেন্ট পলিসি',
+      section6Content: 'পণ্য ভাঙা বা ত্রুটিপূর্ণ পেলে ডেলিভারির ৭ দিনের মধ্যে প্রমাণসহ জানালে সম্পূর্ণ বিনামূল্যে রিপ্লেসমেন্ট দেওয়া হবে।',
+      section7Title: '৭. নিরাপদ ব্যবহার ও অভিভাবকের সতর্কতা',
+      section7Content: 'আমাদের সকল পণ্য ১০০% প্রাকৃতিক ও নন-টক্সিক। ৩ বছরের নিচের শিশুদের ক্ষেত্রে অভিভাবকের প্রত্যক্ষ তত্ত্বাবধানে খেলনা ব্যবহারের অনুরোধ করা হচ্ছে।',
+      section8Title: '৮. মেধা-স্বত্ব ও কপিরাইট',
+      section8Content: 'CraftyKidsCo-এর লোগো, নাম, পণ্যের ছবি ও কন্টেন্টের স্বত্বাধিকার বাংলাদেশ কপিরাইট ও ট্রেডমার্ক আইন অনুযায়ী সংরক্ষিত।',
+      section9Title: '৯. প্রযোজ্য আইন ও সরকারি নীতিমালা',
+      section9Content: 'এই শর্তাবলী গণপ্রজাতন্ত্রী বাংলাদেশ সরকারের ডিজিটাল কমার্স পরিচালনা নির্দেশিকা ২০২১ ও ভোক্তা অধিকার সংরক্ষণ আইন অনুযায়ী পরিচালিত।',
+      section10Title: '১০. যোগাযোগ ও গ্রাহক সেবা',
+      section10Content: 'যেকোনো জিজ্ঞাসা বা সহায়তার জন্য আমাদের হটলাইন বা WhatsApp এ সরাসরি যোগাযোগ করুন।',
+    },
   },
 };

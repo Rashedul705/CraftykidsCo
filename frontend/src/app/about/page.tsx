@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Sparkles,
@@ -12,16 +12,35 @@ import {
   Smile,
   CheckCircle2,
   ChevronRight,
-  PackageCheck,
   Leaf,
-  Users,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { BRAND_CONFIG } from '@/lib/brand';
+import { defaultSiteSettings } from '@/lib/site-settings';
 
 export default function AboutPage() {
+  const [aboutData, setAboutData] = useState(defaultSiteSettings.customPages!.about);
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/site-settings');
+        const data = await res.json();
+        if (data?.success && data?.settings?.customPages?.about) {
+          setAboutData({
+            ...defaultSiteSettings.customPages!.about,
+            ...data.settings.customPages.about,
+          });
+        }
+      } catch (err) {
+        console.warn('Could not load dynamic about settings, using defaults');
+      }
+    }
+    loadSettings();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#FAF7F2] pb-24 md:pb-12 text-[#2B2B2B]">
       <Header />
@@ -40,37 +59,36 @@ export default function AboutPage() {
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#D6403B]/10 text-[#D6403B] font-bold text-xs">
             <Heart className="w-3.5 h-3.5 text-[#D6403B]" />
-            <span>শিশুর সুস্থ শৈশব ও নিরাপদ সৃজনশীলতা</span>
+            <span>{aboutData.badge}</span>
           </div>
           <h1 className="font-heading font-black text-2xl sm:text-4xl lg:text-5xl text-[#2B2B2B] tracking-tight leading-tight">
-            আমরা শিশুদের প্রতিটি রঙ ও কল্পনায় ছড়িয়ে দিচ্ছি{' '}
-            <span className="text-[#D6403B]">প্রাকৃতিক নিরাপত্তা</span>
+            {aboutData.headline}
           </h1>
           <p className="text-xs sm:text-base text-[#6B6B6B] leading-relaxed max-w-2xl mx-auto">
-            {BRAND_CONFIG.name}-এর প্রতিটি পণ্য তৈরি হয় শিশুদের স্পর্শকাতর হাতের কথা ভেবে। সাধারণ কেমিক্যাল ও প্যারাফিন নয়, আমাদের ভিত্তি ১০০% খাঁটি প্রাকৃতিক মৌমাছির মোম ও ফুড-গ্রেড নিরাপত্তা।
+            {aboutData.subtitle}
           </p>
         </div>
 
         {/* Key Stats Bar */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 text-center shadow-xs space-y-1">
-            <div className="font-heading font-black text-2xl sm:text-3xl text-[#D6403B]">১০০%</div>
-            <p className="text-xs font-bold text-[#2B2B2B]">প্রাকৃতিক মৌমাছির মোম</p>
+            <div className="font-heading font-black text-2xl sm:text-3xl text-[#D6403B]">{aboutData.stat1Val}</div>
+            <p className="text-xs font-bold text-[#2B2B2B]">{aboutData.stat1Label}</p>
             <p className="text-[11px] text-[#6B6B6B]">ক্ষতিকর প্যারাফিন মুক্ত</p>
           </div>
           <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 text-center shadow-xs space-y-1">
-            <div className="font-heading font-black text-2xl sm:text-3xl text-[#1F6B43]">০%</div>
-            <p className="text-xs font-bold text-[#2B2B2B]">নন-টক্সিক ও লেড-মুক্ত</p>
+            <div className="font-heading font-black text-2xl sm:text-3xl text-[#1F6B43]">{aboutData.stat2Val}</div>
+            <p className="text-xs font-bold text-[#2B2B2B]">{aboutData.stat2Label}</p>
             <p className="text-[11px] text-[#6B6B6B]">শিশুদের মুখে দিলেও নিরাপদ</p>
           </div>
           <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 text-center shadow-xs space-y-1">
-            <div className="font-heading font-black text-2xl sm:text-3xl text-[#5BC0EB]">৫০,০০০+</div>
-            <p className="text-xs font-bold text-[#2B2B2B]">অভিভাবকের বিশ্বস্ততা</p>
+            <div className="font-heading font-black text-2xl sm:text-3xl text-[#5BC0EB]">{aboutData.stat3Val}</div>
+            <p className="text-xs font-bold text-[#2B2B2B]">{aboutData.stat3Label}</p>
             <p className="text-[11px] text-[#6B6B6B]">সারা বাংলাদেশ জুড়ে</p>
           </div>
           <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 text-center shadow-xs space-y-1">
-            <div className="font-heading font-black text-2xl sm:text-3xl text-[#FFB800]">৬৪</div>
-            <p className="text-xs font-bold text-[#2B2B2B]">জেলায় হোম ডেলিভারি</p>
+            <div className="font-heading font-black text-2xl sm:text-3xl text-[#FFB800]">{aboutData.stat4Val}</div>
+            <p className="text-xs font-bold text-[#2B2B2B]">{aboutData.stat4Label}</p>
             <p className="text-[11px] text-[#6B6B6B]">ক্যাশ অন ডেলিভারি সুবিধা</p>
           </div>
         </div>
@@ -83,16 +101,12 @@ export default function AboutPage() {
               <span>আমাদের শুরুর গল্প</span>
             </div>
             <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-              কেন আমরা {BRAND_CONFIG.name} শুরু করেছিলাম?
+              {aboutData.storyTitle}
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-[#4A4A4A] leading-relaxed">
-            <p>
-              বাজারে প্রচলিত অধিকাংশ সাধারণ ক্রেয়ন মোম তৈরি হয় পেট্রোলিয়ামের উপজাত <strong>প্যারাফিন ওয়াক্স</strong> এবং কৃত্রিম হেভি-মেটাল পিগমেন্ট দিয়ে। শিশুরা ছবি আঁকার সময় প্রায়শই রঙ মুখে দেয়, হাতে ঘষাঘষি করে এবং হাত না ধুয়ে খাবার খেয়ে ফেলে। এতে অনিচ্ছাকৃতভাবেই শিশুর শরীরে ক্ষতিকর রাসায়নিক প্রবেশ করে।
-            </p>
-            <p>
-              অভিভাবক হিসেবে আমরা এই ভীতি থেকে পরিত্রাণ খুঁজেছি। ঠিক সেই তাগিদ থেকেই <strong>{BRAND_CONFIG.name}</strong>-এর জন্ম। আমরা দেশীয় প্রাকৃতিক মৌমাছির মোম (Beeswax), উদ্ভিজ্জ তেল এবং সার্টিফাইড ফুড কালার দিয়ে তৈরি করেছি সম্পূর্ণ খাওয়ার মতো নিরাপদ (Food-Grade Safe) আর্ট ও ক্রাফটিং পণ্য।
-            </p>
+            <p>{aboutData.storyPara1}</p>
+            <p>{aboutData.storyPara2}</p>
           </div>
         </div>
 
@@ -114,10 +128,10 @@ export default function AboutPage() {
                 <Leaf className="w-5 h-5" />
               </div>
               <h3 className="font-heading font-bold text-base text-[#2B2B2B]">
-                ১০০% প্রাকৃতিক ও পরিবেশবান্ধব
+                {aboutData.pillar1Title}
               </h3>
               <p className="text-xs sm:text-sm text-[#6B6B6B] leading-relaxed">
-                কোনো সিন্থেটিক গন্ধ বা কেমিক্যাল নেই। প্রাকৃতিক মৌমাছির মোমের মৃদু সুবাস শিশুদের সংবেদনশীল ঘ্রাণশক্তির জন্য আনন্দদায়ক ও স্বাস্থ্যকর।
+                {aboutData.pillar1Desc}
               </p>
             </div>
 
@@ -127,10 +141,10 @@ export default function AboutPage() {
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <h3 className="font-heading font-bold text-base text-[#2B2B2B]">
-                ফুড-গ্রেড পিগমেন্ট নিরাপত্তা
+                {aboutData.pillar2Title}
               </h3>
               <p className="text-xs sm:text-sm text-[#6B6B6B] leading-relaxed">
-                আন্তর্জাতিক খেলনা নিরাপত্তা মানদণ্ড (ASTM D-4236 ও EN71) অনুসরণে তৈরি। ছোট শিশুরা অসাবধানতাবশত জিহ্বায় ছোঁয়ালেও বিষক্রিয়ার ভয় থাকে না।
+                {aboutData.pillar2Desc}
               </p>
             </div>
 
@@ -140,10 +154,10 @@ export default function AboutPage() {
                 <Award className="w-5 h-5" />
               </div>
               <h3 className="font-heading font-bold text-base text-[#2B2B2B]">
-                মোটর স্কিল ও স্ক্রিন-ফ্রি শৈশব
+                {aboutData.pillar3Title}
               </h3>
               <p className="text-xs sm:text-sm text-[#6B6B6B] leading-relaxed">
-                স্মার্টফোনের স্ক্রিনের বিকল্প হিসেবে শিশুদের কল্পনাশক্তি, হাতের সূক্ষ্ম পেশীর ভারসাম্য ও সৃজনশীল রঙের জগত উন্মোচনে আমাদের প্রতিটি পণ্য ডিজাইন করা।
+                {aboutData.pillar3Desc}
               </p>
             </div>
 
@@ -153,10 +167,10 @@ export default function AboutPage() {
                 <Smile className="w-5 h-5" />
               </div>
               <h3 className="font-heading font-bold text-base text-[#2B2B2B]">
-                সহজ গ্রিপ ও ভাঙন-প্রতিরোধী নকশা
+                {aboutData.pillar4Title}
               </h3>
               <p className="text-xs sm:text-sm text-[#6B6B6B] leading-relaxed">
-                ছোট ছোট আঙুলের উপযোগী প্রশস্ত গ্রিপ, যা সহজে হাত থেকে পিছলে যায় না এবং বারবার মেঝেতে পড়ে ভেঙে গুড়া হওয়ার প্রবণতা রোধ করে।
+                {aboutData.pillar4Desc}
               </p>
             </div>
           </div>
@@ -195,10 +209,10 @@ export default function AboutPage() {
         {/* CTA Banner */}
         <div className="rounded-[28px] bg-gradient-to-r from-[#D6403B] to-[#BF3430] text-white p-8 sm:p-10 text-center space-y-4 shadow-md">
           <h2 className="font-heading font-black text-xl sm:text-3xl text-white">
-            আপনার সন্তানের জন্য নিরাপদ সৃজনশীলতার দরজা খুলুন
+            {aboutData.ctaHeading}
           </h2>
           <p className="text-xs sm:text-sm text-white/90 max-w-xl mx-auto">
-            আমাদের ক্যাটালগ ঘুরে দেখুন এবং আপনার শিশুর বয়স ও পছন্দের উপযোগী নিরাপদ মোমের রঙ বা খেলনা অর্ডার করুন।
+            {aboutData.ctaSubtitle}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link

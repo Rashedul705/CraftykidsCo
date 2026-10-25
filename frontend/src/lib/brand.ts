@@ -14,6 +14,8 @@ export const BRAND_CONFIG = {
   defaultHotline: '01731-376498',
   defaultWhatsapp: '8801731376498',
   defaultEmail: 'hello@craftykidsco.com',
+  defaultAddress: 'তেরখাদিয়া, রাজপাড়া, রাজশাহী।',
+  defaultOpeningHours: 'ওপেন ২৪ ঘণ্টা',
   defaultReturnDays: 7,
   defaultDeliveryDhaka: 60,
   defaultDeliveryOutside: 120,

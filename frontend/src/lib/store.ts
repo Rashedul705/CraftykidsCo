@@ -623,9 +623,101 @@ export function updateSiteSettings(newSettings: Partial<SiteSettings>): SiteSett
       ...globalSiteSettings.footer,
       ...(newSettings.footer || {}),
     },
+    customPages: newSettings.customPages
+      ? {
+          contact: {
+            ...globalSiteSettings.customPages!.contact,
+            ...(newSettings.customPages.contact || {}),
+          },
+          about: {
+            ...globalSiteSettings.customPages!.about,
+            ...(newSettings.customPages.about || {}),
+          },
+          privacy: {
+            ...globalSiteSettings.customPages!.privacy,
+            ...(newSettings.customPages.privacy || {}),
+          },
+          terms: {
+            ...globalSiteSettings.customPages!.terms,
+            ...(newSettings.customPages.terms || {}),
+          },
+        }
+      : globalSiteSettings.customPages,
     heroSlides: Array.isArray(newSettings.heroSlides) ? newSettings.heroSlides : globalSiteSettings.heroSlides,
     trustBadges: Array.isArray(newSettings.trustBadges) ? newSettings.trustBadges : globalSiteSettings.trustBadges,
     promoBanners: Array.isArray(newSettings.promoBanners) ? newSettings.promoBanners : globalSiteSettings.promoBanners,
   };
   return globalSiteSettings;
 }
+
+// -------------------------------------------------------------
+// Contact Messages (In-memory Store fallback)
+// -------------------------------------------------------------
+export interface ContactMessageRecord {
+  id: string;
+  name: string;
+  phone: string;
+  subject: string;
+  message: string;
+  status: 'unread' | 'read' | 'replied';
+  replyNote?: string;
+  repliedAt?: string;
+  repliedBy?: string;
+  createdAt: string;
+}
+
+let globalContactMessages: ContactMessageRecord[] = [
+  {
+    id: 'msg-sample-1',
+    name: 'ফারজানা ইয়াসমিন',
+    phone: '01712345678',
+    subject: 'স্কুল বা বাল্ক অর্ডার',
+    message: 'আমাদের প্লে-গ্রুপ ও নার্সারির ৬০ জন বাচ্চার জন্য ন্যাচারাল ক্রেয়ন ও আর্ট কিটের পাইকারি রেট জানতে চাই।',
+    status: 'unread',
+    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+  },
+  {
+    id: 'msg-sample-2',
+    name: 'তানভীর আহমেদ',
+    phone: '01898765432',
+    subject: 'অর্ডার ও ট্র্যাকিং সহায়তা',
+    message: 'আমার অর্ডারটি গতকাল পাঠানো হয়েছিল, স্টিডফাস্ট ট্র্যাকিং স্ট্যাটাস জানতে চাই।',
+    status: 'replied',
+    replyNote: 'গ্রাহককে হোয়াটসঅ্যাপে ট্র্যাকিং লিঙ্ক ও ডেলিভারি আপডেট দেওয়া হয়েছে।',
+    repliedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+    repliedBy: 'Admin',
+    createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+  },
+];
+
+export function getContactMessages(): ContactMessageRecord[] {
+  return [...globalContactMessages];
+}
+
+export function addContactMessage(msg: Omit<ContactMessageRecord, 'id' | 'createdAt' | 'status'> & { status?: 'unread' | 'read' | 'replied' }): ContactMessageRecord {
+  const newMsg: ContactMessageRecord = {
+    id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    ...msg,
+    status: msg.status || 'unread',
+    createdAt: new Date().toISOString(),
+  };
+  globalContactMessages.unshift(newMsg);
+  return newMsg;
+}
+
+export function updateContactMessage(id: string, updates: Partial<ContactMessageRecord>): ContactMessageRecord | null {
+  const idx = globalContactMessages.findIndex((m) => m.id === id);
+  if (idx === -1) return null;
+  globalContactMessages[idx] = {
+    ...globalContactMessages[idx],
+    ...updates,
+  };
+  return globalContactMessages[idx];
+}
+
+export function deleteContactMessage(id: string): boolean {
+  const initialLen = globalContactMessages.length;
+  globalContactMessages = globalContactMessages.filter((m) => m.id !== id);
+  return globalContactMessages.length < initialLen;
+}
+

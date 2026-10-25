@@ -25,13 +25,23 @@ export async function GET() {
           welcomeOffer: { ...defaultSiteSettings.welcomeOffer, ...(parsed.welcomeOffer || {}) },
           footer: { ...defaultSiteSettings.footer, ...(parsed.footer || {}) },
           print: { ...defaultSiteSettings.print, ...(parsed.print || {}) },
+          customPages: {
+            contact: { ...defaultSiteSettings.customPages!.contact, ...(parsed.customPages?.contact || {}) },
+            about: { ...defaultSiteSettings.customPages!.about, ...(parsed.customPages?.about || {}) },
+            privacy: { ...defaultSiteSettings.customPages!.privacy, ...(parsed.customPages?.privacy || {}) },
+            terms: { ...defaultSiteSettings.customPages!.terms, ...(parsed.customPages?.terms || {}) },
+          },
           heroSlides: Array.isArray(parsed.heroSlides) && parsed.heroSlides.length > 0 ? parsed.heroSlides : defaultSiteSettings.heroSlides,
           trustBadges: Array.isArray(parsed.trustBadges) && parsed.trustBadges.length > 0 ? parsed.trustBadges : defaultSiteSettings.trustBadges,
           promoBanners: Array.isArray(parsed.promoBanners) && parsed.promoBanners.length > 0 ? parsed.promoBanners : defaultSiteSettings.promoBanners,
         };
 
-        // Automatically migrate any legacy/dummy placeholder phone numbers to 01731376498
+        // Automatically migrate any legacy/dummy placeholder phone numbers or address
         let updated = false;
+        if (merged.footer?.address?.includes('ধানমন্ডি')) {
+          merged.footer.address = 'তেরখাদিয়া, রাজপাড়া, রাজশাহী। ওপেন ২৪ ঘণ্টা';
+          updated = true;
+        }
         const isLegacyNumber = (val?: string) =>
           !val ||
           val.includes('01711') ||

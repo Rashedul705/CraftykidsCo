@@ -54,6 +54,8 @@ import { DeliveryChargesManager } from '@/components/admin/DeliveryChargesManage
 import { StaffRolesManager } from '@/components/admin/StaffRolesManager';
 import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
 import { PrintSettingsManager } from '@/components/admin/PrintSettingsManager';
+import { MessagesManager } from '@/components/admin/MessagesManager';
+import { PagesContentEditor } from '@/components/admin/PagesContentEditor';
 import { AdminShell, AdminRole } from '@/components/admin/AdminShell';
 import { StatusPill } from '@/components/ui/Pill';
 
@@ -76,6 +78,8 @@ const VALID_ADMIN_TABS = [
   'blog',
   'faq-policies',
   'home-sections',
+  'messages',
+  'page-editor',
   'staff',
   'payments-sms',
 ];
@@ -1005,6 +1009,16 @@ export default function AdminDashboardPage() {
         {/* VIEW 6: HOME SECTIONS & STOREFRONT CUSTOMIZER */}
         {activeNav === 'home-sections' && (
           <HomeSectionsEditor onSaved={refreshData} />
+        )}
+
+        {/* VIEW 6.5: CONTACT MESSAGES & REPLIES */}
+        {activeNav === 'messages' && (
+          <MessagesManager />
+        )}
+
+        {/* VIEW 6.6: STATIC PAGES CONTENT EDITOR */}
+        {activeNav === 'page-editor' && (
+          <PagesContentEditor />
         )}
 
         {/* VIEW 7: INCOMPLETE ORDERS (PART B8) */}

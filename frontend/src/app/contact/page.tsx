@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   PhoneCall,
-  Mail,
   MapPin,
   Clock,
   Send,
@@ -19,38 +18,79 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { BRAND_CONFIG } from '@/lib/brand';
+import { defaultSiteSettings } from '@/lib/site-settings';
 
 export default function ContactPage() {
+  const [pageData, setPageData] = useState(defaultSiteSettings.customPages!.contact);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    email: '',
     subject: 'সাধারণ জিজ্ঞাসা',
     message: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch dynamic custom page content from admin site settings
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/site-settings');
+        const data = await res.json();
+        if (data?.success && data?.settings?.customPages?.contact) {
+          setPageData({
+            ...defaultSiteSettings.customPages!.contact,
+            ...data.settings.customPages.contact,
+          });
+        }
+      } catch (err) {
+        console.warn('Could not load dynamic contact settings, using defaults');
+      }
+    }
+    loadSettings();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.message) {
-      alert('দয়া করে আপনার নাম, ফোন নম্বর এবং বার্তা লিখুন।');
+    setErrorMessage(null);
+
+    if (!formData.name.trim() || !formData.phone.trim() || !formData.message.trim()) {
+      setErrorMessage('দয়া করে আপনার নাম, মোবাইল নম্বর এবং বার্তাটি লিখুন।');
       return;
     }
+
     setIsSubmitting(true);
-    // Simulate instantaneous smooth submission
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSubmitted(true);
-      setFormData({
-        name: '',
-        phone: '',
-        email: '',
-        subject: 'সাধারণ জিজ্ঞাসা',
-        message: '',
+    try {
+      const res = await fetch('/api/contact-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
       });
-    }, 600);
+      const data = await res.json();
+
+      if (data.success) {
+        setIsSubmitted(true);
+        setFormData({
+          name: '',
+          phone: '',
+          subject: 'সাধারণ জিজ্ঞাসা',
+          message: '',
+        });
+      } else {
+        setErrorMessage(data.message || 'মেসেজ পাঠানো সম্ভব হয়নি। অনুগ্রহ করে কিছুক্ষণ পর চেষ্টা করুন।');
+      }
+    } catch (err) {
+      setErrorMessage('সার্ভার সংযোগে সমস্যা হয়েছে। দয়া করে হটলাইন বা WhatsApp-এ যোগাযোগ করুন।');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const hotlineNum = pageData.phone || BRAND_CONFIG.defaultHotline;
+  const whatsappNum = pageData.whatsapp || BRAND_CONFIG.defaultHotline;
+  const cleanPhone = hotlineNum.replace(/[^\d+]/g, '');
+  const cleanWhatsapp = (whatsappNum.startsWith('880') ? whatsappNum : `88${whatsappNum}`).replace(/[^\d]/g, '');
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] pb-24 md:pb-12 text-[#2B2B2B]">
@@ -73,18 +113,18 @@ export default function ContactPage() {
             <span>আমরা আপনার সহায়তায় সদা প্রস্তুত</span>
           </div>
           <h1 className="font-heading font-black text-2xl sm:text-4xl text-[#2B2B2B] tracking-tight">
-            যোগাযোগ করুন
+            {pageData.headline || 'যোগাযোগ করুন'}
           </h1>
           <p className="text-xs sm:text-base text-[#6B6B6B] leading-relaxed">
-            শিশুদের নিরাপদ মোমের রঙ, খেলনা বা আপনার অর্ডার সংক্রান্ত যেকোনো তথ্যের জন্য সরাসরি আমাদের সাথে যুক্ত থাকুন।
+            {pageData.subtitle || 'শিশুদের নিরাপদ মোমের রঙ, খেলনা বা আপনার অর্ডার সংক্রান্ত যেকোনো তথ্যের জন্য সরাসরি আমাদের সাথে যুক্ত থাকুন।'}
           </p>
         </div>
 
-        {/* 4 Quick Contact Channels Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Quick Contact Channels (Hotline, WhatsApp, Location - Email Removed as requested) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Card 1: Hotline */}
           <a
-            href={`tel:${BRAND_CONFIG.defaultHotline.replace(/[^\d+]/g, '')}`}
+            href={`tel:${cleanPhone}`}
             id="contact-call-card"
             className="group p-5 rounded-2xl bg-white border border-[#EFE9E0] hover:border-[#D6403B] shadow-xs hover:shadow-md transition-all space-y-3"
           >
@@ -92,17 +132,17 @@ export default function ContactPage() {
               <PhoneCall className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-bold text-[#6B6B6B] uppercase tracking-wider">সরাসরি কল</p>
+              <p className="text-xs font-bold text-[#6B6B6B] uppercase tracking-wider">সরাসরি হটলাইন</p>
               <h3 className="font-heading font-black text-base text-[#2B2B2B] mt-0.5">
-                {BRAND_CONFIG.defaultHotline}
+                {hotlineNum}
               </h3>
-              <p className="text-[11px] text-[#6B6B6B] mt-1">সরাসরি কথা বলতে ট্যাপ করুন</p>
+              <p className="text-[11px] text-[#6B6B6B] mt-1">কল করতে ট্যাপ করুন</p>
             </div>
           </a>
 
           {/* Card 2: WhatsApp */}
           <a
-            href={`https://wa.me/${BRAND_CONFIG.defaultWhatsapp}?text=${encodeURIComponent(
+            href={`https://wa.me/${cleanWhatsapp}?text=${encodeURIComponent(
               'হ্যালো, CraftyKidsCo! আমি আপনাদের প্রোডাক্ট ও অর্ডার সম্পর্কে জানতে চাই।'
             )}`}
             target="_blank"
@@ -116,31 +156,13 @@ export default function ContactPage() {
             <div>
               <p className="text-xs font-bold text-[#6B6B6B] uppercase tracking-wider">হোয়াটসঅ্যাপ চ্যাট</p>
               <h3 className="font-heading font-black text-base text-[#2B2B2B] mt-0.5">
-                {BRAND_CONFIG.defaultHotline}
+                {whatsappNum}
               </h3>
               <p className="text-[11px] text-[#25D366] font-semibold mt-1">সবচেয়ে দ্রুত উত্তর পেতে মেসেজ দিন</p>
             </div>
           </a>
 
-          {/* Card 3: Email */}
-          <a
-            href={`mailto:${BRAND_CONFIG.defaultEmail}`}
-            id="contact-email-card"
-            className="group p-5 rounded-2xl bg-white border border-[#EFE9E0] hover:border-[#5BC0EB] shadow-xs hover:shadow-md transition-all space-y-3"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[#5BC0EB]/15 text-[#0284C7] flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Mail className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-[#6B6B6B] uppercase tracking-wider">ইমেইল ঠিকানা</p>
-              <h3 className="font-heading font-black text-sm text-[#2B2B2B] mt-0.5 break-all">
-                {BRAND_CONFIG.defaultEmail}
-              </h3>
-              <p className="text-[11px] text-[#6B6B6B] mt-1">বাল্ক বা অফিসিয়াল অনুসন্ধানের জন্য</p>
-            </div>
-          </a>
-
-          {/* Card 4: Location & Hours */}
+          {/* Card 3: Location & Hours */}
           <div
             id="contact-location-card"
             className="p-5 rounded-2xl bg-white border border-[#EFE9E0] shadow-xs space-y-3"
@@ -149,21 +171,21 @@ export default function ContactPage() {
               <MapPin className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-bold text-[#6B6B6B] uppercase tracking-wider">অফিস ও শোরুম</p>
-              <h3 className="font-heading font-black text-sm text-[#2B2B2B] mt-0.5">
-                ধানমন্ডি, ঢাকা, বাংলাদেশ
+              <p className="text-xs font-bold text-[#6B6B6B] uppercase tracking-wider">শোরুম ও অফিস</p>
+              <h3 className="font-heading font-black text-sm text-[#2B2B2B] mt-0.5 leading-snug">
+                {pageData.location || 'তেরখাদিয়া, রাজপাড়া, রাজশাহী।'}
               </h3>
-              <div className="flex items-center gap-1 text-[11px] text-[#6B6B6B] mt-1">
+              <div className="flex items-center gap-1 text-[11px] text-[#1F6B43] font-bold mt-1">
                 <Clock className="w-3 h-3 text-[#1F6B43]" />
-                <span>শনি - বৃহস্পতি: সকাল ১০টা - রাত ৮টা</span>
+                <span>{pageData.openingHours || 'ওপেন ২৪ ঘণ্টা'}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Contact Form & Side Banner Section */}
+        {/* Contact Form & Side Info Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Main Interactive Contact Form (7 cols) */}
+          {/* Main Interactive Contact Form (7 cols) - Email field removed */}
           <div className="lg:col-span-7 bg-white rounded-[28px] border border-[#EFE9E0] p-6 sm:p-8 shadow-sm">
             <div className="space-y-1 mb-6">
               <h2 className="font-heading font-black text-xl text-[#2B2B2B]">
@@ -173,6 +195,12 @@ export default function ContactPage() {
                 আপনার মতামত বা প্রশ্ন লিখে পাঠান, আমাদের কাস্টমার কেয়ার টিম দ্রুত আপনার সাথে যোগাযোগ করবে।
               </p>
             </div>
+
+            {errorMessage && (
+              <div className="p-3 mb-4 rounded-xl bg-[#FEE2E2] border border-[#FCA5A5] text-[#991B1B] text-xs font-medium">
+                {errorMessage}
+              </div>
+            )}
 
             {isSubmitted ? (
               <div
@@ -234,40 +262,23 @@ export default function ContactPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Email */}
-                  <div className="space-y-1.5">
-                    <label htmlFor="contact-email" className="block text-xs font-bold text-[#2B2B2B]">
-                      ইমেইল (ঐচ্ছিক)
-                    </label>
-                    <input
-                      id="contact-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs sm:text-sm text-[#2B2B2B] placeholder-[#999999] focus:bg-white focus:outline-none focus:border-[#D6403B] focus:ring-2 focus:ring-[#D6403B]/10 transition-all"
-                    />
-                  </div>
-
-                  {/* Subject Dropdown */}
-                  <div className="space-y-1.5">
-                    <label htmlFor="contact-subject" className="block text-xs font-bold text-[#2B2B2B]">
-                      বিষয়ের ধরণ
-                    </label>
-                    <select
-                      id="contact-subject"
-                      value={formData.subject}
-                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs sm:text-sm text-[#2B2B2B] focus:bg-white focus:outline-none focus:border-[#D6403B] transition-all"
-                    >
-                      <option value="সাধারণ জিজ্ঞাসা">সাধারণ জিজ্ঞাসা</option>
-                      <option value="অর্ডার ও ট্র্যাকিং সহায়তা">অর্ডার ও ট্র্যাকিং সহায়তা</option>
-                      <option value="স্কুল বা বাল্ক অর্ডার">স্কুল বা বাল্ক অর্ডার</option>
-                      <option value="রিপ্লেসমেন্ট বা রিটার্ন">রিপ্লেসমেন্ট বা রিটার্ন</option>
-                      <option value="অন্যান্য পরামর্শ">অন্যান্য পরামর্শ</option>
-                    </select>
-                  </div>
+                {/* Subject Dropdown */}
+                <div className="space-y-1.5">
+                  <label htmlFor="contact-subject" className="block text-xs font-bold text-[#2B2B2B]">
+                    বিষয়ের ধরণ
+                  </label>
+                  <select
+                    id="contact-subject"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs sm:text-sm text-[#2B2B2B] focus:bg-white focus:outline-none focus:border-[#D6403B] transition-all"
+                  >
+                    <option value="সাধারণ জিজ্ঞাসা">সাধারণ জিজ্ঞাসা</option>
+                    <option value="অর্ডার ও ট্র্যাকিং সহায়তা">অর্ডার ও ট্র্যাকিং সহায়তা</option>
+                    <option value="স্কুল বা বাল্ক অর্ডার">স্কুল বা বাল্ক অর্ডার</option>
+                    <option value="রিপ্লেসমেন্ট বা রিটার্ন">রিপ্লেসমেন্ট বা রিটার্ন</option>
+                    <option value="অন্যান্য পরামর্শ">অন্যান্য পরামর্শ</option>
+                  </select>
                 </div>
 
                 {/* Message */}
@@ -312,10 +323,10 @@ export default function ContactPage() {
                 তাত্ক্ষণিক WhatsApp চ্যাট সাপোর্ট
               </h3>
               <p className="text-xs text-white/90 leading-relaxed">
-                পণ্য নির্বাচন, বয়স উপযোগী খেলনার পরামর্শ বা যেকোনো প্রশ্নের সরাসরি সমাধানের জন্য আমাদের WhatsApp এ মেসেজ দিন।
+                {pageData.noticeBannerText || 'পণ্য নির্বাচন, বয়স উপযোগী খেলনার পরামর্শ বা যেকোনো প্রশ্নের সরাসরি সমাধানের জন্য আমাদের WhatsApp এ মেসেজ দিন।'}
               </p>
               <a
-                href={`https://wa.me/${BRAND_CONFIG.defaultWhatsapp}?text=${encodeURIComponent(
+                href={`https://wa.me/${cleanWhatsapp}?text=${encodeURIComponent(
                   'হ্যালো CraftyKidsCo! আমি সরাসরি কিছু জানতে চাই।'
                 )}`}
                 target="_blank"

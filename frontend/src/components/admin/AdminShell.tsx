@@ -71,9 +71,11 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   {
     title: 'CONTENT',
     items: [
-      { id: 'blog', label: 'Blog', allowedRoles: ['admin'] },
-      { id: 'faq-policies', label: 'FAQ and policies', allowedRoles: ['admin'] },
+      { id: 'messages', label: 'Messages', allowedRoles: ['admin', 'order_handler'] },
+      { id: 'page-editor', label: 'Page editor', allowedRoles: ['admin'] },
       { id: 'home-sections', label: 'Home sections', allowedRoles: ['admin'] },
+      { id: 'faq-policies', label: 'FAQ and policies', allowedRoles: ['admin'] },
+      { id: 'blog', label: 'Blog', allowedRoles: ['admin'] },
     ],
   },
   {
@@ -152,6 +154,14 @@ export const TAB_METADATA: Record<string, { title: string; helper: string; mainA
   'block-list': {
     title: 'Block list',
     helper: 'Prevent repeat COD returns and fake orders by blocking phone numbers',
+  },
+  messages: {
+    title: 'Messages',
+    helper: 'Customer contact messages, WhatsApp instant replies, and resolution history',
+  },
+  'page-editor': {
+    title: 'Page editor',
+    helper: 'Edit Contact Us, About Us, Privacy Policy, and Terms of Service page contents',
   },
   blog: {
     title: 'Blog',

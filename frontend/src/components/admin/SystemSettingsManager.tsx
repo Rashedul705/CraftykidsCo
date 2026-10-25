@@ -352,12 +352,20 @@ export function SystemSettingsManager({ activeTab, onNavigateTab }: SystemSettin
               <h3 className="font-heading font-black text-lg text-[#2B2B2B]">Frequently Asked Questions &amp; Policies</h3>
               <p className="text-xs text-[#6B6B6B]">Manage customer trust FAQs, return policies, and safety standards.</p>
             </div>
-            <button
-              onClick={() => showToast('Add FAQ modal opened.')}
-              className="px-4 py-2 rounded-xl bg-[#D6403B] text-white text-xs font-bold hover:bg-[#B5322E] flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <Plus className="w-4 h-4" /> + Add FAQ
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onNavigateTab?.('page-editor')}
+                className="px-3.5 py-2 rounded-xl bg-white border border-[#EFE9E0] text-[#2B2B2B] hover:bg-[#FAF7F2] text-xs font-bold transition-colors"
+              >
+                পেজ এডিটর (Page Editor)
+              </button>
+              <button
+                onClick={() => showToast('Add FAQ modal opened.')}
+                className="px-4 py-2 rounded-xl bg-[#D6403B] text-white text-xs font-bold hover:bg-[#B5322E] flex items-center gap-1.5 self-start sm:self-auto"
+              >
+                <Plus className="w-4 h-4" /> + Add FAQ
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4">

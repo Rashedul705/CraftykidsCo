@@ -39,13 +39,9 @@ export function Footer() {
               <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
               <span>হোয়াটসঅ্যাপ: {BRAND_CONFIG.defaultHotline}</span>
             </a>
-            <p className="flex items-center gap-2">
-              <Mail className="w-3.5 h-3.5 text-[#D6403B]" />
-              <span>{BRAND_CONFIG.defaultEmail}</span>
-            </p>
-            <p className="flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5 text-[#D6403B]" />
-              <span>ধানমন্ডি, ঢাকা, বাংলাদেশ</span>
+            <p className="flex items-start gap-2">
+              <MapPin className="w-3.5 h-3.5 text-[#D6403B] shrink-0 mt-0.5" />
+              <span>{BRAND_CONFIG.defaultAddress} {BRAND_CONFIG.defaultOpeningHours}</span>
             </p>
           </div>
         </div>
