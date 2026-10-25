@@ -22,6 +22,24 @@ export default function PoliciesPage() {
           <h1 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
             ডেলিভারি, রিটার্ন ও রিফান্ড নীতিমালা
           </h1>
+          {/* Policy Navigation Pills */}
+          <div className="flex flex-wrap items-center gap-2 pt-3">
+            <span className="px-3.5 py-1.5 rounded-full bg-[#D6403B] text-white text-xs font-bold shadow-xs">
+              ডেলিভারি ও রিটার্ন
+            </span>
+            <Link
+              href="/privacy-policy"
+              className="px-3.5 py-1.5 rounded-full bg-white border border-[#EFE9E0] hover:border-[#D6403B] text-xs font-bold text-[#6B6B6B] hover:text-[#D6403B] transition-colors"
+            >
+              গোপনীয়তা নীতিমালা
+            </Link>
+            <Link
+              href="/terms"
+              className="px-3.5 py-1.5 rounded-full bg-white border border-[#EFE9E0] hover:border-[#D6403B] text-xs font-bold text-[#6B6B6B] hover:text-[#D6403B] transition-colors"
+            >
+              ব্যবহারের শর্তাবলী
+            </Link>
+          </div>
         </div>
 
         {/* Delivery Policy */}

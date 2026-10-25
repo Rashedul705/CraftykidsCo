@@ -97,8 +97,13 @@ export function Footer() {
               </Link>
             </li>
             <li>
-              <Link href="/checkout" className="hover:text-white transition-colors">
-                সহজ এক-পৃষ্ঠার চেকআউট
+              <Link href="/about" className="hover:text-white transition-colors">
+                আমাদের সম্পর্কে (About Us)
+              </Link>
+            </li>
+            <li>
+              <Link href="/contact" className="hover:text-white transition-colors">
+                যোগাযোগ করুন (Contact)
               </Link>
             </li>
             <li>
@@ -107,13 +112,18 @@ export function Footer() {
               </Link>
             </li>
             <li>
-              <Link href="/faq" className="hover:text-white transition-colors">
-                সাধারণ প্রশ্নোত্তর (FAQ)
+              <Link href="/privacy-policy" className="hover:text-white transition-colors">
+                গোপনীয়তা নীতিমালা (Privacy)
               </Link>
             </li>
             <li>
-              <Link href="/account" className="hover:text-white transition-colors">
-                আমার অ্যাকাউন্ট (লগইন)
+              <Link href="/terms" className="hover:text-white transition-colors">
+                ব্যবহারের শর্তাবলী (Terms)
+              </Link>
+            </li>
+            <li>
+              <Link href="/faq" className="hover:text-white transition-colors">
+                সাধারণ প্রশ্নোত্তর (FAQ)
               </Link>
             </li>
           </ul>
@@ -138,10 +148,29 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Bottom Bar: Copyright & Payment Badges */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 mt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#888888]">
-        <p>© ২০২৬ {BRAND_CONFIG.name}. সর্বস্বত্ব সংরক্ষিত।</p>
-        <div className="flex items-center gap-2">
+      {/* Bottom Bar: Copyright, Legal Links & Payment Badges */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 mt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[#888888]">
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-center sm:text-left">
+          <p>© ২০২৬ {BRAND_CONFIG.name}. সর্বস্বত্ব সংরক্ষিত।</p>
+          <div className="hidden sm:flex items-center gap-3 text-[11px] text-[#AAAAAA]">
+            <Link href="/about" className="hover:text-white transition-colors">
+              আমাদের গল্প
+            </Link>
+            <span>•</span>
+            <Link href="/contact" className="hover:text-white transition-colors">
+              যোগাযোগ
+            </Link>
+            <span>•</span>
+            <Link href="/privacy-policy" className="hover:text-white transition-colors">
+              প্রাইভেসি
+            </Link>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-white transition-colors">
+              শর্তাবলী
+            </Link>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap justify-center">
           <span className="px-2.5 py-0.5 rounded bg-white text-[#222222] font-black text-[10px]">bKash</span>
           <span className="px-2.5 py-0.5 rounded bg-[#D6403B] text-white font-black text-[10px]">Nagad</span>
           <span className="px-2.5 py-0.5 rounded bg-[#1A1F71] text-white font-bold text-[10px]">VISA</span>

@@ -1453,50 +1453,21 @@ function ProductContent() {
             </div>
           )}
 
-          {/* TAB 2: বাক্সে কী আছে (What's in the Box & Specs) */}
+          {/* TAB 2: বাক্সে কী আছে (What's in the Box) */}
           {activeTab === 'box' && (
-            <div className="space-y-5 text-xs sm:text-sm">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-3">
-                  <div className="flex items-center gap-2 font-bold text-sm text-[#2B2B2B]">
-                    <PackageCheck className="w-4 h-4 text-[#D6403B]" />
-                    <span>প্যাকেজে অন্তর্ভুক্ত উপাদানসমূহ:</span>
-                  </div>
-                  <ul className="space-y-2 text-xs">
-                    {boxItemsList.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#D6403B] shrink-0 mt-1.5" />
-                        <span className="text-[#2B2B2B] leading-relaxed font-medium">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-3">
-                  <div className="flex items-center gap-2 font-bold text-sm text-[#2B2B2B]">
-                    <ShieldCheck className="w-4 h-4 text-[#1F6B43]" />
-                    <span>টেকনিক্যাল স্পেসিফিকেশন:</span>
-                  </div>
-                  <table className="w-full text-xs">
-                    <tbody className="divide-y divide-[#EFE9E0]">
-                      <tr>
-                        <td className="py-2.5 font-bold text-[#2B2B2B] w-28">কাঁচামাল</td>
-                        <td className="py-2.5 text-[#4A4A4A] font-medium">{product.materials || 'প্রাকৃতিক মৌমাছির মোম ও ফুড কালার'}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-2.5 font-bold text-[#2B2B2B] w-28">উপযুক্ত বয়স</td>
-                        <td className="py-2.5 text-[#4A4A4A] font-medium">
-                          {product.ageAppropriate || `${toBanglaDigits(product.targetAgeMin || 2)}+ থেকে ${toBanglaDigits(product.targetAgeMax || 8)} বছর`}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-2.5 font-bold text-[#2B2B2B] w-28">নিরাপত্তা মান</td>
-                        <td className="py-2.5 text-[#4A4A4A] font-medium">{product.safetyStandards || '১০০% নন-টক্সিক সার্টিফাইড'}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-3 text-xs sm:text-sm">
+              <div className="flex items-center gap-2 font-bold text-sm text-[#2B2B2B]">
+                <PackageCheck className="w-4 h-4 text-[#D6403B]" />
+                <span>প্যাকেজে অন্তর্ভুক্ত উপাদানসমূহ:</span>
               </div>
+              <ul className="space-y-2 text-xs sm:text-sm">
+                {boxItemsList.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#D6403B] shrink-0 mt-1.5" />
+                    <span className="text-[#2B2B2B] leading-relaxed font-medium">{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
