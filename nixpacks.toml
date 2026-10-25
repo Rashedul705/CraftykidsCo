@@ -3,10 +3,14 @@
 
 [phases.setup]
 nixPkgs = ["...", "chromium"]
+aptPkgs = []
 
 [variables]
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
 PUPPETEER_EXECUTABLE_PATH = "/nix/var/nix/profiles/default/bin/chromium"
+PORT = "3000"
+HOSTNAME = "0.0.0.0"
+NODE_ENV = "production"
 
 [phases.install]
 cmds = ["npm install"]
@@ -15,4 +19,4 @@ cmds = ["npm install"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npm start"
+cmd = "npm start -- -p ${PORT:-3000} -H 0.0.0.0"
