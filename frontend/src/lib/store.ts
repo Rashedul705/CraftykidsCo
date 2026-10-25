@@ -439,9 +439,39 @@ export function addProduct(prod: SampleProduct): SampleProduct {
   return prod;
 }
 
-export function updateProduct(id: string, updates: Partial<SampleProduct>): SampleProduct | null {
+export function updateProduct(
+  id: string,
+  updates: Partial<SampleProduct>,
+  variationSku?: string
+): SampleProduct | null {
   const index = globalProducts.findIndex((p) => p.id === id || p.slug === id);
   if (index === -1) return null;
+
+  if (variationSku && updates.stock !== undefined && globalProducts[index].variations) {
+    const finalStock = Math.max(0, updates.stock);
+    globalProducts[index].variations = globalProducts[index].variations!.map((v) => {
+      if (
+        v.sku === variationSku ||
+        v.id === variationSku ||
+        v.titleEn === variationSku ||
+        v.titleBn === variationSku
+      ) {
+        return {
+          ...v,
+          stock: finalStock,
+          stockQuantity: finalStock,
+        };
+      }
+      return v;
+    });
+    const totalStock = globalProducts[index].variations!.reduce(
+      (sum, v) => sum + (v.stock ?? (v as any).stockQuantity ?? 0),
+      0
+    );
+    globalProducts[index].stock = totalStock;
+    return globalProducts[index];
+  }
+
   globalProducts[index] = { ...globalProducts[index], ...updates };
   return globalProducts[index];
 }

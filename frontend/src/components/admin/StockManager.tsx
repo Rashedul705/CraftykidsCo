@@ -48,13 +48,20 @@ export function StockManager({ products, onRefresh }: StockManagerProps) {
     const items: FlattenedStockItem[] = [];
 
     products.forEach((p) => {
+      const prodIdentifier = (p as any)._id?.toString() || p.id || p.slug;
       if (p.variations && p.variations.length > 0) {
         p.variations.forEach((v) => {
-          const key = `${p.id || p.slug}_${v.sku || v.titleEn}`;
-          const currentStock = localStock[key] !== undefined ? localStock[key] : v.stock;
+          const key = `${prodIdentifier}_${v.sku || v.titleEn}`;
+          const rawStock =
+            v.stock !== undefined
+              ? v.stock
+              : (v as any).stockQuantity !== undefined
+              ? (v as any).stockQuantity
+              : 25;
+          const currentStock = localStock[key] !== undefined ? localStock[key] : rawStock;
           items.push({
             id: key,
-            productId: p.id || p.slug,
+            productId: prodIdentifier,
             productSlug: p.slug,
             titleBn: p.titleBn,
             titleEn: p.titleEn,
@@ -67,11 +74,12 @@ export function StockManager({ products, onRefresh }: StockManagerProps) {
           });
         });
       } else {
-        const key = p.id || p.slug;
-        const currentStock = localStock[key] !== undefined ? localStock[key] : ((p as any).stock ?? 25);
+        const key = prodIdentifier;
+        const rawStock = (p as any).stock !== undefined ? (p as any).stock : 25;
+        const currentStock = localStock[key] !== undefined ? localStock[key] : rawStock;
         items.push({
           id: key,
-          productId: p.id || p.slug,
+          productId: prodIdentifier,
           productSlug: p.slug,
           titleBn: p.titleBn,
           titleEn: p.titleEn,
@@ -121,11 +129,18 @@ export function StockManager({ products, onRefresh }: StockManagerProps) {
       });
       const data = await res.json();
       if (data.success) {
-        setFeedback(`Stock updated: ${item.variationTitle || item.titleBn} → ${finalStock} units`);
-        setTimeout(() => setFeedback(null), 2000);
+        setFeedback(`স্টক আপডেট সফল: ${item.variationTitle || item.titleBn} → ${finalStock} units`);
+        setTimeout(() => setFeedback(null), 2500);
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        setFeedback(`ত্রুটি: ${data.message || 'স্টক আপডেট ব্যর্থ হয়েছে'}`);
+        setTimeout(() => setFeedback(null), 3500);
       }
-    } catch {
-      // rollback or ignore
+    } catch (err: any) {
+      setFeedback(`ত্রুটি: ${err?.message || 'নেটওয়ার্ক এরর'}`);
+      setTimeout(() => setFeedback(null), 3500);
     } finally {
       setSavingKey(null);
     }
@@ -213,7 +228,10 @@ export function StockManager({ products, onRefresh }: StockManagerProps) {
 
             {onRefresh && (
               <button
-                onClick={onRefresh}
+                onClick={() => {
+                  setLocalStock({});
+                  onRefresh();
+                }}
                 className="inline-flex items-center gap-1.5 text-xs text-[#6B6B6B] hover:text-[#2B2B2B] font-semibold self-end sm:self-auto cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Sync
@@ -330,6 +348,13 @@ export function StockManager({ products, onRefresh }: StockManagerProps) {
                           onBlur={(e) => {
                             const val = parseInt(e.target.value) || 0;
                             handleUpdateStock(item, val);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const val = parseInt((e.target as HTMLInputElement).value) || 0;
+                              handleUpdateStock(item, val);
+                              (e.target as HTMLInputElement).blur();
+                            }
                           }}
                           className="w-14 text-center font-heading font-black text-xs text-[#2B2B2B] bg-transparent focus:outline-none"
                         />

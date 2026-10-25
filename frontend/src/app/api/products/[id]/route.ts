@@ -70,6 +70,66 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
     const { id } = await context.params;
     const body = await req.json();
 
+    // 2a. Handle specific variation stock update (from StockManager)
+    if (body.variationSku) {
+      const finalStock = Math.max(0, Number(body.stock ?? 0));
+      let updatedDoc: any = null;
+
+      // 1. Update in MongoDB Atlas
+      try {
+        await connectToDatabase();
+        const dbProduct = await Product.findOne(getProductMongoQuery(id));
+        if (dbProduct) {
+          if (dbProduct.variations && Array.isArray(dbProduct.variations)) {
+            dbProduct.variations = dbProduct.variations.map((v: any) => {
+              if (
+                v.sku === body.variationSku ||
+                v.id === body.variationSku ||
+                v.titleEn === body.variationSku ||
+                v.titleBn === body.variationSku
+              ) {
+                return {
+                  ...v,
+                  stock: finalStock,
+                  stockQuantity: finalStock,
+                };
+              }
+              return v;
+            });
+
+            // Recalculate parent stock as sum of variation stocks
+            const totalStock = dbProduct.variations.reduce(
+              (sum: number, v: any) =>
+                sum + (Number(v.stock !== undefined ? v.stock : v.stockQuantity) || 0),
+              0
+            );
+            dbProduct.stock = totalStock;
+            dbProduct.markModified('variations');
+            await dbProduct.save();
+            updatedDoc = dbProduct.toObject ? dbProduct.toObject() : dbProduct;
+          }
+        }
+      } catch (dbErr: any) {
+        console.error(`MongoDB error updating variation stock for product ${id}:`, dbErr.message);
+      }
+
+      // 2. Sync in memory store
+      const memUpdated = updateMemoryProduct(id, { stock: finalStock }, body.variationSku);
+
+      if (!updatedDoc && !memUpdated) {
+        return NextResponse.json(
+          { success: false, message: 'পণ্য বা ভেরিয়েশন পাওয়া যায়নি' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'ভেরিয়েশন স্টক সফলভাবে আপডেট হয়েছে',
+        product: updatedDoc || memUpdated,
+      });
+    }
+
     const updateFields: any = {};
     if (body.titleBn !== undefined) updateFields.titleBn = body.titleBn;
     if (body.titleEn !== undefined) {

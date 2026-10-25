@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { PhoneCall, Mail, MapPin, Truck, ShieldCheck, Heart, MessageCircle } from 'lucide-react';
+import { PhoneCall, MapPin, Truck, ShieldCheck, MessageCircle } from 'lucide-react';
 import { BRAND_CONFIG } from '@/lib/brand';
 
 export function Footer() {
@@ -19,6 +19,7 @@ export function Footer() {
               {BRAND_CONFIG.name}
             </span>
           </div>
+          {/* Kept in Bengali as requested */}
           <p className="text-xs text-[#AAAAAA] leading-relaxed">
             শিশুদের সুস্থ শৈশব ও সৃজনশীল মেধা বিকাশে ১০০% নিরাপদ নন-টক্সিক মোমের রঙ ও শিক্ষণীয় খেলনার নির্ভরযোগ্য ব্র্যান্ড।
           </p>
@@ -28,7 +29,7 @@ export function Footer() {
               className="flex items-center gap-2 hover:text-white transition-colors"
             >
               <PhoneCall className="w-3.5 h-3.5 text-[#D6403B]" />
-              <span>{BRAND_CONFIG.defaultHotline}</span>
+              <span>Hotline: {BRAND_CONFIG.defaultHotline}</span>
             </a>
             <a
               href={`https://wa.me/${BRAND_CONFIG.defaultWhatsapp}`}
@@ -37,108 +38,109 @@ export function Footer() {
               className="flex items-center gap-2 text-[#25D366] hover:text-[#34D399] transition-colors"
             >
               <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-              <span>হোয়াটসঅ্যাপ: {BRAND_CONFIG.defaultHotline}</span>
+              <span>WhatsApp: {BRAND_CONFIG.defaultHotline}</span>
             </a>
             <p className="flex items-start gap-2">
               <MapPin className="w-3.5 h-3.5 text-[#D6403B] shrink-0 mt-0.5" />
-              <span>{BRAND_CONFIG.defaultAddress} {BRAND_CONFIG.defaultOpeningHours}</span>
+              <span>{BRAND_CONFIG.defaultAddress}</span>
             </p>
           </div>
         </div>
 
         {/* Column 2: Popular Categories */}
         <div className="space-y-2.5">
-          <h4 className="font-bold text-white text-sm">জনপ্রিয় ক্যাটাগরি</h4>
+          <h4 className="font-bold text-white text-sm">Popular Categories</h4>
           <ul className="space-y-1.5 text-xs text-[#AAAAAA]">
             <li>
               <Link href="/category/wax-crayons" className="hover:text-white transition-colors">
-                মোমের রঙ (Natural Crayons)
+                Natural Wax Crayons
               </Link>
             </li>
             <li>
               <Link href="/category/play-dough-clay" className="hover:text-white transition-colors">
-                মডেলিং প্লে-ডো ও আর্টক্লে
+                Modeling Play-Dough & Clay
               </Link>
             </li>
             <li>
               <Link href="/category/wooden-toys" className="hover:text-white transition-colors">
-                কাঠের শিক্ষণীয় খেলনা
+                Wooden Educational Toys
               </Link>
             </li>
             <li>
               <Link href="/category/sketchbooks" className="hover:text-white transition-colors">
-                ড্রয়িং খাতা ও আর্ট প্যাড
+                Drawing Books & Art Pads
               </Link>
             </li>
             <li>
               <Link href="/bundles" className="hover:text-white transition-colors">
-                স্পেশাল গিফট সেট ও কম্বো
+                Special Gift Sets & Combos
               </Link>
             </li>
           </ul>
         </div>
 
-        {/* Column 3: Customer Care & Links */}
+        {/* Column 3: Customer Care & Policies */}
         <div className="space-y-2.5">
-          <h4 className="font-bold text-white text-sm">কাস্টমার কেয়ার ও পলিসি</h4>
+          <h4 className="font-bold text-white text-sm">Customer Care & Policies</h4>
           <ul className="space-y-1.5 text-xs text-[#AAAAAA]">
             <li>
               <Link href="/shop" className="hover:text-white transition-colors">
-                সব পণ্য ও ক্যাটালগ
+                All Products & Catalog
               </Link>
             </li>
             <li>
               <Link href="/track" className="hover:text-white transition-colors">
-                অর্ডার ট্র্যাক করুন
+                Track Your Order
               </Link>
             </li>
             <li>
               <Link href="/about" className="hover:text-white transition-colors">
-                আমাদের সম্পর্কে (About Us)
+                About Us
               </Link>
             </li>
             <li>
               <Link href="/contact" className="hover:text-white transition-colors">
-                যোগাযোগ করুন (Contact)
+                Contact Us
               </Link>
             </li>
             <li>
               <Link href="/policies" className="hover:text-white transition-colors">
-                ডেলিভারি ও রিটার্ন পলিসি
+                Delivery & Return Policy
               </Link>
             </li>
             <li>
               <Link href="/privacy-policy" className="hover:text-white transition-colors">
-                গোপনীয়তা নীতিমালা (Privacy)
+                Privacy Policy
               </Link>
             </li>
             <li>
               <Link href="/terms" className="hover:text-white transition-colors">
-                ব্যবহারের শর্তাবলী (Terms)
+                Terms of Service
               </Link>
             </li>
             <li>
               <Link href="/faq" className="hover:text-white transition-colors">
-                সাধারণ প্রশ্নোত্তর (FAQ)
+                Frequently Asked Questions (FAQ)
               </Link>
             </li>
           </ul>
         </div>
 
-        {/* Column 4: Delivery & Assurances */}
+        {/* Column 4: Delivery & Security */}
         <div className="space-y-2.5">
-          <h4 className="font-bold text-white text-sm">ডেলিভারি ও নিরাপত্তা</h4>
+          <h4 className="font-bold text-white text-sm">Delivery & Security</h4>
+          {/* Kept in Bengali as requested */}
           <p className="text-xs text-[#AAAAAA] leading-relaxed">
             দ্রুততম হোম ডেলিভারি সার্ভিসের মাধ্যমে সারা বাংলাদেশে নিরাপদে পণ্য পৌঁছে দেওয়া হয়।
           </p>
           <div className="pt-2 space-y-2">
             <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#FDE3E1] bg-[#D6403B]/20 border border-[#D6403B]/30 px-3 py-1.5 rounded-full">
               <Truck className="w-3.5 h-3.5 text-[#D6403B]" />
-              <span>১০০% ক্যাশ অন ডেলিভারি (COD)</span>
+              <span>100% Cash on Delivery (COD)</span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-[#A5D6A7]">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>১০০% ফুড-গ্রেড ও নন-টক্সিক সার্টিফাইড</span>
+              <span>100% Food-Grade & Non-Toxic Certified</span>
             </div>
           </div>
         </div>
@@ -147,22 +149,22 @@ export function Footer() {
       {/* Bottom Bar: Copyright, Legal Links & Payment Badges */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 mt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[#888888]">
         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-center sm:text-left">
-          <p>© ২০২৬ {BRAND_CONFIG.name}. সর্বস্বত্ব সংরক্ষিত।</p>
+          <p>© 2026 {BRAND_CONFIG.name}. All rights reserved.</p>
           <div className="hidden sm:flex items-center gap-3 text-[11px] text-[#AAAAAA]">
             <Link href="/about" className="hover:text-white transition-colors">
-              আমাদের গল্প
+              About Us
             </Link>
             <span>•</span>
             <Link href="/contact" className="hover:text-white transition-colors">
-              যোগাযোগ
+              Contact
             </Link>
             <span>•</span>
             <Link href="/privacy-policy" className="hover:text-white transition-colors">
-              প্রাইভেসি
+              Privacy Policy
             </Link>
             <span>•</span>
             <Link href="/terms" className="hover:text-white transition-colors">
-              শর্তাবলী
+              Terms of Service
             </Link>
           </div>
         </div>
@@ -171,7 +173,7 @@ export function Footer() {
           <span className="px-2.5 py-0.5 rounded bg-[#D6403B] text-white font-black text-[10px]">Nagad</span>
           <span className="px-2.5 py-0.5 rounded bg-[#1A1F71] text-white font-bold text-[10px]">VISA</span>
           <span className="px-2.5 py-0.5 rounded bg-[#EB001B] text-white font-bold text-[10px]">Mastercard</span>
-          <span className="px-2.5 py-0.5 rounded bg-[#444444] text-white font-bold text-[10px]">ক্যাশ অন ডেলিভারি</span>
+          <span className="px-2.5 py-0.5 rounded bg-[#444444] text-white font-bold text-[10px]">Cash on Delivery</span>
         </div>
       </div>
     </footer>

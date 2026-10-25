@@ -542,7 +542,7 @@ export const defaultSiteSettings: SiteSettings = {
     aboutBn: 'শিশুদের সুস্থ শৈশব ও সৃজনশীল মেধা বিকাশে ১০০% নিরাপদ নন-টক্সিক মোমের রঙ ও শিক্ষণীয় খেলনার নির্ভরযোগ্য ব্র্যান্ড।',
     phone: '+৮৮০ ১৭৩১-৩৭৬৪৯৮',
     email: 'support@craftykidsco.com',
-    address: 'তেরখাদিয়া, রাজপাড়া, রাজশাহী। ওপেন ২৪ ঘণ্টা',
+    address: 'তেরখাদিয়া, রাজপাড়া, রাজশাহী।',
     copyrightText: '© ২০২৬ CraftyKidsCo. সর্বস্বত্ব সংরক্ষিত।',
   },
   print: {

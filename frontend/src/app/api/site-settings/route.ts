@@ -38,8 +38,8 @@ export async function GET() {
 
         // Automatically migrate any legacy/dummy placeholder phone numbers or address
         let updated = false;
-        if (merged.footer?.address?.includes('ধানমন্ডি')) {
-          merged.footer.address = 'তেরখাদিয়া, রাজপাড়া, রাজশাহী। ওপেন ২৪ ঘণ্টা';
+        if (merged.footer?.address?.includes('ধানমন্ডি') || merged.footer?.address?.includes('ওপেন ২৪ ঘণ্টা')) {
+          merged.footer.address = 'তেরখাদিয়া, রাজপাড়া, রাজশাহী।';
           updated = true;
         }
         const isLegacyNumber = (val?: string) =>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Search,
   Plus,
@@ -114,7 +115,13 @@ export default function OrdersManager({
   const [isEditAddressOpen, setIsEditAddressOpen] = useState(false);
   const [editAddressText, setEditAddressText] = useState('');
   const [isSubmittingDispatch, setIsSubmittingDispatch] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [activeDropdownRowId, setActiveDropdownRowId] = useState<string | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{
+    top?: number;
+    bottom?: number;
+    right: number;
+  } | null>(null);
 
   // Sticker Print Modal State
   const [isStickerModalOpen, setIsStickerModalOpen] = useState(false);
@@ -420,11 +427,24 @@ export default function OrdersManager({
     }
   }, [activeOrder, internalNotes]);
 
-  // Close dropdown on outside click
   useEffect(() => {
-    const handleOutside = () => setActiveDropdownRowId(null);
-    window.addEventListener('click', handleOutside);
-    return () => window.removeEventListener('click', handleOutside);
+    setMounted(true);
+  }, []);
+
+  // Close dropdown on outside click, scroll, or resize
+  useEffect(() => {
+    const handleClose = () => {
+      setActiveDropdownRowId(null);
+      setDropdownPos(null);
+    };
+    window.addEventListener('click', handleClose);
+    window.addEventListener('scroll', handleClose, true);
+    window.addEventListener('resize', handleClose);
+    return () => {
+      window.removeEventListener('click', handleClose);
+      window.removeEventListener('scroll', handleClose, true);
+      window.removeEventListener('resize', handleClose);
+    };
   }, []);
 
   // Handle ESC key and scroll locking for centered order detail modal
@@ -1572,9 +1592,26 @@ export default function OrdersManager({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveDropdownRowId(
-                              activeDropdownRowId === ord.id ? null : ord.id
-                            );
+                            if (activeDropdownRowId === ord.id) {
+                              setActiveDropdownRowId(null);
+                              setDropdownPos(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const dropdownEstimatedHeight = 280;
+                              const spaceBelow = window.innerHeight - rect.bottom;
+                              const spaceAbove = rect.top;
+                              const openUpwards =
+                                spaceBelow < dropdownEstimatedHeight && spaceAbove > spaceBelow;
+
+                              setDropdownPos({
+                                top: openUpwards ? undefined : rect.bottom + 4,
+                                bottom: openUpwards
+                                  ? window.innerHeight - rect.top + 4
+                                  : undefined,
+                                right: Math.max(8, window.innerWidth - rect.right),
+                              });
+                              setActiveDropdownRowId(ord.id);
+                            }
                           }}
                           className="p-1.5 rounded-[8px] hover:bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#2B2B2B] transition-colors cursor-pointer"
                           aria-label="More actions"
@@ -1582,145 +1619,168 @@ export default function OrdersManager({
                           <MoreVertical className="w-4 h-4" />
                         </button>
 
-                        {/* Dropdown Menu Card */}
-                        {activeDropdownRowId === ord.id && (
-                          <div
-                            className="absolute right-0 top-full mt-1 w-52 bg-white border border-[#EFE9E0] rounded-[12px] shadow-xl py-1 z-30 text-left text-xs divide-y divide-[#EFE9E0]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {/* 1. View details */}
-                            <div className="py-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveDropdownRowId(null);
-                                  handleOpenOrderDetail(ord);
-                                }}
-                                className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer font-medium"
-                              >
-                                <Eye className="w-3.5 h-3.5 text-[#0B5F85]" />
-                                <span>View details</span>
-                              </button>
-                            </div>
-
-                            {/* 2. Courier tracking ID (with a copy button) */}
-                            <div className="p-2 bg-[#FAF7F2]/60">
-                              <span className="text-[10px] text-[#6B6B6B] uppercase font-bold block mb-1">
-                                Courier Tracking ID
-                              </span>
-                              {ord.trackingCode || ord.consignmentId ? (
-                                <div className="flex items-center justify-between gap-1.5 bg-white px-2 py-1.5 rounded-[8px] border border-[#EFE9E0]">
-                                  <span className="font-mono font-bold text-xs text-[#0B5F85] truncate">
-                                    #{ord.trackingCode || ord.consignmentId}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) =>
-                                      handleCopyTracking(
-                                        ord.trackingCode || ord.consignmentId || '',
-                                        e
-                                      )
-                                    }
-                                    className="p-1 rounded hover:bg-black/5 text-[#6B6B6B] hover:text-[#2B2B2B] transition-colors shrink-0"
-                                    title="Copy tracking ID"
-                                  >
-                                    <Copy className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <span className="text-[11px] text-[#888] italic">
-                                  No tracking ID yet
-                                </span>
-                              )}
-                            </div>
-
-                            {/* 3. Full items list & 4. Customer note */}
-                            <div className="py-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveDropdownRowId(null);
-                                  handleOpenOrderDetail(ord);
-                                }}
-                                className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer"
-                              >
-                                <Package className="w-3.5 h-3.5 text-[#6B6B6B]" />
-                                <span>Full items list ({ord.items.length})</span>
-                              </button>
-
-                              {ord.customerNote ? (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveDropdownRowId(null);
-                                    handleOpenOrderDetail(ord);
-                                  }}
-                                  className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-start gap-2 cursor-pointer"
-                                  title={ord.customerNote}
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5 text-[#B78103] shrink-0 mt-0.5" />
-                                  <div className="min-w-0">
-                                    <span className="block font-medium">Customer note</span>
-                                    <span className="block text-[10px] text-[#6B6B6B] truncate max-w-[170px]">
-                                      {ord.customerNote}
-                                    </span>
-                                  </div>
-                                </button>
-                              ) : (
-                                <div className="px-3 py-1.5 text-[11px] text-[#888] flex items-center gap-2">
-                                  <MessageSquare className="w-3.5 h-3.5 opacity-40 shrink-0" />
-                                  <span>No customer note</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* 5. Edit address & 6. Print invoice */}
-                            <div className="py-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveDropdownRowId(null);
-                                  setSelectedOrderId(ord.id);
-                                  setEditAddressText(ord.fullAddress);
-                                  setIsEditAddressOpen(true);
-                                }}
-                                className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer"
-                              >
-                                <Edit2 className="w-3.5 h-3.5 text-[#6B6B6B]" />
-                                <span>Edit address</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveDropdownRowId(null);
-                                  handlePrintInvoices([ord]);
-                                }}
-                                className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer"
-                              >
-                                <Printer className="w-3.5 h-3.5 text-[#6B6B6B]" />
-                                <span>Print invoice</span>
-                              </button>
-                            </div>
-
-                            {/* 7. Cancel order (styled in red, with confirmation step) */}
-                            {ord.status !== 'CANCELLED' && (
+                        {/* Dropdown Menu Card (Rendered via Portal to break out of TableContainer overflow) */}
+                        {mounted &&
+                          activeDropdownRowId === ord.id &&
+                          dropdownPos &&
+                          typeof document !== 'undefined' &&
+                          createPortal(
+                            <div
+                              style={{
+                                position: 'fixed',
+                                top:
+                                  dropdownPos.top !== undefined
+                                    ? `${dropdownPos.top}px`
+                                    : undefined,
+                                bottom:
+                                  dropdownPos.bottom !== undefined
+                                    ? `${dropdownPos.bottom}px`
+                                    : undefined,
+                                right: `${dropdownPos.right}px`,
+                              }}
+                              className="w-52 max-h-[85vh] overflow-y-auto bg-white border border-[#EFE9E0] rounded-[12px] shadow-2xl py-1 z-[9999] text-left text-xs divide-y divide-[#EFE9E0]"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {/* 1. View details */}
                               <div className="py-1">
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setActiveDropdownRowId(null);
-                                    handleCancelOrder(ord);
+                                    setDropdownPos(null);
+                                    handleOpenOrderDetail(ord);
                                   }}
-                                  className="w-full px-3 py-2 text-left hover:bg-[#FDE3E1] text-[#9B2420] flex items-center gap-2 cursor-pointer font-semibold"
+                                  className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer font-medium"
                                 >
-                                  <X className="w-3.5 h-3.5 text-[#9B2420]" />
-                                  <span>Cancel order</span>
+                                  <Eye className="w-3.5 h-3.5 text-[#0B5F85]" />
+                                  <span>View details</span>
                                 </button>
                               </div>
-                            )}
-                          </div>
-                        )}
+
+                              {/* 2. Courier tracking ID (with a copy button) */}
+                              <div className="p-2 bg-[#FAF7F2]/60">
+                                <span className="text-[10px] text-[#6B6B6B] uppercase font-bold block mb-1">
+                                  Courier Tracking ID
+                                </span>
+                                {ord.trackingCode || ord.consignmentId ? (
+                                  <div className="flex items-center justify-between gap-1.5 bg-white px-2 py-1.5 rounded-[8px] border border-[#EFE9E0]">
+                                    <span className="font-mono font-bold text-xs text-[#0B5F85] truncate">
+                                      #{ord.trackingCode || ord.consignmentId}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) =>
+                                        handleCopyTracking(
+                                          ord.trackingCode || ord.consignmentId || '',
+                                          e
+                                        )
+                                      }
+                                      className="p-1 rounded hover:bg-black/5 text-[#6B6B6B] hover:text-[#2B2B2B] transition-colors shrink-0"
+                                      title="Copy tracking ID"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-[11px] text-[#888] italic">
+                                    No tracking ID yet
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* 3. Full items list & 4. Customer note */}
+                              <div className="py-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveDropdownRowId(null);
+                                    setDropdownPos(null);
+                                    handleOpenOrderDetail(ord);
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Package className="w-3.5 h-3.5 text-[#6B6B6B]" />
+                                  <span>Full items list ({ord.items.length})</span>
+                                </button>
+
+                                {ord.customerNote ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveDropdownRowId(null);
+                                      setDropdownPos(null);
+                                      handleOpenOrderDetail(ord);
+                                    }}
+                                    className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-start gap-2 cursor-pointer"
+                                    title={ord.customerNote}
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5 text-[#B78103] shrink-0 mt-0.5" />
+                                    <div className="min-w-0">
+                                      <span className="block font-medium">Customer note</span>
+                                      <span className="block text-[10px] text-[#6B6B6B] truncate max-w-[170px]">
+                                        {ord.customerNote}
+                                      </span>
+                                    </div>
+                                  </button>
+                                ) : (
+                                  <div className="px-3 py-1.5 text-[11px] text-[#888] flex items-center gap-2">
+                                    <MessageSquare className="w-3.5 h-3.5 opacity-40 shrink-0" />
+                                    <span>No customer note</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 5. Edit address & 6. Print invoice */}
+                              <div className="py-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveDropdownRowId(null);
+                                    setDropdownPos(null);
+                                    setSelectedOrderId(ord.id);
+                                    setEditAddressText(ord.fullAddress);
+                                    setIsEditAddressOpen(true);
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5 text-[#6B6B6B]" />
+                                  <span>Edit address</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveDropdownRowId(null);
+                                    setDropdownPos(null);
+                                    handlePrintInvoices([ord]);
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Printer className="w-3.5 h-3.5 text-[#6B6B6B]" />
+                                  <span>Print invoice</span>
+                                </button>
+                              </div>
+
+                              {/* 7. Cancel order (styled in red, with confirmation step) */}
+                              {ord.status !== 'CANCELLED' && (
+                                <div className="py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveDropdownRowId(null);
+                                      setDropdownPos(null);
+                                      handleCancelOrder(ord);
+                                    }}
+                                    className="w-full px-3 py-2 text-left hover:bg-[#FDE3E1] text-[#9B2420] flex items-center gap-2 cursor-pointer font-semibold"
+                                  >
+                                    <X className="w-3.5 h-3.5 text-[#9B2420]" />
+                                    <span>Cancel order</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>,
+                            document.body
+                          )}
                       </div>
                     </TableCell>
                   </TableRow>

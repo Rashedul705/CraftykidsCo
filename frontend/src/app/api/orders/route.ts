@@ -4,6 +4,7 @@ import {
   calculateDeliveryCharge,
   validateAndApplyCoupon,
   deductInventoryStock,
+  deductDatabaseStock,
 } from '@/lib/order-service';
 import {
   createOrder as createMemoryOrder,
@@ -254,6 +255,8 @@ export async function POST(req: NextRequest) {
       const mongoOrder = await Order.create(orderPayload);
       savedOrder = mongoOrder.toObject ? mongoOrder.toObject() : mongoOrder;
       console.log(`✅ Order ${orderNumber} persisted to MongoDB Atlas!`);
+      // Deduct inventory stock in MongoDB Atlas
+      await deductDatabaseStock(data.items);
     } catch (dbErr: any) {
       console.error('Failed to save order to MongoDB Atlas:', dbErr.message);
     }

@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { Order } from '@/models/Order';
 import { getNotificationProvider } from '@/core/notification';
 import { verifyAdminRequest } from '@/lib/auth';
+import { restoreInventoryStock, restoreDatabaseStock } from '@/lib/order-service';
 
 export async function GET(
   req: NextRequest,
@@ -99,6 +100,37 @@ export async function PATCH(
       setFields.status = status;
       if (status === 'DELIVERED' && paymentStatus === undefined) {
         setFields.paymentStatus = 'PAID';
+      }
+
+      // Automatically restore inventory stock if cancelling or returning an active order
+      if (status === 'CANCELLED' || status === 'RETURNED') {
+        try {
+          await connectToDatabase();
+          const isObjectId = id.match(/^[0-9a-fA-F]{24}$/);
+          let currentOrder = await Order.findOne({
+            $or: [
+              { orderNumber: id },
+              { id: id },
+              ...(isObjectId ? [{ _id: id }] : []),
+            ],
+          }).lean();
+
+          if (!currentOrder) {
+            currentOrder = getOrderByIdOrNumber(id) as any;
+          }
+
+          if (
+            currentOrder &&
+            currentOrder.status !== 'CANCELLED' &&
+            currentOrder.status !== 'RETURNED' &&
+            currentOrder.items
+          ) {
+            restoreInventoryStock(currentOrder as any);
+            await restoreDatabaseStock(currentOrder.items);
+          }
+        } catch (restoreErr) {
+          console.error('Error during automatic stock restoration:', restoreErr);
+        }
       }
       timelineEntries.push({
         status,

@@ -118,13 +118,28 @@ export function deductInventoryStock(items: OrderCreateInput['items']): {
   // First pass: verify sufficient stock
   for (const item of items) {
     const product = products.find((p) => p.id === item.productId || p.slug === item.productId);
-    if (product && product.variations && item.variationSku) {
-      const variation = product.variations.find((v) => v.sku === item.variationSku);
-      if (variation && variation.stock < item.quantity) {
-        return {
-          success: false,
-          error: `পণ্য '${product.titleBn} (${variation.titleBn})' এর পর্যাপ্ত স্টক নেই (বাকি: ${variation.stock}টি)`,
-        };
+    if (product) {
+      if (product.variations && product.variations.length > 0 && item.variationSku) {
+        const variation = product.variations.find(
+          (v) => v.sku === item.variationSku || v.id === item.variationSku
+        );
+        const currentVarStock = variation
+          ? (variation.stock !== undefined ? variation.stock : (variation as any).stockQuantity ?? 0)
+          : 0;
+        if (variation && currentVarStock < item.quantity) {
+          return {
+            success: false,
+            error: `পণ্য '${product.titleBn} (${variation.titleBn || variation.titleEn})' এর পর্যাপ্ত স্টক নেই (বাকি: ${currentVarStock}টি)`,
+          };
+        }
+      } else {
+        const currentStock = (product as any).stock ?? 25;
+        if (currentStock < item.quantity) {
+          return {
+            success: false,
+            error: `পণ্য '${product.titleBn}' এর পর্যাপ্ত স্টক নেই (বাকি: ${currentStock}টি)`,
+          };
+        }
       }
     }
   }
@@ -132,10 +147,24 @@ export function deductInventoryStock(items: OrderCreateInput['items']): {
   // Second pass: deduct
   for (const item of items) {
     const product = products.find((p) => p.id === item.productId || p.slug === item.productId);
-    if (product && product.variations && item.variationSku) {
-      const variation = product.variations.find((v) => v.sku === item.variationSku);
-      if (variation) {
-        variation.stock = Math.max(0, variation.stock - item.quantity);
+    if (product) {
+      if (product.variations && product.variations.length > 0 && item.variationSku) {
+        const variation = product.variations.find(
+          (v) => v.sku === item.variationSku || v.id === item.variationSku
+        );
+        if (variation) {
+          const prevStock = variation.stock !== undefined ? variation.stock : (variation as any).stockQuantity ?? 0;
+          const nextStock = Math.max(0, prevStock - item.quantity);
+          variation.stock = nextStock;
+          (variation as any).stockQuantity = nextStock;
+        }
+        product.stock = product.variations.reduce(
+          (sum, v) => sum + (v.stock !== undefined ? v.stock : (v as any).stockQuantity ?? 0),
+          0
+        );
+      } else {
+        const currentStock = (product as any).stock ?? 25;
+        (product as any).stock = Math.max(0, currentStock - item.quantity);
       }
     }
   }
@@ -144,20 +173,143 @@ export function deductInventoryStock(items: OrderCreateInput['items']): {
 }
 
 /**
- * Restore inventory stock on cancellation
+ * Restore inventory stock on cancellation or return
  */
 export function restoreInventoryStock(order: OrderRecord): void {
   const products = getAllProducts();
   for (const item of order.items) {
     const product = products.find((p) => p.id === item.productId || p.slug === item.productId);
-    if (product && product.variations && item.variationTitle) {
-      // Find matching variation
-      const variation = product.variations.find(
-        (v) => v.titleBn === item.variationTitle || v.titleEn === item.variationTitle
-      );
-      if (variation) {
-        variation.stock += item.quantity;
+    if (product) {
+      if (product.variations && product.variations.length > 0) {
+        const variation = product.variations.find(
+          (v) =>
+            (item.variationSku && (v.sku === item.variationSku || v.id === item.variationSku)) ||
+            (item.variationTitle && (v.titleBn === item.variationTitle || v.titleEn === item.variationTitle))
+        );
+        if (variation) {
+          const prevStock = variation.stock !== undefined ? variation.stock : (variation as any).stockQuantity ?? 0;
+          const nextStock = prevStock + item.quantity;
+          variation.stock = nextStock;
+          (variation as any).stockQuantity = nextStock;
+        }
+        product.stock = product.variations.reduce(
+          (sum, v) => sum + (v.stock !== undefined ? v.stock : (v as any).stockQuantity ?? 0),
+          0
+        );
+      } else {
+        const currentStock = (product as any).stock ?? 25;
+        (product as any).stock = currentStock + item.quantity;
       }
     }
+  }
+}
+
+/**
+ * Deduct stock directly from MongoDB Atlas documents
+ */
+export async function deductDatabaseStock(items: any[]): Promise<void> {
+  try {
+    const { connectToDatabase } = await import('./mongodb');
+    const { Product } = await import('@/models/Product');
+    await connectToDatabase();
+
+    for (const item of items) {
+      const productId = item.productId;
+      if (!productId) continue;
+
+      const isObjectId = productId.match(/^[0-9a-fA-F]{24}$/);
+      const product = await Product.findOne({
+        $or: [
+          { id: productId },
+          { slug: productId },
+          ...(isObjectId ? [{ _id: productId }] : []),
+        ],
+      });
+
+      if (!product) continue;
+
+      if (product.variations && product.variations.length > 0 && item.variationSku) {
+        product.variations = product.variations.map((v: any) => {
+          if (v.sku === item.variationSku || v.id === item.variationSku) {
+            const currentStock = v.stock !== undefined ? v.stock : (v.stockQuantity ?? 25);
+            const nextStock = Math.max(0, currentStock - item.quantity);
+            return {
+              ...v,
+              stock: nextStock,
+              stockQuantity: nextStock,
+            };
+          }
+          return v;
+        });
+        product.stock = product.variations.reduce(
+          (sum: number, v: any) => sum + (Number(v.stock ?? v.stockQuantity) || 0),
+          0
+        );
+        product.markModified('variations');
+        await product.save();
+      } else {
+        const currentStock = product.stock ?? 25;
+        product.stock = Math.max(0, currentStock - item.quantity);
+        await product.save();
+      }
+    }
+  } catch (err: any) {
+    console.error('Failed to deduct stock from database:', err?.message || err);
+  }
+}
+
+/**
+ * Restore stock directly to MongoDB Atlas documents
+ */
+export async function restoreDatabaseStock(items: any[]): Promise<void> {
+  try {
+    const { connectToDatabase } = await import('./mongodb');
+    const { Product } = await import('@/models/Product');
+    await connectToDatabase();
+
+    for (const item of items) {
+      const productId = item.productId;
+      if (!productId) continue;
+
+      const isObjectId = productId.match(/^[0-9a-fA-F]{24}$/);
+      const product = await Product.findOne({
+        $or: [
+          { id: productId },
+          { slug: productId },
+          ...(isObjectId ? [{ _id: productId }] : []),
+        ],
+      });
+
+      if (!product) continue;
+
+      if (product.variations && product.variations.length > 0) {
+        product.variations = product.variations.map((v: any) => {
+          const matchSku = item.variationSku && (v.sku === item.variationSku || v.id === item.variationSku);
+          const matchTitle = item.variationTitle && (v.titleBn === item.variationTitle || v.titleEn === item.variationTitle);
+          if (matchSku || matchTitle) {
+            const currentStock = v.stock !== undefined ? v.stock : (v.stockQuantity ?? 25);
+            const nextStock = currentStock + item.quantity;
+            return {
+              ...v,
+              stock: nextStock,
+              stockQuantity: nextStock,
+            };
+          }
+          return v;
+        });
+        product.stock = product.variations.reduce(
+          (sum: number, v: any) => sum + (Number(v.stock ?? v.stockQuantity) || 0),
+          0
+        );
+        product.markModified('variations');
+        await product.save();
+      } else {
+        const currentStock = product.stock ?? 25;
+        product.stock = currentStock + item.quantity;
+        await product.save();
+      }
+    }
+  } catch (err: any) {
+    console.error('Failed to restore stock to database:', err?.message || err);
   }
 }
