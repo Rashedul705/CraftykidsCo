@@ -166,6 +166,98 @@ export interface SiteSettings {
 
   // 11. Custom Static Pages (Contact, About, Privacy, Terms) Editable from Admin
   customPages?: CustomPagesSettings;
+
+  // 12. Navigation & Header Settings
+  nav?: NavSettings;
+
+  // 13. Contact & Support Settings
+  contact?: ContactSettings;
+
+  // 14. Social Media Profiles
+  social?: SocialMediaSettings;
+
+  // 15. SEO & Meta Tags
+  seo?: SeoSettings;
+
+  // 16. Google Analytics 4 & GTM
+  analytics?: AnalyticsSettings;
+
+  // 17. Meta (Facebook) Pixel & CAPI
+  pixel?: PixelSettings;
+}
+
+export interface NavMenuItem {
+  id: string;
+  labelBn: string;
+  labelEn: string;
+  href: string;
+  badge?: string;
+  isHighlight?: boolean;
+  enabled: boolean;
+}
+
+export interface NavSettings {
+  showAnnouncement: boolean;
+  showTrackOrder: boolean;
+  showLanguageToggle: boolean;
+  showWishlist: boolean;
+  hotline: string;
+  whatsapp: string;
+  menuItems: NavMenuItem[];
+}
+
+export interface ContactSettings {
+  hotline: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  address: string;
+  openingHours: string;
+  emergencyNotice?: string;
+  enableFloatingWhatsApp: boolean;
+  whatsappDefaultMessage?: string;
+}
+
+export interface SocialMediaSettings {
+  facebookPage: string;
+  facebookGroup: string;
+  instagram: string;
+  youtube: string;
+  tiktok: string;
+  whatsappNumber: string;
+  linkedin: string;
+  showInHeader: boolean;
+  showInFooter: boolean;
+}
+
+export interface SeoSettings {
+  metaTitleBn: string;
+  metaTitleEn: string;
+  metaDescriptionBn: string;
+  metaDescriptionEn: string;
+  metaKeywords: string;
+  ogImageUrl: string;
+  siteUrl: string;
+  allowRobotsIndex: boolean;
+}
+
+export interface AnalyticsSettings {
+  ga4MeasurementId: string;
+  ga4Enabled: boolean;
+  gtmContainerId: string;
+  gtmEnabled: boolean;
+  debugMode: boolean;
+}
+
+export interface PixelSettings {
+  pixelId: string;
+  pixelEnabled: boolean;
+  capiToken: string;
+  testEventCode: string;
+  trackPageView: boolean;
+  trackAddToCart: boolean;
+  trackInitiateCheckout: boolean;
+  trackPurchase: boolean;
 }
 
 export interface CustomPagesSettings {
@@ -640,5 +732,70 @@ export const defaultSiteSettings: SiteSettings = {
       section10Title: '১০. যোগাযোগ ও গ্রাহক সেবা',
       section10Content: 'যেকোনো জিজ্ঞাসা বা সহায়তার জন্য আমাদের হটলাইন বা WhatsApp এ সরাসরি যোগাযোগ করুন।',
     },
+  },
+  nav: {
+    showAnnouncement: true,
+    showTrackOrder: true,
+    showLanguageToggle: true,
+    showWishlist: false,
+    hotline: '01731-376498',
+    whatsapp: '01731-376498',
+    menuItems: [
+      { id: 'nav-shop', labelBn: 'সকল খেলনা', labelEn: 'All Toys & Art', href: '/shop', enabled: true },
+      { id: 'nav-art', labelBn: 'প্লাস্টার আর্ট কিট', labelEn: '3D Plaster Kits', href: '/category/art-kits', badge: 'Hot', enabled: true },
+      { id: 'nav-crayons', labelBn: 'মোমের রঙ', labelEn: 'Wax Crayons', href: '/category/wax-crayons', enabled: true },
+      { id: 'nav-dough', labelBn: 'প্লে-ডো ও ক্লে', labelEn: 'Play-Dough', href: '/category/play-dough-clay', enabled: true },
+      { id: 'nav-wooden', labelBn: 'কাঠের খেলনা', labelEn: 'Wooden Toys', href: '/category/wooden-toys', enabled: true },
+      { id: 'nav-bundles', labelBn: 'গিফট কম্বো', labelEn: 'Gift Combos', href: '/bundles', badge: '২০% ছাড়', isHighlight: true, enabled: true },
+    ],
+  },
+  contact: {
+    hotline: '01731-376498',
+    phone: '01731-376498',
+    whatsapp: '01731-376498',
+    email: 'support@craftykidsco.com',
+    address: 'তেরখাদিয়া, রাজপাড়া, রাজশাহী।',
+    openingHours: 'সকাল ৯:০০ - রাত ১০:০০ (প্রতিদিন)',
+    emergencyNotice: '',
+    enableFloatingWhatsApp: true,
+    whatsappDefaultMessage: 'হ্যালো CraftyKidsCo, আমি পণ্য সম্পর্কে জানতে চাই।',
+  },
+  social: {
+    facebookPage: 'https://facebook.com/craftykidsco.bd',
+    facebookGroup: 'https://facebook.com/groups/craftykidsco',
+    instagram: 'https://instagram.com/craftykidsco',
+    youtube: 'https://youtube.com/@craftykidsco',
+    tiktok: 'https://tiktok.com/@craftykidsco',
+    whatsappNumber: '+8801731376498',
+    linkedin: '',
+    showInHeader: true,
+    showInFooter: true,
+  },
+  seo: {
+    metaTitleBn: 'CraftyKidsCo | শিশুদের নিরাপদ মোমের রঙ ও শিক্ষামূলক খেলনা',
+    metaTitleEn: 'CraftyKidsCo | Safe Child Crayons & Educational Toys Bangladesh',
+    metaDescriptionBn: 'বাংলাদেশের শিশুদের জন্য ১০০% নিরাপদ খাদ্য-গ্রেড মৌচাকের মোমে তৈরি রঙ, ওয়াশেবল প্লাস্টার পেইন্টিং কিট এবং মন্টেসরি কাঠের খেলনা। সারা দেশে ক্যাশ অন ডেলিভারি।',
+    metaDescriptionEn: '100% child-safe beeswax crayons, washable 3D plaster painting kits, and educational wooden toys in Bangladesh. Fast nationwide home delivery.',
+    metaKeywords: 'CraftyKidsCo, মোমের রঙ, beeswax crayons bd, plaster painting kit, kids toys bangladesh, safe toys, montessori toys',
+    ogImageUrl: 'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
+    siteUrl: 'https://craftykidsco.com',
+    allowRobotsIndex: true,
+  },
+  analytics: {
+    ga4MeasurementId: '',
+    ga4Enabled: false,
+    gtmContainerId: '',
+    gtmEnabled: false,
+    debugMode: false,
+  },
+  pixel: {
+    pixelId: '',
+    pixelEnabled: false,
+    capiToken: '',
+    testEventCode: '',
+    trackPageView: true,
+    trackAddToCart: true,
+    trackInitiateCheckout: true,
+    trackPurchase: true,
   },
 };

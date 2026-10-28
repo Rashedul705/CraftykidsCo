@@ -31,6 +31,18 @@ export async function GET() {
             privacy: { ...defaultSiteSettings.customPages!.privacy, ...(parsed.customPages?.privacy || {}) },
             terms: { ...defaultSiteSettings.customPages!.terms, ...(parsed.customPages?.terms || {}) },
           },
+          nav: {
+            ...defaultSiteSettings.nav!,
+            ...(parsed.nav || {}),
+            menuItems: Array.isArray(parsed.nav?.menuItems) && parsed.nav.menuItems.length > 0
+              ? parsed.nav.menuItems
+              : defaultSiteSettings.nav!.menuItems,
+          },
+          contact: { ...defaultSiteSettings.contact!, ...(parsed.contact || {}) },
+          social: { ...defaultSiteSettings.social!, ...(parsed.social || {}) },
+          seo: { ...defaultSiteSettings.seo!, ...(parsed.seo || {}) },
+          analytics: { ...defaultSiteSettings.analytics!, ...(parsed.analytics || {}) },
+          pixel: { ...defaultSiteSettings.pixel!, ...(parsed.pixel || {}) },
           heroSlides: Array.isArray(parsed.heroSlides) && parsed.heroSlides.length > 0 ? parsed.heroSlides : defaultSiteSettings.heroSlides,
           trustBadges: Array.isArray(parsed.trustBadges) && parsed.trustBadges.length > 0 ? parsed.trustBadges : defaultSiteSettings.trustBadges,
           promoBanners: Array.isArray(parsed.promoBanners) && parsed.promoBanners.length > 0 ? parsed.promoBanners : defaultSiteSettings.promoBanners,

@@ -81,6 +81,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   {
     title: 'SYSTEM',
     items: [
+      { id: 'site-settings', label: 'Site settings', allowedRoles: ['admin'] },
       { id: 'staff', label: 'Staff and roles', allowedRoles: ['admin'] },
       { id: 'payments-sms', label: 'Payments and SMS', allowedRoles: ['admin'] },
     ],
@@ -175,6 +176,10 @@ export const TAB_METADATA: Record<string, { title: string; helper: string; mainA
   'home-sections': {
     title: 'Home sections',
     helper: 'Toggle, reorder, and configure storefront homepage showcases',
+  },
+  'site-settings': {
+    title: 'Site settings',
+    helper: 'Configure navigation, footer, contact info, social media, SEO, Google Analytics, and Facebook Pixel',
   },
   staff: {
     title: 'Staff and roles',

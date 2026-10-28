@@ -53,6 +53,7 @@ import { StockManager } from '@/components/admin/StockManager';
 import { DeliveryChargesManager } from '@/components/admin/DeliveryChargesManager';
 import { StaffRolesManager } from '@/components/admin/StaffRolesManager';
 import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
+import { SiteSettingsManager } from '@/components/admin/SiteSettingsManager';
 import { PrintSettingsManager } from '@/components/admin/PrintSettingsManager';
 import { MessagesManager } from '@/components/admin/MessagesManager';
 import { PagesContentEditor } from '@/components/admin/PagesContentEditor';
@@ -80,6 +81,7 @@ const VALID_ADMIN_TABS = [
   'home-sections',
   'messages',
   'page-editor',
+  'site-settings',
   'staff',
   'payments-sms',
 ];
@@ -1058,6 +1060,11 @@ export default function AdminDashboardPage() {
         {/* VIEW 12: STAFF AND ROLES (PART B8) */}
         {activeNav === 'staff' && (
           <StaffRolesManager />
+        )}
+
+        {/* VIEW 12.5: SITE SETTINGS (NAV, FOOTER, CONTACT, SOCIAL, SEO, GA4, PIXEL) */}
+        {activeNav === 'site-settings' && (
+          <SiteSettingsManager />
         )}
 
         {/* VIEW 13: SYSTEM SETTINGS (PAYMENTS, SMS, BLOCKLIST, BLOG, FAQ, REPORTS) */}

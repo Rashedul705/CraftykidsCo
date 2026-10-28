@@ -676,6 +676,30 @@ export function updateSiteSettings(newSettings: Partial<SiteSettings>): SiteSett
     heroSlides: Array.isArray(newSettings.heroSlides) ? newSettings.heroSlides : globalSiteSettings.heroSlides,
     trustBadges: Array.isArray(newSettings.trustBadges) ? newSettings.trustBadges : globalSiteSettings.trustBadges,
     promoBanners: Array.isArray(newSettings.promoBanners) ? newSettings.promoBanners : globalSiteSettings.promoBanners,
+    nav: newSettings.nav
+      ? {
+          ...(globalSiteSettings.nav || defaultSiteSettings.nav!),
+          ...newSettings.nav,
+          menuItems: Array.isArray(newSettings.nav.menuItems)
+            ? newSettings.nav.menuItems
+            : (globalSiteSettings.nav?.menuItems || defaultSiteSettings.nav!.menuItems),
+        }
+      : globalSiteSettings.nav,
+    contact: newSettings.contact
+      ? { ...(globalSiteSettings.contact || defaultSiteSettings.contact!), ...newSettings.contact }
+      : globalSiteSettings.contact,
+    social: newSettings.social
+      ? { ...(globalSiteSettings.social || defaultSiteSettings.social!), ...newSettings.social }
+      : globalSiteSettings.social,
+    seo: newSettings.seo
+      ? { ...(globalSiteSettings.seo || defaultSiteSettings.seo!), ...newSettings.seo }
+      : globalSiteSettings.seo,
+    analytics: newSettings.analytics
+      ? { ...(globalSiteSettings.analytics || defaultSiteSettings.analytics!), ...newSettings.analytics }
+      : globalSiteSettings.analytics,
+    pixel: newSettings.pixel
+      ? { ...(globalSiteSettings.pixel || defaultSiteSettings.pixel!), ...newSettings.pixel }
+      : globalSiteSettings.pixel,
   };
   return globalSiteSettings;
 }
