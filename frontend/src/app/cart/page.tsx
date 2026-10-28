@@ -273,7 +273,6 @@ export default function CartPage() {
 
                 <Link href="/checkout" className="block pt-2">
                   <Button variant="primary" size="lg" fullWidth>
-                    <ShoppingBag className="w-5 h-5" />
                     Proceed to Checkout
                   </Button>
                 </Link>

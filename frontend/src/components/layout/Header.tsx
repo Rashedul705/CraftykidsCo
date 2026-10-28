@@ -82,7 +82,7 @@ export function Header({
             </a>
           </div>
 
-          {/* Right: Track Order & Language Toggle */}
+          {/* Right: Track Order, Contact Us & Language Toggle */}
           <div className="flex items-center gap-3 text-xs text-[#CCCCCC] shrink-0">
             <Link
               href="/track"
@@ -90,6 +90,16 @@ export function Header({
             >
               <Truck className="w-3.5 h-3.5 text-[#5BC0EB]" />
               <span>{isBn ? 'অর্ডার ট্র্যাক করুন' : 'Track Order'}</span>
+            </Link>
+
+            <span className="hidden sm:inline text-white/30">•</span>
+
+            <Link
+              href="/contact"
+              className="hidden sm:flex items-center gap-1 hover:text-white transition-colors text-[11px] sm:text-xs"
+            >
+              <PhoneCall className="w-3.5 h-3.5 text-[#4ADE80]" />
+              <span>Contact Us</span>
             </Link>
 
             <span className="hidden sm:inline text-white/30">•</span>

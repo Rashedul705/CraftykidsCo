@@ -415,7 +415,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                {isBn ? 'ক্যাটাগরি বেছে নিন' : 'Choose by Category'}
+                Choose by Category
               </h2>
               <p className="text-xs sm:text-sm text-[#6B6B6B]">
                 {isBn
@@ -473,7 +473,7 @@ export default function HomePage() {
               </div>
               <div>
                 <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                  {isBn ? 'নতুন পণ্য' : 'New Arrivals'}
+                  New Arrivals
                 </h2>
                 <p className="text-xs sm:text-sm text-[#6B6B6B]">
                   {isBn
@@ -526,7 +526,7 @@ export default function HomePage() {
               </div>
               <div>
                 <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
-                  {isBn ? 'এখন ট্রেন্ডিং' : 'Trending Now'}
+                  Trending Now
                 </h2>
                 <p className="text-xs sm:text-sm text-[#6B6B6B]">
                   {isBn

@@ -264,7 +264,6 @@ export function ProductCard({
               }`}
               title={outOfStock ? 'Stock Out' : 'Order Now'}
             >
-              <Zap className="w-3.5 h-3.5 fill-current" />
               <span className="text-[11px] sm:text-xs">
                 {outOfStock ? 'Stock Out' : 'Order Now'}
               </span>

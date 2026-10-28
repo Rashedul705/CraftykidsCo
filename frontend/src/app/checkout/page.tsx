@@ -333,9 +333,7 @@ export default function CheckoutPage() {
             <span>/</span>
             <span className="font-bold text-[#2B2B2B]">সহজ চেকআউট</span>
           </div>
-          <h1 className="font-heading font-black text-2xl sm:text-3xl text-[#2B2B2B]">
-            সহজ এক-পৃষ্ঠার চেকআউট (লগইন ছাড়াই সরাসরি অর্ডার)
-          </h1>
+          <h1 className="sr-only">Checkout</h1>
           <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1">
             নিচের ফর্মটি পূরণ করে অর্ডার নিশ্চিত করুন। পণ্য হাতে পেয়ে চেক করে টাকা দিন।
           </p>
@@ -648,21 +646,6 @@ export default function CheckoutPage() {
                         {isApplyingCoupon ? 'Applying...' : 'Apply'}
                       </Button>
                     </div>
-
-                    {/* Quick coupon suggestions */}
-                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                      <span className="text-[10px] text-[#8C8C8C]">জনপ্রিয় কুপন:</span>
-                      {['RONG10', 'FREE60', 'FIRSTORDER'].map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => handleQuickApply(c)}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#FFF5F5] border border-[#FFE3E3] text-[#FF6B6B] hover:bg-[#FF6B6B] hover:text-white transition-colors cursor-pointer"
-                        >
-                          {c}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 )}
 
@@ -733,14 +716,7 @@ export default function CheckoutPage() {
                 fullWidth
                 disabled={isSubmitting || items.length === 0}
               >
-                {isSubmitting ? (
-                  'Processing Order...'
-                ) : (
-                  <>
-                    <ShoppingBag className="w-5 h-5" />
-                    Order Now
-                  </>
-                )}
+                {isSubmitting ? 'Processing Order...' : 'Order Now'}
               </Button>
 
               <div className="space-y-1.5 pt-2 text-[11px] text-[#6B6B6B] text-center">

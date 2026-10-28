@@ -305,8 +305,14 @@ function ProductContent() {
       })
       .map((v, idx) => {
         const key = v.sku || v.id || `var-${idx}`;
+        const name =
+          (v as any).name ||
+          (v.titleEn ? v.titleEn.split('(')[0]?.trim() : '') ||
+          v.titleBn?.split('(')[0]?.trim() ||
+          'Item';
         return {
           variation: v,
+          name,
           quantity: variationQuantities[key] || 1,
           index: idx,
         };
@@ -1046,17 +1052,17 @@ function ProductContent() {
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="text-sm sm:text-base font-bold text-[#2B2B2B]">
-                      সেট বাছুন:
+                      Select Set:
                     </span>
                     <span className="text-xs text-[#6B6B6B] font-medium bg-[#FAF7F2] px-2 py-0.5 rounded-full border border-[#EFE9E0]">
-                      {toBanglaDigits(variations.length)}টি অপশন
+                      {variations.length} {variations.length === 1 ? 'option' : 'options'}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] sm:text-xs font-semibold text-[#D6403B] bg-[#FDE3E1]/70 px-2.5 py-1 rounded-full border border-[#D6403B]/25 flex items-center gap-1.5 shadow-2xs">
                       <Check className="w-3.5 h-3.5 stroke-[3] text-[#D6403B]" />
-                      <span>একাধিক বাছতে টিক (✓) দিন</span>
+                      <span>Check (✓) to select multiple</span>
                     </span>
 
                     {variations.length > 1 && (
@@ -1065,7 +1071,7 @@ function ProductContent() {
                         onClick={handleSelectAllVariations}
                         className="text-xs font-bold text-[#555] hover:text-[#D6403B] hover:bg-[#FAF7F2] px-2.5 py-1 rounded-lg border border-[#EFE9E0] transition-colors cursor-pointer"
                       >
-                        {isAllVariationsSelected ? 'রিসেট' : 'সব বাছুন'}
+                        {isAllVariationsSelected ? 'Reset' : 'Select All'}
                       </button>
                     )}
                   </div>
@@ -1074,7 +1080,7 @@ function ProductContent() {
                 {/* Variation Cards: Checkbox items */}
                 <div
                   role="group"
-                  aria-label="সেট বাছুন"
+                  aria-label="Select Set"
                   className="space-y-2.5"
                 >
                   {variations.map((v, idx) => {
@@ -1180,8 +1186,8 @@ function ProductContent() {
                               )}
                             </div>
                             {isSelected && varQty > 1 && (
-                              <p className="text-[11px] font-semibold text-[#666] font-siliguri sm:text-right">
-                                {toBanglaDigits(varQty)}টির মোট: {formatBDT(vPrice * varQty, { locale: 'bn' })}
+                              <p className="text-[11px] font-semibold text-[#666] sm:text-right">
+                                Subtotal ({varQty}): ৳{(vPrice * varQty).toLocaleString()}
                               </p>
                             )}
                           </div>
@@ -1271,25 +1277,25 @@ function ProductContent() {
                   {variations.length > 0 ? (
                     selectedVariationsList.length > 0 ? (
                       <span>
-                        নির্বাচিত <strong className="font-siliguri font-bold text-[#D6403B]">{toBanglaDigits(totalSelectedCount)}</strong>টি আইটেম (
+                        Selected <strong className="font-bold text-[#D6403B]">{totalSelectedCount}</strong> {totalSelectedCount === 1 ? 'item' : 'items'} (
                         {selectedVariationsList
-                          .map((s) => `${s.variation.name} × ${toBanglaDigits(s.quantity)}টি`)
+                          .map((s) => `${s.name || s.variation.name} × ${s.quantity}`)
                           .join(', ')}
                         )
                       </span>
                     ) : (
                       <span className="text-[#D6403B] font-bold">
-                        অনুগ্রহ করে কমপক্ষে ১টি ভ্যারিয়েন্ট নির্বাচন করুন
+                        Please select at least 1 option
                       </span>
                     )
                   ) : (
                     <span>
-                      {product.titleBn || product.titleEn} × <strong className="font-siliguri font-bold text-base sm:text-lg">{toBanglaDigits(quantity)}টি</strong>
+                      {product.titleEn || product.titleBn} × <strong className="font-bold text-base sm:text-lg">{quantity}</strong>
                     </span>
                   )}
                 </span>
-                <span className="font-black text-base sm:text-xl text-[#C23631] shrink-0 font-siliguri">
-                  মোট {formatBDT(totalSelectedPrice, { locale: 'bn' })}
+                <span className="font-black text-base sm:text-xl text-[#C23631] shrink-0">
+                  Total ৳{totalSelectedPrice.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -1302,9 +1308,8 @@ function ProductContent() {
                   type="button"
                   onClick={handleBuyNow}
                   disabled={isOutOfStock || (variations.length > 0 && selectedVariationsList.length === 0)}
-                  className="py-4 px-6 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] active:scale-[0.98] text-white font-black text-base sm:text-lg flex items-center justify-center gap-2.5 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="py-4 px-6 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] active:scale-[0.98] text-white font-black text-base sm:text-lg flex items-center justify-center shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Zap className="w-5 h-5 fill-current" />
                   <span>
                     {isOutOfStock
                       ? 'Stock Out'
@@ -1634,10 +1639,10 @@ function ProductContent() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-xl text-[#2B2B2B]">
-              সম্পর্কিত অন্যান্য পণ্য
+              Related Products
             </h3>
             <Link href="/shop" className="text-xs font-bold text-[#D6403B] hover:underline flex items-center gap-1">
-              সব দেখুন <ArrowRight className="w-3.5 h-3.5" />
+              View All <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -1665,7 +1670,7 @@ function ProductContent() {
         {recentlyViewed.length > 0 && (
           <div className="space-y-4 pt-4 border-t border-[#EFE9E0]">
             <h3 className="font-bold text-lg text-[#2B2B2B]">
-              সম্প্রতি দেখা পণ্য
+              Recently Viewed Products
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {recentlyViewed.map((p) => (
@@ -1782,12 +1787,14 @@ function ProductContent() {
             <span className="text-[11px] font-bold text-[#2B2B2B] truncate leading-tight">
               {variations.length > 0
                 ? selectedVariationsList.length > 1
-                  ? `${toBanglaDigits(totalSelectedCount)}টি আইটেম নির্বাচিত`
-                  : selectedVariationsList[0]?.variation.name || selectedParsed.name
-                : product?.titleBn || product?.titleEn}
+                  ? `${totalSelectedCount} items selected`
+                  : selectedVariationsList[0]
+                    ? `${selectedVariationsList[0].name} × ${selectedVariationsList[0].quantity}`
+                    : selectedParsed.name
+                : product?.titleEn || product?.titleBn}
             </span>
             <span className="text-xs font-extrabold text-[#C23631]">
-              মোট {formatBDT(totalSelectedPrice, { locale: 'bn' })}
+              Total ৳{totalSelectedPrice.toLocaleString()}
             </span>
           </div>
         </div>
@@ -1808,9 +1815,8 @@ function ProductContent() {
             type="button"
             onClick={handleBuyNow}
             disabled={isOutOfStock}
-            className="py-2.5 px-3.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            className="py-2.5 px-3.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs flex items-center justify-center shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
-            <Zap className="w-3.5 h-3.5 fill-current" />
             <span className="whitespace-nowrap">{isOutOfStock ? 'Stock Out' : 'Order Now'}</span>
           </button>
         </div>
