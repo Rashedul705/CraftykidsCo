@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItemData } from '@/lib/store';
-import { validateCoupon } from '@/lib/coupons-store';
 
 interface CartContextType {
   items: CartItemData[];
@@ -59,20 +58,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Recalculate discount if items change
+  // Recalculate discount if items change or re-verify active status with server
   useEffect(() => {
     if (!appliedCoupon) {
       setDiscountAmount(0);
       return;
     }
 
-    const res = validateCoupon(appliedCoupon, subtotal);
-    if (res.valid) {
-      setDiscountAmount(res.discountAmount);
-    } else {
-      setDiscountAmount(0);
-      setAppliedCoupon(null);
-    }
+    let isMounted = true;
+    fetch(`/api/coupons?code=${encodeURIComponent(appliedCoupon)}&subtotal=${subtotal}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return;
+        if (data.success && data.valid) {
+          setDiscountAmount(data.discountAmount);
+        } else {
+          // Coupon was disabled by admin or is no longer valid
+          setDiscountAmount(0);
+          setAppliedCoupon(null);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
   }, [subtotal, appliedCoupon]);
 
   const addItem = (newItem: CartItemData) => {
@@ -115,31 +125,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const applyCouponCode = (code: string): { success: boolean; message: string } => {
-    const clean = code.trim().toUpperCase();
-    if (!clean) {
-      return { success: false, message: 'অনুগ্রহ করে কুপন কোড লিখুন।' };
-    }
-    const res = validateCoupon(clean, subtotal);
-
-    if (res.valid) {
-      setAppliedCoupon(clean);
-      setDiscountAmount(res.discountAmount);
-      return { success: true, message: res.message };
-    }
-
-    return { success: false, message: res.message };
+    applyCouponAsync(code);
+    return { success: true, message: 'কুপন যাচাই করা হচ্ছে...' };
   };
 
   const applyCouponAsync = async (code: string): Promise<{ success: boolean; message: string }> => {
     const clean = code.trim().toUpperCase();
     if (!clean) {
       return { success: false, message: 'অনুগ্রহ করে কুপন কোড লিখুন।' };
-    }
-    const localRes = validateCoupon(clean, subtotal);
-    if (localRes.valid) {
-      setAppliedCoupon(clean);
-      setDiscountAmount(localRes.discountAmount);
-      return { success: true, message: localRes.message };
     }
 
     try {
@@ -150,9 +143,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setDiscountAmount(data.discountAmount);
         return { success: true, message: data.message || `কুপন ${clean} সফলভাবে যুক্ত হয়েছে!` };
       }
-      return { success: false, message: data.message || localRes.message };
+
+      // If coupon is disabled or invalid, clear any applied coupon
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+      return {
+        success: false,
+        message: data.message || `Coupon "${clean}" is currently inactive.`,
+      };
     } catch {
-      return { success: false, message: localRes.message };
+      return { success: false, message: 'Failed to validate coupon. Please try again.' };
     }
   };
 

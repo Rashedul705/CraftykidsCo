@@ -13,7 +13,15 @@ export const metadata: Metadata = {
   description:
     'বাংলাদেশের বাচ্চাদের জন্য নিরাপদ নন-টক্সিক মোমের রঙ (Mom er Color), শিক্ষণীয় খেলনা এবং স্পেশাল গিফট কম্বো। দ্রুত হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
 };
 

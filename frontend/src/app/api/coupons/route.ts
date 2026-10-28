@@ -1,8 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCoupons, addCoupon, updateCoupon, deleteCoupon, validateCoupon } from '@/lib/coupons-store';
+import {
+  getCoupons,
+  setCoupons,
+  addCoupon,
+  updateCoupon,
+  deleteCoupon,
+  validateCoupon,
+  CouponRecord,
+} from '@/lib/coupons-store';
+import { connectToDatabase } from '@/lib/mongodb';
+import { Setting } from '@/models/Setting';
+
+async function syncCouponsFromDb(): Promise<void> {
+  try {
+    await connectToDatabase();
+    const doc = await Setting.findOne({ key: 'coupons_data' }).lean();
+    if (doc && (doc as any).value) {
+      const parsed = JSON.parse((doc as any).value);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setCoupons(parsed);
+      }
+    }
+  } catch (err) {
+    console.warn('MongoDB error reading coupons_data:', err);
+  }
+}
+
+async function persistCouponsToDb(): Promise<void> {
+  try {
+    await connectToDatabase();
+    await Setting.findOneAndUpdate(
+      { key: 'coupons_data' },
+      { key: 'coupons_data', value: JSON.stringify(getCoupons()) },
+      { upsert: true, new: true }
+    );
+  } catch (err) {
+    console.warn('MongoDB error saving coupons_data:', err);
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
+    await syncCouponsFromDb();
+
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
     const subtotal = Number(searchParams.get('subtotal') || '0');
@@ -43,6 +83,8 @@ export async function POST(req: NextRequest) {
       descriptionBn: body.descriptionBn || '',
     });
 
+    await persistCouponsToDb();
+
     return NextResponse.json({ success: true, coupon: created });
   } catch (err: any) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
@@ -59,6 +101,8 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = updateCoupon(id, updates);
+    await persistCouponsToDb();
+
     return NextResponse.json({ success: true, coupon: updated });
   } catch (err: any) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
@@ -75,6 +119,8 @@ export async function DELETE(req: NextRequest) {
     }
 
     const removed = deleteCoupon(id);
+    await persistCouponsToDb();
+
     return NextResponse.json({ success: removed });
   } catch (err: any) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });

@@ -83,8 +83,12 @@ export function validateAndApplyCoupon(
 ): { valid: boolean; discountAmount: number; message?: string } {
   // Check dynamic coupons store first
   const dyn = validateDynamicCoupon(code, subtotal);
-  if (dyn.valid) {
-    return { valid: true, discountAmount: dyn.discountAmount, message: dyn.message };
+  if (dyn.coupon) {
+    return {
+      valid: dyn.valid,
+      discountAmount: dyn.discountAmount,
+      message: dyn.message,
+    };
   }
 
   const coupon = ACTIVE_COUPONS.find((c) => c.code.toUpperCase() === code.trim().toUpperCase());

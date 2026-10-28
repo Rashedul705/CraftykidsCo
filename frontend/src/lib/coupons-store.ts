@@ -70,6 +70,10 @@ let globalCoupons: CouponRecord[] = [
   },
 ];
 
+export function setCoupons(coupons: CouponRecord[]): void {
+  globalCoupons = coupons;
+}
+
 export function getCoupons(): CouponRecord[] {
   return globalCoupons;
 }
@@ -107,19 +111,34 @@ export function validateCoupon(code: string, subtotal: number): {
   const clean = code.trim().toUpperCase();
   const c = globalCoupons.find((x) => x.code === clean);
 
-  if (!c || !c.isActive) {
-    return { valid: false, discountAmount: 0, message: 'কুপন কোডটি সঠিক নয় বা মেয়াদোত্তীর্ণ।' };
+  if (!c) {
+    return { valid: false, discountAmount: 0, message: 'Invalid coupon code.' };
+  }
+
+  if (!c.isActive) {
+    return {
+      valid: false,
+      discountAmount: 0,
+      message: `Coupon "${clean}" is currently inactive.`,
+      coupon: c,
+    };
   }
 
   if (c.usageLimit && c.usedCount >= c.usageLimit) {
-    return { valid: false, discountAmount: 0, message: 'এই কুপনের ব্যবহারের সীমা শেষ হয়ে গেছে।' };
+    return {
+      valid: false,
+      discountAmount: 0,
+      message: `Coupon "${clean}" has reached its usage limit.`,
+      coupon: c,
+    };
   }
 
   if (subtotal < c.minOrderAmount) {
     return {
       valid: false,
       discountAmount: 0,
-      message: `${c.code} কুপনের জন্য সর্বনিম্ন ৳${c.minOrderAmount} টাকার অর্ডার আবশ্যক।`,
+      message: `Minimum order of ৳${c.minOrderAmount} required for coupon ${c.code}.`,
+      coupon: c,
     };
   }
 

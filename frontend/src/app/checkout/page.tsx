@@ -66,23 +66,6 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleQuickApply = async (codeToApply: string) => {
-    setCouponInput(codeToApply);
-    setIsApplyingCoupon(true);
-    setCouponFeedback(null);
-
-    try {
-      const res = await applyCouponAsync(codeToApply);
-      setCouponFeedback(res);
-      if (res.success) {
-        setCouponInput('');
-      }
-    } catch {
-      setCouponFeedback({ success: false, message: 'কুপন প্রয়োগ করতে সমস্যা হয়েছে।' });
-    } finally {
-      setIsApplyingCoupon(false);
-    }
-  };
 
   // Form states
   const [customerName, setCustomerName] = useState('');
