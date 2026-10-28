@@ -247,7 +247,12 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#2B2B2B]">
       {/* 1. Top Bar, 2. Header, 3. Category Menu Bar */}
-      <Header locale={locale} onToggleLocale={toggleLocale} announcement={settings.announcement} />
+      <Header
+        locale={locale}
+        onToggleLocale={toggleLocale}
+        announcement={settings.announcement}
+        settings={settings}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-10 sm:space-y-14">
         {/* ========================================================================= */}

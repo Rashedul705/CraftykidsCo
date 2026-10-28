@@ -25,6 +25,17 @@ import {
   ShieldCheck,
   Check,
   Copy,
+  Image as ImageIcon,
+  Upload,
+  X,
+  Layers,
+  ArrowUp,
+  ArrowDown,
+  ShoppingBag,
+  Heart,
+  User,
+  Gift,
+  RotateCcw,
 } from 'lucide-react';
 import {
   SiteSettings,
@@ -36,12 +47,14 @@ import {
   SeoSettings,
   AnalyticsSettings,
   PixelSettings,
+  BrandingSettings,
 } from '@/lib/site-settings';
 import { Button } from '@/components/ui/Button';
 
-type TabKey = 'nav' | 'footer' | 'contact' | 'social' | 'seo' | 'ga4' | 'pixel';
+type TabKey = 'branding' | 'nav' | 'footer' | 'contact' | 'social' | 'seo' | 'ga4' | 'pixel';
 
 const TABS: Array<{ id: TabKey; label: string; icon: React.ElementType; desc: string }> = [
+  { id: 'branding', label: 'Logo & Favicon', icon: Sparkles, desc: 'হেডার, ফুটার লোগো ও ফ্যাভিকন' },
   { id: 'nav', label: 'Navigation', icon: Compass, desc: 'হেডার ও মেনু সেটিংস' },
   { id: 'footer', label: 'Footer', icon: Layout, desc: 'ফুটার ও পেমেন্ট ব্যাজ' },
   { id: 'contact', label: 'Contact', icon: PhoneCall, desc: 'হটলাইন ও কাস্টমার সাপোর্ট' },
@@ -52,12 +65,13 @@ const TABS: Array<{ id: TabKey; label: string; icon: React.ElementType; desc: st
 ];
 
 export function SiteSettingsManager() {
-  const [activeTab, setActiveTab] = useState<TabKey>('nav');
+  const [activeTab, setActiveTab] = useState<TabKey>('branding');
   const [loading, setLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showCapiToken, setShowCapiToken] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [uploadingTarget, setUploadingTarget] = useState<'header' | 'footer' | 'favicon' | null>(null);
 
   // Complete settings state initialized with defaults
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
@@ -84,6 +98,7 @@ export function SiteSettingsManager() {
         setSettings({
           ...defaultSiteSettings,
           ...data.settings,
+          branding: { ...defaultSiteSettings.branding!, ...(data.settings.branding || {}) },
           announcement: { ...defaultSiteSettings.announcement, ...(data.settings.announcement || {}) },
           footer: { ...defaultSiteSettings.footer, ...(data.settings.footer || {}) },
           nav: {
@@ -136,11 +151,77 @@ export function SiteSettingsManager() {
   };
 
   // State updater helpers
+  const updateBranding = (patch: Partial<BrandingSettings>) => {
+    setSettings((prev) => {
+      const nextBranding = { ...(prev.branding || defaultSiteSettings.branding!), ...patch };
+      const nextNav = patch.headerLogoUrl !== undefined
+        ? { ...(prev.nav || defaultSiteSettings.nav!), logoUrl: patch.headerLogoUrl }
+        : prev.nav;
+      const nextFooter = patch.footerLogoUrl !== undefined
+        ? { ...prev.footer, logoUrl: patch.footerLogoUrl }
+        : prev.footer;
+      const nextSeo = patch.faviconUrl !== undefined
+        ? { ...(prev.seo || defaultSiteSettings.seo!), faviconUrl: patch.faviconUrl }
+        : prev.seo;
+
+      return {
+        ...prev,
+        branding: nextBranding,
+        nav: nextNav,
+        footer: nextFooter,
+        seo: nextSeo,
+      };
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'header' | 'footer' | 'favicon') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    setUploadingTarget(target);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('name', `craftykids_${target}_${Date.now()}`);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data?.success && data?.url) {
+        if (target === 'header') {
+          updateBranding({ headerLogoUrl: data.url });
+        } else if (target === 'footer') {
+          updateBranding({ footerLogoUrl: data.url });
+        } else if (target === 'favicon') {
+          updateBranding({ faviconUrl: data.url });
+        }
+        showToast('ছবি সফলভাবে আপলোড হয়েছে!');
+      } else {
+        alert(data?.message || 'ছবি আপলোড করতে ব্যর্থ হয়েছে। সরাসরি ইমেজ লিঙ্ক ব্যবহার করতে পারেন।');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('ছবি আপলোডের সময় সমস্যা হয়েছে। সরাসরি ইমেজ লিঙ্ক ব্যবহার করতে পারেন।');
+    } finally {
+      setUploadingTarget(null);
+    }
+  };
+
   const updateNav = (patch: Partial<NavSettings>) => {
-    setSettings((prev) => ({
-      ...prev,
-      nav: { ...(prev.nav || defaultSiteSettings.nav!), ...patch },
-    }));
+    setSettings((prev) => {
+      const nextNav = { ...(prev.nav || defaultSiteSettings.nav!), ...patch };
+      const nextBranding = patch.logoUrl !== undefined
+        ? { ...(prev.branding || defaultSiteSettings.branding!), headerLogoUrl: patch.logoUrl }
+        : prev.branding;
+      return {
+        ...prev,
+        nav: nextNav,
+        branding: nextBranding,
+      };
+    });
   };
 
   const updateAnnouncement = (patch: Partial<SiteSettings['announcement']>) => {
@@ -151,10 +232,17 @@ export function SiteSettingsManager() {
   };
 
   const updateFooter = (patch: Partial<SiteSettings['footer']>) => {
-    setSettings((prev) => ({
-      ...prev,
-      footer: { ...prev.footer, ...patch },
-    }));
+    setSettings((prev) => {
+      const nextFooter = { ...prev.footer, ...patch };
+      const nextBranding = patch.logoUrl !== undefined
+        ? { ...(prev.branding || defaultSiteSettings.branding!), footerLogoUrl: patch.logoUrl }
+        : prev.branding;
+      return {
+        ...prev,
+        footer: nextFooter,
+        branding: nextBranding,
+      };
+    });
   };
 
   const updateContact = (patch: Partial<ContactSettings>) => {
@@ -172,10 +260,17 @@ export function SiteSettingsManager() {
   };
 
   const updateSeo = (patch: Partial<SeoSettings>) => {
-    setSettings((prev) => ({
-      ...prev,
-      seo: { ...(prev.seo || defaultSiteSettings.seo!), ...patch },
-    }));
+    setSettings((prev) => {
+      const nextSeo = { ...(prev.seo || defaultSiteSettings.seo!), ...patch };
+      const nextBranding = patch.faviconUrl !== undefined
+        ? { ...(prev.branding || defaultSiteSettings.branding!), faviconUrl: patch.faviconUrl }
+        : prev.branding;
+      return {
+        ...prev,
+        seo: nextSeo,
+        branding: nextBranding,
+      };
+    });
   };
 
   const updateAnalytics = (patch: Partial<AnalyticsSettings>) => {
@@ -217,6 +312,22 @@ export function SiteSettingsManager() {
     updateNav({ menuItems: current.filter((item) => item.id !== id) });
   };
 
+  const handleMoveMenuItem = (index: number, direction: 'up' | 'down') => {
+    const current = [...(settings.nav?.menuItems || defaultSiteSettings.nav!.menuItems)];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= current.length) return;
+    const [moved] = current.splice(index, 1);
+    current.splice(targetIndex, 0, moved);
+    updateNav({ menuItems: current });
+  };
+
+  const handleResetNavToDefault = () => {
+    if (confirm('আপনি কি নেভিগেশন মেনু স্টোরফ্রন্টের মূল ৮টি ডিফল্ট লিঙ্কে রিস্টোর করতে চান?')) {
+      updateNav({ menuItems: [...defaultSiteSettings.nav!.menuItems] });
+      showToast('নেভিগেশন মেনু সফলভাবে ডিফল্ট ৮টি লিঙ্কে রিস্টোর করা হয়েছে!');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
@@ -226,6 +337,7 @@ export function SiteSettingsManager() {
     );
   }
 
+  const currentBranding = settings.branding || defaultSiteSettings.branding!;
   const currentNav = settings.nav || defaultSiteSettings.nav!;
   const currentFooter = settings.footer || defaultSiteSettings.footer;
   const currentContact = settings.contact || defaultSiteSettings.contact!;
@@ -309,16 +421,795 @@ export function SiteSettingsManager() {
       </div>
 
       {/* =========================================================================
+          TAB 0: BRANDING (LOGOS & FAVICON)
+         ========================================================================= */}
+      {activeTab === 'branding' && (
+        <div className="space-y-6">
+          {/* Header Logo Section */}
+          <div className="bg-white rounded-[20px] p-6 border border-[#EFE9E0] shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFE9E0]">
+              <div className="space-y-0.5">
+                <h3 className="font-bold text-sm text-[#2B2B2B] flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-[#D6403B]" />
+                  <span>হেডার লোগো (Header Logo)</span>
+                </h3>
+                <p className="text-xs text-[#6B6B6B]">
+                  ওয়েবসাইটের মূল মেনু বারের বাম পাশে প্রদর্শিত প্রধান ব্র্যান্ড লোগো।
+                </p>
+              </div>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#FAF7F2] text-[#6B6B6B] border border-[#EFE9E0] self-start sm:self-auto">
+                Header Branding
+              </span>
+            </div>
+
+            {/* Live Header Logo Preview */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#888888] uppercase tracking-wider block">
+                  লাইভ হেডার প্রিভিউ (Live Header Preview)
+                </span>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#FAF7F2] text-[#6B6B6B] border border-[#EFE9E0]">
+                  {currentBranding.showBrandTextHeader !== false ? '✓ ব্র্যান্ড টেক্সট দৃশ্যমান' : '✗ টেক্সট লুকানো (শুধু লোগো)'}
+                </span>
+              </div>
+              <div className="p-4 rounded-2xl bg-white border border-[#EFE9E0] shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  {currentBranding.headerLogoUrl ? (
+                    <img
+                      src={currentBranding.headerLogoUrl}
+                      alt={currentBranding.logoAlt || currentBranding.brandName || 'Header Logo'}
+                      className="h-9 sm:h-10 w-auto max-w-[200px] object-contain"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-[#D6403B] flex items-center justify-center text-white font-extrabold text-xl shadow-xs shrink-0">
+                      C
+                    </div>
+                  )}
+                  {currentBranding.showBrandTextHeader !== false && (
+                    <span className="font-heading font-black text-xl text-[#2B2B2B] tracking-tight leading-none">
+                      {currentBranding.brandName || 'CraftyKidsCo'}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] text-[#888888] hidden sm:inline-block bg-[#FAF7F2] px-3 py-1.5 rounded-lg border border-[#EFE9E0]">
+                  {currentBranding.headerLogoUrl ? '✓ কাস্টম লোগো সক্রিয়' : 'ডিফল্ট সিগনেচার ব্যাজ'}
+                </span>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="space-y-4 pt-2 text-xs">
+              <div>
+                <label className="block font-semibold text-[#2B2B2B] mb-1">
+                  হেডার লোগো ইমেজ লিঙ্ক (Image URL) অথবা কম্পিউটার থেকে আপলোড
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <input
+                    type="url"
+                    value={currentBranding.headerLogoUrl || ''}
+                    onChange={(e) => updateBranding({ headerLogoUrl: e.target.value })}
+                    placeholder="https://.../logo.png অথবা /logo.png"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] font-mono text-[11px] focus:outline-none focus:border-[#D6403B]"
+                  />
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <label className="relative cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
+                        onChange={(e) => handleFileUpload(e, 'header')}
+                        disabled={uploadingTarget === 'header'}
+                        className="sr-only"
+                      />
+                      <span className="px-3.5 py-2.5 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] font-bold border border-[#EFE9E0] flex items-center gap-1.5 transition-colors cursor-pointer text-xs">
+                        {uploadingTarget === 'header' ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#D6403B]" />
+                            <span>আপলোড হচ্ছে...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-3.5 h-3.5 text-[#D6403B]" />
+                            <span>ছবি আপলোড</span>
+                          </>
+                        )}
+                      </span>
+                    </label>
+
+                    {currentBranding.headerLogoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => updateBranding({ headerLogoUrl: '' })}
+                        className="px-3 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold border border-red-200 transition-colors cursor-pointer flex items-center gap-1 text-xs"
+                        title="লোগো মুছে ডিফল্ট ব্যাজে ফিরে যান"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>রিসেট</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Brand Name, Alt Text, and Toggle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label className="block font-bold text-[#2B2B2B] mb-1">
+                    ব্র্যান্ডের মূল নাম (Brand Name)
+                  </label>
+                  <input
+                    type="text"
+                    value={currentBranding.brandName || 'CraftyKidsCo'}
+                    onChange={(e) => updateBranding({ brandName: e.target.value })}
+                    placeholder="যেমন: CraftyKidsCo"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#EFE9E0] font-bold text-[#2B2B2B] focus:outline-none focus:border-[#D6403B]"
+                  />
+                  <p className="text-[11px] text-[#888888] mt-1">
+                    লোগোর পাশে বড় অক্ষরে প্রদর্শিত ব্র্যান্ড নাম।
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#2B2B2B] mb-1">
+                    লোগো Alt Text (এসইও এর জন্য)
+                  </label>
+                  <input
+                    type="text"
+                    value={currentBranding.logoAlt || currentBranding.brandName || 'CraftyKidsCo'}
+                    onChange={(e) => updateBranding({ logoAlt: e.target.value })}
+                    placeholder="যেমন: CraftyKidsCo Logo"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#EFE9E0] focus:outline-none focus:border-[#D6403B]"
+                  />
+                  <p className="text-[11px] text-[#888888] mt-1">
+                    সার্চ ইঞ্জিন (Google SEO) ও স্ক্রিন রিডারের জন্য অল্টারনেটিভ টেক্সট।
+                  </p>
+                </div>
+
+                <div className="sm:col-span-2 flex flex-col justify-center p-3.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2]">
+                  <label className="flex items-start gap-2.5 cursor-pointer font-bold text-xs text-[#2B2B2B]">
+                    <input
+                      type="checkbox"
+                      checked={currentBranding.showBrandTextHeader !== false}
+                      onChange={(e) => updateBranding({ showBrandTextHeader: e.target.checked })}
+                      className="w-4 h-4 accent-[#D6403B] rounded shrink-0 mt-0.5"
+                    />
+                    <div>
+                      <span className="block text-[#2B2B2B]">
+                        লোগোর পাশে ব্র্যান্ড টেক্সট ({currentBranding.brandName || 'CraftyKidsCo'}) দেখান
+                      </span>
+                      <span className="text-[10px] font-normal text-[#6B6B6B] block mt-0.5">
+                        টিক চিহ্ন অন থাকলে লোগো ইমেজের পাশে ব্র্যান্ডের নাম দৃশ্যমান থাকবে।
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-[#888888] pt-1">
+                💡 <span className="font-semibold text-[#6B6B6B]">পরামর্শ:</span> স্বচ্ছ ব্যাকগ্রাউন্ডের (Transparent PNG বা SVG) ফাইল ব্যবহার করা সবচেয়ে ভালো। প্রস্তাবিত উচ্চতা: 36px - 48px।
+              </p>
+            </div>
+          </div>
+
+          {/* Footer Logo Section */}
+          <div className="bg-white rounded-[20px] p-6 border border-[#EFE9E0] shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFE9E0]">
+              <div className="space-y-0.5">
+                <h3 className="font-bold text-sm text-[#2B2B2B] flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-[#D6403B]" />
+                  <span>ফুটার লোগো (Footer Logo)</span>
+                </h3>
+                <p className="text-xs text-[#6B6B6B]">
+                  ওয়েবসাইটের নিচের গাঢ় রঙের ফুটারে প্রদর্শিত ব্র্যান্ড লোগো।
+                </p>
+              </div>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#2B2B2B] text-white self-start sm:self-auto">
+                Footer Branding
+              </span>
+            </div>
+
+            {/* Live Footer Logo Preview on dark background */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold text-[#888888] uppercase tracking-wider block">
+                লাইভ ফুটার প্রিভিউ (Dark Background Preview)
+              </span>
+              <div className="p-5 rounded-2xl bg-[#2B2B2B] text-white border border-black/20 shadow-md flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  {currentBranding.footerLogoUrl || currentBranding.headerLogoUrl ? (
+                    <img
+                      src={currentBranding.footerLogoUrl || currentBranding.headerLogoUrl}
+                      alt={currentBranding.logoAlt || 'Footer Logo'}
+                      className="h-8 sm:h-9 w-auto max-w-[200px] object-contain"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-xl bg-[#D6403B] text-white flex items-center justify-center font-extrabold text-lg shrink-0">
+                      C
+                    </div>
+                  )}
+                  {currentBranding.showBrandTextFooter !== false && (
+                    <span className="font-heading font-black text-xl text-white tracking-tight">
+                      {currentBranding.brandName || 'CraftyKidsCo'}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] text-[#A0A0A0] hidden sm:inline-block bg-white/10 px-3 py-1 rounded-lg">
+                  {currentBranding.footerLogoUrl
+                    ? '✓ কাস্টম ফুটার লোগো'
+                    : currentBranding.headerLogoUrl
+                    ? 'হেডার লোগো অনুকরণ করছে'
+                    : 'ডিফল্ট সিগনেচার ব্যাজ'}
+                </span>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="space-y-3 pt-2 text-xs">
+              <label className="block font-semibold text-[#2B2B2B]">
+                ফুটার লোগো ইমেজ লিঙ্ক (Image URL) অথবা কম্পিউটার থেকে আপলোড
+              </label>
+
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <input
+                  type="url"
+                  value={currentBranding.footerLogoUrl || ''}
+                  onChange={(e) => updateBranding({ footerLogoUrl: e.target.value })}
+                  placeholder="https://.../footer-logo-white.png"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] font-mono text-[11px] focus:outline-none focus:border-[#D6403B]"
+                />
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <label className="relative cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
+                      onChange={(e) => handleFileUpload(e, 'footer')}
+                      disabled={uploadingTarget === 'footer'}
+                      className="sr-only"
+                    />
+                    <span className="px-3.5 py-2.5 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] font-bold border border-[#EFE9E0] flex items-center gap-1.5 transition-colors cursor-pointer text-xs">
+                      {uploadingTarget === 'footer' ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#D6403B]" />
+                          <span>আপলোড হচ্ছে...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5 text-[#D6403B]" />
+                          <span>ছবি আপলোড</span>
+                        </>
+                      )}
+                    </span>
+                  </label>
+
+                  {currentBranding.headerLogoUrl && !currentBranding.footerLogoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => updateBranding({ footerLogoUrl: currentBranding.headerLogoUrl })}
+                      className="px-3 py-2.5 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#0B5F85] font-bold border border-[#EFE9E0] transition-colors cursor-pointer text-xs"
+                      title="হেডার লোগো ফুটারেও ব্যবহার করুন"
+                    >
+                      হেডার লোগো কপি
+                    </button>
+                  )}
+
+                  {currentBranding.footerLogoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => updateBranding({ footerLogoUrl: '' })}
+                      className="px-3 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold border border-red-200 transition-colors cursor-pointer flex items-center gap-1 text-xs"
+                      title="লোগো মুছে ডিফল্টে ফিরে যান"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>রিসেট</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-[#2B2B2B]">
+                  <input
+                    type="checkbox"
+                    checked={currentBranding.showBrandTextFooter !== false}
+                    onChange={(e) => updateBranding({ showBrandTextFooter: e.target.checked })}
+                    className="w-4 h-4 accent-[#D6403B] rounded"
+                  />
+                  <span>ফুটারে ব্র্যান্ডের নাম টেক্সট (CraftyKidsCo) দেখান</span>
+                </label>
+              </div>
+
+              <p className="text-[11px] text-[#888888] pt-1">
+                💡 <span className="font-semibold text-[#6B6B6B]">পরামর্শ:</span> ফুটার ব্যাকগ্রাউন্ড গাঢ় রঙের (`#2B2B2B`), তাই সাদা বা হালকা রঙের ট্রান্সপারেন্ট লোগো সবচেয়ে উজ্জ্বল দেখাবে।
+              </p>
+            </div>
+          </div>
+
+          {/* Favicon & Browser Icon Section */}
+          <div className="bg-white rounded-[20px] p-6 border border-[#EFE9E0] shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFE9E0]">
+              <div className="space-y-0.5">
+                <h3 className="font-bold text-sm text-[#2B2B2B] flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-[#D6403B]" />
+                  <span>ওয়েবসাইট ফ্যাভিকন (Favicon & Browser Tab Icon)</span>
+                </h3>
+                <p className="text-xs text-[#6B6B6B]">
+                  ব্রাউজার ট্যাব, বুকমার্ক বার, গুগল সার্চ রেজাল্ট এবং মোবাইল শর্টকাটে প্রদর্শিত আইকন।
+                </p>
+              </div>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#1F6B43]/10 text-[#1F6B43]">
+                Browser Favicon
+              </span>
+            </div>
+
+            {/* Realistic Browser Tab Mockup */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold text-[#888888] uppercase tracking-wider block">
+                ব্রাউজার ট্যাব প্রিভিউ (Browser Tab Preview)
+              </span>
+              <div className="rounded-2xl border border-[#EFE9E0] overflow-hidden bg-[#ECE8DF] shadow-xs max-w-xl">
+                {/* Browser top chrome */}
+                <div className="px-3 pt-2 pb-0 flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 pr-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F56] inline-block"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] inline-block"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#27C93F] inline-block"></span>
+                  </div>
+
+                  {/* Active Tab */}
+                  <div className="bg-white rounded-t-lg px-3 py-1.5 flex items-center gap-2 shadow-xs max-w-[260px] border-t border-x border-[#E0D8CB]">
+                    <img
+                      src={currentBranding.faviconUrl || '/favicon.ico'}
+                      alt="Favicon"
+                      className="w-4 h-4 object-contain rounded-xs shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/favicon.ico';
+                      }}
+                    />
+                    <span className="text-[11px] font-semibold text-[#2B2B2B] truncate">
+                      CraftyKidsCo | শিশুদের নিরাপদ মোমের রঙ...
+                    </span>
+                    <span className="text-[#888888] text-[10px] hover:text-black cursor-default pl-1">
+                      ×
+                    </span>
+                  </div>
+                </div>
+
+                {/* Browser Address Bar simulation */}
+                <div className="bg-white px-3 py-2 border-t border-[#E0D8CB] flex items-center gap-2 text-[11px] text-[#6B6B6B]">
+                  <span className="text-gray-400">🔒</span>
+                  <span className="font-mono text-gray-500">https://craftykidsco.com</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Favicon Controls */}
+            <div className="space-y-3 pt-2 text-xs">
+              <label className="block font-semibold text-[#2B2B2B]">
+                ফ্যাভিকন ফাইল পাথ (Favicon URL) অথবা কম্পিউটার থেকে আপলোড
+              </label>
+
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <input
+                  type="text"
+                  value={currentBranding.faviconUrl || '/favicon.ico'}
+                  onChange={(e) => updateBranding({ faviconUrl: e.target.value })}
+                  placeholder="/favicon.ico অথবা https://.../favicon.png"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] font-mono text-[11px] focus:outline-none focus:border-[#D6403B]"
+                />
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <label className="relative cursor-pointer">
+                    <input
+                      type="file"
+                      accept=".ico,.png,.svg,.webp,.jpg"
+                      onChange={(e) => handleFileUpload(e, 'favicon')}
+                      disabled={uploadingTarget === 'favicon'}
+                      className="sr-only"
+                    />
+                    <span className="px-3.5 py-2.5 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] font-bold border border-[#EFE9E0] flex items-center gap-1.5 transition-colors cursor-pointer text-xs">
+                      {uploadingTarget === 'favicon' ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#D6403B]" />
+                          <span>আপলোড হচ্ছে...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5 text-[#D6403B]" />
+                          <span>ফ্যাভিকন আপলোড</span>
+                        </>
+                      )}
+                    </span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => updateBranding({ faviconUrl: '/favicon.ico' })}
+                    className="px-3 py-2.5 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] font-bold border border-[#EFE9E0] transition-colors cursor-pointer text-xs"
+                    title="সাইটের বর্তমান মূল ফ্যাভিকনে রিসেট করুন"
+                  >
+                    ডিফল্ট /favicon.ico
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Select Preset Icons */}
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+                <span className="font-semibold text-[#6B6B6B]">প্রিসেট সিলেক্ট:</span>
+                <button
+                  type="button"
+                  onClick={() => updateBranding({ faviconUrl: '/favicon.ico' })}
+                  className={`px-2.5 py-1 rounded-lg border font-mono ${
+                    currentBranding.faviconUrl === '/favicon.ico'
+                      ? 'bg-[#D6403B]/10 border-[#D6403B] text-[#D6403B] font-bold'
+                      : 'bg-[#FAF7F2] border-[#EFE9E0] text-[#6B6B6B] hover:text-[#2B2B2B]'
+                  }`}
+                >
+                  /favicon.ico
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateBranding({ faviconUrl: '/favicon.svg' })}
+                  className={`px-2.5 py-1 rounded-lg border font-mono ${
+                    currentBranding.faviconUrl === '/favicon.svg'
+                      ? 'bg-[#D6403B]/10 border-[#D6403B] text-[#D6403B] font-bold'
+                      : 'bg-[#FAF7F2] border-[#EFE9E0] text-[#6B6B6B] hover:text-[#2B2B2B]'
+                  }`}
+                >
+                  /favicon.svg (ভেক্টর)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateBranding({ faviconUrl: '/icon.png' })}
+                  className={`px-2.5 py-1 rounded-lg border font-mono ${
+                    currentBranding.faviconUrl === '/icon.png'
+                      ? 'bg-[#D6403B]/10 border-[#D6403B] text-[#D6403B] font-bold'
+                      : 'bg-[#FAF7F2] border-[#EFE9E0] text-[#6B6B6B] hover:text-[#2B2B2B]'
+                  }`}
+                >
+                  /icon.png (PNG)
+                </button>
+              </div>
+
+              <div className="pt-2">
+                <label className="block font-semibold text-[#2B2B2B] mb-1">
+                  Apple Touch Icon (আইফোন ও আইপ্যাডের হোমস্ক্রিন আইকন)
+                </label>
+                <input
+                  type="text"
+                  value={currentBranding.appleTouchIconUrl || '/apple-icon.png'}
+                  onChange={(e) => updateBranding({ appleTouchIconUrl: e.target.value })}
+                  placeholder="/apple-icon.png"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#EFE9E0] font-mono text-[11px] focus:outline-none focus:border-[#D6403B]"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>ব্রাউজার ক্যাশ সতর্কতা:</strong> ব্রাউজার ফ্যাভিকন খুব শক্তিশালীভাবে মেমোরিতে ক্যাশ করে রাখে। সেভ করার পর নতুন আইকনটি দেখতে না পেলে কিবোর্ডে <strong>Cmd + Shift + R</strong> (ম্যাক) অথবা <strong>Ctrl + Shift + R</strong> (উইন্ডোজ) চেপে ব্রাউজার হার্ড রিফ্রেশ করুন।
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
           TAB 1: NAVIGATION & HEADER
          ========================================================================= */}
       {activeTab === 'nav' && (
         <div className="space-y-6">
-          {/* 1. Top Announcement Bar */}
+          {/* =========================================================================
+              LIVE STOREFRONT NAVBAR PREVIEW (EXACT REPLICA OF STOREFRONT)
+             ========================================================================= */}
+          <div className="bg-white rounded-[20px] p-6 border border-[#EFE9E0] shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#EFE9E0]">
+              <div>
+                <h3 className="font-bold text-sm text-[#2B2B2B] flex items-center gap-2">
+                  <Layout className="w-4 h-4 text-[#D6403B]" />
+                  <span>লাইভ স্টোরফ্রন্ট নেভিগেশন বার প্রিভিউ (Storefront Navbar Preview)</span>
+                </h3>
+                <p className="text-xs text-[#6B6B6B]">
+                  স্টোরফ্রন্টের মূল হেডার ও নিচের ক্যাটাগরি মেনু বার হুবহু দেখতে এমন হবে (নিচের মেনু এডিট করলে সাথে সাথে প্রিভিউ পরিবর্তিত হবে)।
+                </p>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('branding')}
+                  className="text-xs font-bold text-[#D6403B] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>লোগো ও ব্র্যান্ড টেক্সট সেটিংস</span>
+                  <span>→</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Visual Frame of the Navbar */}
+            <div className="rounded-2xl border border-[#EFE9E0] shadow-sm overflow-hidden bg-white">
+              {/* 1. Top Announcement Bar */}
+              {settings.announcement.enabled && (
+                <div className="bg-[#2B2B2B] text-white py-1.5 px-3 sm:px-4 text-[11px] font-medium flex items-center justify-between border-b border-black/10">
+                  <div className="flex items-center gap-3 text-xs text-[#E0E0E0] truncate">
+                    <span className="flex items-center gap-1.5">
+                      <PhoneCall className="w-3 h-3 text-[#D6403B] shrink-0" />
+                      <span>হটলাইন: {settings.announcement.hotline || '01731-376498'}</span>
+                    </span>
+                    <span className="hidden sm:inline text-white/20">|</span>
+                    <span className="flex items-center gap-1 text-[#25D366] shrink-0">
+                      <MessageCircle className="w-3 h-3" />
+                      <span>হোয়াটসঅ্যাপ: {settings.announcement.whatsapp || '01731-376498'}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[#CCCCCC] text-[10px] sm:text-[11px] shrink-0">
+                    {currentNav.showTrackOrder !== false && (
+                      <span className="inline">অর্ডার ট্র্যাক করুন</span>
+                    )}
+                    {currentNav.showTrackOrder !== false && currentNav.showContact !== false && (
+                      <span className="inline text-white/30">•</span>
+                    )}
+                    {currentNav.showContact !== false && (
+                      <span className="inline">Contact Us</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Main Header (Logo, Search, Cart) */}
+              <div className="p-3 sm:p-4 bg-white flex items-center justify-between gap-3 border-b border-[#EFE9E0]">
+                {/* Logo & Brand text */}
+                <div className="flex items-center gap-2.5 shrink-0">
+                  {currentBranding.headerLogoUrl ? (
+                    <img
+                      src={currentBranding.headerLogoUrl}
+                      alt={currentBranding.logoAlt || 'Logo'}
+                      className="h-8 sm:h-9 w-auto max-w-[140px] object-contain"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-xl bg-[#D6403B] flex items-center justify-center text-white font-extrabold text-lg shadow-xs shrink-0">
+                      C
+                    </div>
+                  )}
+                  {currentBranding.showBrandTextHeader !== false && (
+                    <span className="font-heading font-black text-lg sm:text-xl text-[#2B2B2B] tracking-tight leading-none">
+                      {currentBranding.brandName || 'CraftyKidsCo'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Search Bar Replica */}
+                <div className="flex-1 max-w-md mx-2 hidden sm:flex relative items-center">
+                  <div className="w-full pl-3.5 pr-10 py-2 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs text-[#6B6B6B]">
+                    খেলনা, মোমের রঙ বা আর্ট কিট খুঁজুন...
+                  </div>
+                  <div className="absolute right-1 p-1.5 rounded-lg bg-[#D6403B] text-white">
+                    <Search className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+
+                {/* Right Actions: Wishlist, Login, Cart */}
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                  <div className="p-2 rounded-xl text-[#6B6B6B] hidden md:flex items-center justify-center">
+                    <Heart className="w-4 h-4" />
+                  </div>
+                  <div className="p-2 rounded-xl text-[#6B6B6B] hidden sm:flex items-center justify-center gap-1 text-xs font-bold">
+                    <User className="w-4 h-4" />
+                    <span>লগইন</span>
+                  </div>
+                  <div className="flex items-center gap-2 py-1.5 px-3 rounded-xl bg-[#D6403B] text-white shadow-xs">
+                    <div className="relative">
+                      <ShoppingBag className="w-4 h-4" />
+                      <span className="absolute -top-2 -right-2 bg-white text-[#D6403B] text-[9px] font-extrabold w-3.5 h-3.5 rounded-full flex items-center justify-center shadow-xs">
+                        2
+                      </span>
+                    </div>
+                    <div className="hidden sm:flex flex-col text-left leading-tight">
+                      <span className="text-[9px] text-white/80">Cart</span>
+                      <span className="text-[11px] font-extrabold">৳১,৬০০</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Secondary Category Menu Bar (Exact replica showing currentNav.menuItems) */}
+              <div className="bg-[#FAF7F2] px-4 py-2 border-t border-[#EFE9E0] overflow-x-auto scrollbar-none">
+                <div className="flex items-center gap-5 sm:gap-7 text-xs font-bold text-[#2B2B2B] whitespace-nowrap">
+                  {currentNav.menuItems
+                    .filter((item) => item.enabled !== false)
+                    .map((item) => (
+                      <div
+                        key={item.id}
+                        className={`flex items-center gap-1 cursor-default ${
+                          item.isHighlight
+                            ? 'text-[#D6403B] font-extrabold'
+                            : 'hover:text-[#D6403B]'
+                        }`}
+                      >
+                        {item.badge && <span className="text-xs">{item.badge}</span>}
+                        <span>{item.labelBn}</span>
+                      </div>
+                    ))}
+                  {currentNav.menuItems.filter((item) => item.enabled !== false).length === 0 && (
+                    <span className="text-xs text-gray-400 italic">কোনো মেনু লিঙ্ক সক্রিয় নেই</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 1. Main Navigation Menu Links Editor */}
+          <div className="bg-white rounded-[20px] p-6 border border-[#EFE9E0] shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFE9E0]">
+              <div>
+                <h3 className="font-bold text-sm text-[#2B2B2B] flex items-center gap-2">
+                  <Compass className="w-4 h-4 text-[#D6403B]" />
+                  <span>প্রধান নেভিগেশন মেনু লিঙ্ক (Storefront Menu Items)</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#FAF7F2] text-[#6B6B6B] border border-[#EFE9E0]">
+                    মোট {currentNav.menuItems.length}টি লিঙ্ক
+                  </span>
+                </h3>
+                <p className="text-xs text-[#6B6B6B]">
+                  স্টোরফ্রন্টের মূল ক্যাটাগরি ও পেজ লিঙ্কগুলো সাজান, নতুন লিঙ্ক যুক্ত করুন অথবা ডিফল্ট ৮টি লিঙ্কে রিস্টোর করুন।
+                </p>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleResetNavToDefault}
+                  className="flex items-center gap-1 text-xs cursor-pointer"
+                  title="স্টোরফ্রন্টের মূল ৮টি ডিফল্ট লিঙ্ক ফিরিয়ে আনুন"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>ডিফল্ট ৮টি লিঙ্ক</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleAddMenuItem}
+                  className="flex items-center gap-1 text-xs cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>নতুন মেনু লিঙ্ক</span>
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {currentNav.menuItems.map((item, index) => (
+                <div
+                  key={item.id}
+                  className={`p-4 rounded-xl border transition-all ${
+                    item.enabled
+                      ? 'border-[#EFE9E0] bg-[#FAF7F2]'
+                      : 'border-gray-200 bg-gray-50 opacity-60'
+                  }`}
+                >
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                    {/* Index & Reorder Controls */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="w-6 h-6 rounded-lg bg-white border border-[#EFE9E0] text-[11px] font-bold flex items-center justify-center text-[#6B6B6B]">
+                        {index + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveMenuItem(index, 'up')}
+                        disabled={index === 0}
+                        className="p-1 rounded-md hover:bg-white text-gray-500 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+                        title="উপরে সরান"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveMenuItem(index, 'down')}
+                        disabled={index === currentNav.menuItems.length - 1}
+                        className="p-1 rounded-md hover:bg-white text-gray-500 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+                        title="নিচে সরান"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Inputs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 flex-1 w-full text-xs">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#6B6B6B] mb-0.5">
+                          লেবেল (বাংলা)
+                        </label>
+                        <input
+                          type="text"
+                          value={item.labelBn}
+                          onChange={(e) => handleUpdateMenuItem(item.id, { labelBn: e.target.value })}
+                          className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white font-semibold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#6B6B6B] mb-0.5">
+                          Label (English)
+                        </label>
+                        <input
+                          type="text"
+                          value={item.labelEn}
+                          onChange={(e) => handleUpdateMenuItem(item.id, { labelEn: e.target.value })}
+                          className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#6B6B6B] mb-0.5">
+                          লিঙ্ক URL (Href)
+                        </label>
+                        <input
+                          type="text"
+                          value={item.href}
+                          onChange={(e) => handleUpdateMenuItem(item.id, { href: e.target.value })}
+                          placeholder="/category/..."
+                          className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white text-[#0B5F85] font-mono text-[11px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#6B6B6B] mb-0.5">
+                          ব্যাজ / ইমোজি (Badge)
+                        </label>
+                        <input
+                          type="text"
+                          value={item.badge || ''}
+                          onChange={(e) => handleUpdateMenuItem(item.id, { badge: e.target.value })}
+                          placeholder="যেমন: 🎁 অথবা Hot"
+                          className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Actions: Highlight, Enabled, Delete */}
+                    <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+                      <label className="flex items-center gap-1.5 text-xs text-[#2B2B2B] cursor-pointer" title="মেনুতে লাল রঙে হাইলাইট করুন">
+                        <input
+                          type="checkbox"
+                          checked={item.isHighlight || false}
+                          onChange={(e) => handleUpdateMenuItem(item.id, { isHighlight: e.target.checked })}
+                          className="w-4 h-4 accent-[#D6403B] rounded"
+                        />
+                        <span className="text-[11px] font-medium text-[#D6403B]">হাইলাইট</span>
+                      </label>
+
+                      <label className="flex items-center gap-1.5 text-xs text-[#2B2B2B] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={item.enabled}
+                          onChange={(e) => handleUpdateMenuItem(item.id, { enabled: e.target.checked })}
+                          className="w-4 h-4 accent-[#D6403B] rounded"
+                        />
+                        <span className="text-[11px] font-bold">সক্রিয়</span>
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMenuItem(item.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
+                        title="মুছে ফেলুন"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 2. Top Bar Settings */}
           <div className="bg-white rounded-[20px] p-6 border border-[#EFE9E0] shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#EFE9E0]">
               <div className="space-y-0.5">
                 <h3 className="font-bold text-sm text-[#2B2B2B] flex items-center gap-2">
-                  <span>টপ অ্যানাউন্সমেন্ট বার (Announcement Bar)</span>
+                  <PhoneCall className="w-4 h-4 text-[#D6403B]" />
+                  <span>টপ বার সেটিংস (Top Bar Settings)</span>
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       settings.announcement.enabled ? 'bg-[#1F6B43]/10 text-[#1F6B43]' : 'bg-gray-100 text-gray-500'
@@ -328,7 +1219,7 @@ export function SiteSettingsManager() {
                   </span>
                 </h3>
                 <p className="text-xs text-[#6B6B6B]">
-                  ওয়েবসাইটের একদম উপরে নোটিশ ও জরুরি যোগাযোগের কালো বার।
+                  ওয়েবসাইটের একদম উপরে হটলাইন, হোয়াটসঅ্যাপ ও জরুরি যোগাযোগের কালো বার।
                 </p>
               </div>
 
@@ -346,33 +1237,7 @@ export function SiteSettingsManager() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-[#2B2B2B] mb-1">
-                  অ্যানাউন্সমেন্ট টেক্সট (বাংলা)
-                </label>
-                <input
-                  type="text"
-                  value={settings.announcement.textBn}
-                  onChange={(e) => updateAnnouncement({ textBn: e.target.value })}
-                  placeholder="যেমন: দেশজুড়ে দ্রুত হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি!"
-                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] focus:outline-none focus:border-[#D6403B]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#2B2B2B] mb-1">
-                  অ্যানাউন্সমেন্ট টেক্সট (English)
-                </label>
-                <input
-                  type="text"
-                  value={settings.announcement.textEn}
-                  onChange={(e) => updateAnnouncement({ textEn: e.target.value })}
-                  placeholder="e.g. Nationwide Fast Home Delivery & Cash on Delivery!"
-                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] focus:outline-none focus:border-[#D6403B]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#2B2B2B] mb-1">
-                  টপ বার হটলাইন নম্বর
+                  টপ বার হটলাইন নম্বর (Hotline)
                 </label>
                 <input
                   type="text"
@@ -384,6 +1249,9 @@ export function SiteSettingsManager() {
                   placeholder="01731-376498"
                   className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] focus:outline-none focus:border-[#D6403B]"
                 />
+                <p className="text-[11px] text-[#888888] mt-1">
+                  টপ বারে ক্লিক করলে সরাসরি কল করার নম্বর।
+                </p>
               </div>
 
               <div>
@@ -400,42 +1268,25 @@ export function SiteSettingsManager() {
                   placeholder="01731-376498"
                   className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] focus:outline-none focus:border-[#D6403B]"
                 />
-              </div>
-            </div>
-
-            {/* Live Visual Preview */}
-            <div className="pt-2">
-              <span className="text-[11px] font-bold text-[#888888] uppercase tracking-wider block mb-1.5">
-                লাইভ প্রিভিউ (Top Bar Preview)
-              </span>
-              <div className="bg-[#2B2B2B] text-white py-2 px-4 rounded-xl text-xs flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs text-[#E0E0E0]">
-                  <PhoneCall className="w-3.5 h-3.5 text-[#D6403B]" />
-                  <span>হটলাইন: {settings.announcement.hotline}</span>
-                </span>
-                <span className="hidden sm:inline text-xs text-[#D6403B] font-semibold">
-                  {settings.announcement.textBn}
-                </span>
-                <span className="flex items-center gap-1 text-[#25D366] text-xs font-semibold">
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>WhatsApp</span>
-                </span>
+                <p className="text-[11px] text-[#888888] mt-1">
+                  টপ বারে হোয়াটসঅ্যাপ চ্যাট ওপেন করার নম্বর।
+                </p>
               </div>
             </div>
           </div>
 
-          {/* 2. Header Extra Controls */}
+          {/* 3. Header Extra Controls */}
           <div className="bg-white rounded-[20px] p-6 border border-[#EFE9E0] shadow-xs space-y-4">
             <h3 className="font-bold text-sm text-[#2B2B2B]">হেডার কন্ট্রোল ও ফিচার টগল</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <label className="flex items-center justify-between p-3.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] cursor-pointer">
                 <div>
                   <span className="font-bold text-[#2B2B2B] block">ট্র্যাক অর্ডার বাটন</span>
-                  <span className="text-[11px] text-[#6B6B6B]">হেডারে 'Track Order' লিংক</span>
+                  <span className="text-[11px] text-[#6B6B6B]">টপ বারে 'Track Order' লিংক</span>
                 </div>
                 <input
                   type="checkbox"
-                  checked={currentNav.showTrackOrder}
+                  checked={currentNav.showTrackOrder !== false}
                   onChange={(e) => updateNav({ showTrackOrder: e.target.checked })}
                   className="w-4 h-4 accent-[#D6403B] rounded"
                 />
@@ -443,13 +1294,13 @@ export function SiteSettingsManager() {
 
               <label className="flex items-center justify-between p-3.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] cursor-pointer">
                 <div>
-                  <span className="font-bold text-[#2B2B2B] block">ভাষা পরিবর্তন (BN/EN)</span>
-                  <span className="text-[11px] text-[#6B6B6B]">ভাষা সুইচার বাটন</span>
+                  <span className="font-bold text-[#2B2B2B] block">কন্টাক্ট বাটন</span>
+                  <span className="text-[11px] text-[#6B6B6B]">টপ বারে 'Contact Us' লিংক</span>
                 </div>
                 <input
                   type="checkbox"
-                  checked={currentNav.showLanguageToggle}
-                  onChange={(e) => updateNav({ showLanguageToggle: e.target.checked })}
+                  checked={currentNav.showContact !== false}
+                  onChange={(e) => updateNav({ showContact: e.target.checked })}
                   className="w-4 h-4 accent-[#D6403B] rounded"
                 />
               </label>
@@ -468,110 +1319,6 @@ export function SiteSettingsManager() {
               </label>
             </div>
           </div>
-
-          {/* 3. Main Navigation Menu Links */}
-          <div className="bg-white rounded-[20px] p-6 border border-[#EFE9E0] shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-sm text-[#2B2B2B]">প্রধান নেভিগেশন মেনু লিঙ্ক (Menu Items)</h3>
-                <p className="text-xs text-[#6B6B6B]">
-                  স্টোরফ্রন্টের মূল ক্যাটাগরি ও পেজ লিঙ্কগুলো সাজান এবং নতুন লিঙ্ক যুক্ত করুন।
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={handleAddMenuItem}
-                className="flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>নতুন মেনু লিঙ্ক</span>
-              </Button>
-            </div>
-
-            <div className="space-y-3">
-              {currentNav.menuItems.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="p-4 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] flex flex-col md:flex-row items-start md:items-center justify-between gap-3"
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 flex-1 w-full text-xs">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#6B6B6B] mb-0.5">
-                        লেবেল (বাংলা)
-                      </label>
-                      <input
-                        type="text"
-                        value={item.labelBn}
-                        onChange={(e) => handleUpdateMenuItem(item.id, { labelBn: e.target.value })}
-                        className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white font-semibold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#6B6B6B] mb-0.5">
-                        Label (English)
-                      </label>
-                      <input
-                        type="text"
-                        value={item.labelEn}
-                        onChange={(e) => handleUpdateMenuItem(item.id, { labelEn: e.target.value })}
-                        className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#6B6B6B] mb-0.5">
-                        লিঙ্ক URL (Href)
-                      </label>
-                      <input
-                        type="text"
-                        value={item.href}
-                        onChange={(e) => handleUpdateMenuItem(item.id, { href: e.target.value })}
-                        placeholder="/category/art-kits"
-                        className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white text-[#0B5F85] font-mono text-[11px]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#6B6B6B] mb-0.5">
-                        ব্যাজ (Badge Text)
-                      </label>
-                      <input
-                        type="text"
-                        value={item.badge || ''}
-                        onChange={(e) => handleUpdateMenuItem(item.id, { badge: e.target.value })}
-                        placeholder="e.g. Hot / ২০% ছাড়"
-                        className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
-                    <label className="flex items-center gap-1.5 text-xs text-[#2B2B2B] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={item.enabled}
-                        onChange={(e) => handleUpdateMenuItem(item.id, { enabled: e.target.checked })}
-                        className="w-4 h-4 accent-[#D6403B] rounded"
-                      />
-                      <span className="text-[11px] font-bold">সক্রিয়</span>
-                    </label>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMenuItem(item.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
-                      title="মুছে ফেলুন"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 
@@ -580,6 +1327,67 @@ export function SiteSettingsManager() {
          ========================================================= */}
       {activeTab === 'footer' && (
         <div className="space-y-6">
+          {/* Footer Brand Logo */}
+          <div className="bg-white rounded-[20px] p-6 border border-[#EFE9E0] shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EFE9E0]">
+              <div className="space-y-0.5">
+                <h3 className="font-bold text-sm text-[#2B2B2B] flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-[#D6403B]" />
+                  <span>ফুটার লোগো (Footer Logo)</span>
+                </h3>
+                <p className="text-xs text-[#6B6B6B]">ফুটারে প্রদর্শিত ব্র্যান্ড লোগো পরিবর্তন ও আপলোড করুন।</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('branding')}
+                className="text-xs font-bold text-[#D6403B] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span>সম্পূর্ণ লোগো সেটিংসে যান</span>
+                <span>→</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <div className="p-3 rounded-xl bg-[#2B2B2B] text-white flex items-center justify-center shrink-0">
+                {currentBranding.footerLogoUrl || currentBranding.headerLogoUrl ? (
+                  <img
+                    src={currentBranding.footerLogoUrl || currentBranding.headerLogoUrl}
+                    alt="Footer Logo"
+                    className="h-8 w-auto max-w-[140px] object-contain"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-[#D6403B] text-white flex items-center justify-center font-extrabold text-base">
+                    C
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 w-full space-y-1.5 text-xs">
+                <label className="font-semibold text-[#2B2B2B] block">ফুটার লোগো লিঙ্ক (Image URL)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={currentBranding.footerLogoUrl || ''}
+                    onChange={(e) => updateBranding({ footerLogoUrl: e.target.value })}
+                    placeholder="https://.../footer-logo.png"
+                    className="flex-1 px-3 py-2 rounded-xl border border-[#EFE9E0] font-mono text-[11px] focus:outline-none focus:border-[#D6403B]"
+                  />
+                  <label className="relative cursor-pointer shrink-0">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload(e, 'footer')}
+                      disabled={uploadingTarget === 'footer'}
+                      className="sr-only"
+                    />
+                    <span className="px-3 py-2 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] font-bold border border-[#EFE9E0] flex items-center gap-1 text-xs cursor-pointer">
+                      <Upload className="w-3.5 h-3.5 text-[#D6403B]" />
+                      <span>{uploadingTarget === 'footer' ? 'আপলোড হচ্ছে...' : 'আপলোড'}</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="bg-white rounded-[20px] p-6 border border-[#EFE9E0] shadow-xs space-y-4">
             <h3 className="font-bold text-sm text-[#2B2B2B]">ফুটার ইনফরমেশন ও কন্টেন্ট</h3>
             <p className="text-xs text-[#6B6B6B]">
@@ -1088,6 +1896,44 @@ export function SiteSettingsManager() {
                 </div>
               </div>
 
+              {/* Favicon quick setting */}
+              <div className="pt-3 border-t border-[#EFE9E0] space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-[#2B2B2B]">
+                    ওয়েবসাইট ফ্যাভিকন (Browser Favicon)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('branding')}
+                    className="text-xs font-bold text-[#D6403B] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>লোগো ও ফ্যাভিকন সেটিংসে যান →</span>
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={currentBranding.faviconUrl || '/favicon.ico'}
+                    onChange={(e) => updateBranding({ faviconUrl: e.target.value })}
+                    placeholder="/favicon.ico"
+                    className="flex-1 px-3.5 py-2 rounded-xl border border-[#EFE9E0] font-mono text-[11px] focus:outline-none focus:border-[#D6403B]"
+                  />
+                  <label className="relative cursor-pointer shrink-0">
+                    <input
+                      type="file"
+                      accept=".ico,.png,.svg,.webp"
+                      onChange={(e) => handleFileUpload(e, 'favicon')}
+                      disabled={uploadingTarget === 'favicon'}
+                      className="sr-only"
+                    />
+                    <span className="px-3.5 py-2 rounded-xl bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] font-bold border border-[#EFE9E0] flex items-center gap-1 text-xs cursor-pointer">
+                      <Upload className="w-3.5 h-3.5 text-[#D6403B]" />
+                      <span>{uploadingTarget === 'favicon' ? 'আপলোড হচ্ছে...' : 'আপলোড'}</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
               {/* Google SERP Preview Card */}
               <div className="pt-3 border-t border-[#EFE9E0]">
                 <span className="text-[11px] font-bold text-[#888888] uppercase tracking-wider block mb-2">
@@ -1095,9 +1941,20 @@ export function SiteSettingsManager() {
                 </span>
                 <div className="p-4 rounded-xl bg-white border border-[#EFE9E0] shadow-xs space-y-1 max-w-xl">
                   <div className="flex items-center gap-1.5 text-[11px] text-[#4D5156]">
-                    <span className="w-4 h-4 rounded-full bg-[#D6403B] text-white flex items-center justify-center font-bold text-[9px]">
-                      C
-                    </span>
+                    {currentBranding.faviconUrl ? (
+                      <img
+                        src={currentBranding.faviconUrl}
+                        alt="Favicon"
+                        className="w-4 h-4 rounded-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/favicon.ico';
+                        }}
+                      />
+                    ) : (
+                      <span className="w-4 h-4 rounded-full bg-[#D6403B] text-white flex items-center justify-center font-bold text-[9px]">
+                        C
+                      </span>
+                    )}
                     <span className="truncate">{currentSeo.siteUrl || 'https://craftykidsco.com'}</span>
                   </div>
                   <h4 className="text-sm font-semibold text-[#1A0DAB] hover:underline cursor-pointer">

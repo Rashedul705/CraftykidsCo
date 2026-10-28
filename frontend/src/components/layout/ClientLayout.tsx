@@ -21,6 +21,24 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, []);
 
+  // Dynamically update favicon in browser if customized in Site Settings
+  useEffect(() => {
+    const favUrl = settings?.branding?.faviconUrl || settings?.seo?.faviconUrl;
+    if (favUrl && typeof document !== 'undefined') {
+      const existingIcons = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
+      if (existingIcons.length > 0) {
+        existingIcons.forEach((el) => {
+          el.href = favUrl;
+        });
+      } else {
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.href = favUrl;
+        document.head.appendChild(link);
+      }
+    }
+  }, [settings?.branding?.faviconUrl, settings?.seo?.faviconUrl]);
+
   const ga4Id = settings?.analytics?.ga4Enabled ? settings?.analytics?.ga4MeasurementId : null;
   const gtmId = settings?.analytics?.gtmEnabled ? settings?.analytics?.gtmContainerId : null;
   const pixelId = settings?.pixel?.pixelEnabled ? settings?.pixel?.pixelId : null;

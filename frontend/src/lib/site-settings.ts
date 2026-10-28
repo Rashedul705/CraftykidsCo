@@ -145,6 +145,7 @@ export interface SiteSettings {
     email: string;
     address: string;
     copyrightText: string;
+    logoUrl?: string;
   };
 
   // 10. Print & Thermal Sticker Settings
@@ -184,6 +185,27 @@ export interface SiteSettings {
 
   // 17. Meta (Facebook) Pixel & CAPI
   pixel?: PixelSettings;
+
+  // 18. Storefront Branding (Header & Footer Logos, Favicon)
+  branding?: BrandingSettings;
+}
+
+export interface BrandingSettings {
+  headerLogoUrl?: string;
+  footerLogoUrl?: string;
+  faviconUrl?: string;
+  appleTouchIconUrl?: string;
+  logoAlt?: string;
+  brandName?: string;
+  brandNameBn?: string;
+  taglineBn?: string;
+  taglineEn?: string;
+  headerLogoWidth?: number;
+  headerLogoHeight?: number;
+  footerLogoWidth?: number;
+  footerLogoHeight?: number;
+  showBrandTextHeader?: boolean;
+  showBrandTextFooter?: boolean;
 }
 
 export interface NavMenuItem {
@@ -199,11 +221,13 @@ export interface NavMenuItem {
 export interface NavSettings {
   showAnnouncement: boolean;
   showTrackOrder: boolean;
-  showLanguageToggle: boolean;
+  showLanguageToggle?: boolean;
+  showContact?: boolean;
   showWishlist: boolean;
   hotline: string;
   whatsapp: string;
   menuItems: NavMenuItem[];
+  logoUrl?: string;
 }
 
 export interface ContactSettings {
@@ -239,6 +263,7 @@ export interface SeoSettings {
   ogImageUrl: string;
   siteUrl: string;
   allowRobotsIndex: boolean;
+  faviconUrl?: string;
 }
 
 export interface AnalyticsSettings {
@@ -636,6 +661,7 @@ export const defaultSiteSettings: SiteSettings = {
     email: 'support@craftykidsco.com',
     address: 'তেরখাদিয়া, রাজপাড়া, রাজশাহী।',
     copyrightText: '© ২০২৬ CraftyKidsCo. সর্বস্বত্ব সংরক্ষিত।',
+    logoUrl: '',
   },
   print: {
     companyName: 'CraftyKidsCo',
@@ -736,18 +762,22 @@ export const defaultSiteSettings: SiteSettings = {
   nav: {
     showAnnouncement: true,
     showTrackOrder: true,
-    showLanguageToggle: true,
+    showLanguageToggle: false,
+    showContact: true,
     showWishlist: false,
     hotline: '01731-376498',
     whatsapp: '01731-376498',
     menuItems: [
-      { id: 'nav-shop', labelBn: 'সকল খেলনা', labelEn: 'All Toys & Art', href: '/shop', enabled: true },
-      { id: 'nav-art', labelBn: 'প্লাস্টার আর্ট কিট', labelEn: '3D Plaster Kits', href: '/category/art-kits', badge: 'Hot', enabled: true },
+      { id: 'nav-home', labelBn: 'হোম', labelEn: 'Home', href: '/', isHighlight: true, enabled: true },
       { id: 'nav-crayons', labelBn: 'মোমের রঙ', labelEn: 'Wax Crayons', href: '/category/wax-crayons', enabled: true },
-      { id: 'nav-dough', labelBn: 'প্লে-ডো ও ক্লে', labelEn: 'Play-Dough', href: '/category/play-dough-clay', enabled: true },
+      { id: 'nav-dough', labelBn: 'ক্লে ও ডো', labelEn: 'Clay & Dough', href: '/category/play-dough-clay', enabled: true },
+      { id: 'nav-sketchbooks', labelBn: 'ড্রয়িং খাতা', labelEn: 'Drawing Books', href: '/category/sketchbooks', enabled: true },
       { id: 'nav-wooden', labelBn: 'কাঠের খেলনা', labelEn: 'Wooden Toys', href: '/category/wooden-toys', enabled: true },
-      { id: 'nav-bundles', labelBn: 'গিফট কম্বো', labelEn: 'Gift Combos', href: '/bundles', badge: '২০% ছাড়', isHighlight: true, enabled: true },
+      { id: 'nav-puzzles', labelBn: 'পাজল গেম', labelEn: 'Puzzles', href: '/category/puzzles', enabled: true },
+      { id: 'nav-art', labelBn: 'আর্ট কিট', labelEn: 'Art Kits', href: '/category/art-kits', enabled: true },
+      { id: 'nav-offers', labelBn: 'অফারসমূহ', labelEn: 'Offers', href: '/shop', badge: '🎁', isHighlight: true, enabled: true },
     ],
+    logoUrl: '',
   },
   contact: {
     hotline: '01731-376498',
@@ -780,6 +810,7 @@ export const defaultSiteSettings: SiteSettings = {
     ogImageUrl: 'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
     siteUrl: 'https://craftykidsco.com',
     allowRobotsIndex: true,
+    faviconUrl: '/favicon.ico',
   },
   analytics: {
     ga4MeasurementId: '',
@@ -797,5 +828,22 @@ export const defaultSiteSettings: SiteSettings = {
     trackAddToCart: true,
     trackInitiateCheckout: true,
     trackPurchase: true,
+  },
+  branding: {
+    headerLogoUrl: '',
+    footerLogoUrl: '',
+    faviconUrl: '/favicon.ico',
+    appleTouchIconUrl: '/apple-icon.png',
+    logoAlt: 'CraftyKidsCo',
+    brandName: 'CraftyKidsCo',
+    brandNameBn: 'ক্রাফটিকিডস কো',
+    taglineBn: 'শিশুদের নিরাপদ মোমের রঙ ও খেলনা',
+    taglineEn: 'Safe Colors & Creative Toys',
+    headerLogoWidth: 140,
+    headerLogoHeight: 40,
+    footerLogoWidth: 140,
+    footerLogoHeight: 40,
+    showBrandTextHeader: true,
+    showBrandTextFooter: true,
   },
 };

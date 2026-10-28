@@ -13,6 +13,17 @@ export async function GET() {
       const dbDoc = await Setting.findOne({ key: 'site_settings' }).lean();
       if (dbDoc && dbDoc.value) {
         const parsed = JSON.parse(dbDoc.value);
+        // Detect if stored settings have legacy/stale 6 items or missing 'Home'
+        const hasLegacyNav =
+          !Array.isArray(parsed.nav?.menuItems) ||
+          parsed.nav.menuItems.length === 0 ||
+          parsed.nav.menuItems.some((m: any) => m.id === 'nav-shop' || m.labelBn === 'সকল খেলনা') ||
+          !parsed.nav.menuItems.some((m: any) => m.id === 'nav-home' || m.labelBn === 'হোম');
+
+        const activeMenuItems = hasLegacyNav
+          ? defaultSiteSettings.nav!.menuItems
+          : parsed.nav.menuItems;
+
         // Merge with defaults so any newly added fields always have fallback values
         const merged: SiteSettings = {
           ...defaultSiteSettings,
@@ -34,22 +45,36 @@ export async function GET() {
           nav: {
             ...defaultSiteSettings.nav!,
             ...(parsed.nav || {}),
-            menuItems: Array.isArray(parsed.nav?.menuItems) && parsed.nav.menuItems.length > 0
-              ? parsed.nav.menuItems
-              : defaultSiteSettings.nav!.menuItems,
+            menuItems: activeMenuItems,
           },
           contact: { ...defaultSiteSettings.contact!, ...(parsed.contact || {}) },
           social: { ...defaultSiteSettings.social!, ...(parsed.social || {}) },
           seo: { ...defaultSiteSettings.seo!, ...(parsed.seo || {}) },
           analytics: { ...defaultSiteSettings.analytics!, ...(parsed.analytics || {}) },
           pixel: { ...defaultSiteSettings.pixel!, ...(parsed.pixel || {}) },
+          branding: {
+            ...defaultSiteSettings.branding!,
+            ...(parsed.branding || {}),
+            brandName: parsed.branding?.brandName || defaultSiteSettings.branding!.brandName,
+            brandNameBn: parsed.branding?.brandNameBn || defaultSiteSettings.branding!.brandNameBn,
+            taglineBn: parsed.branding?.taglineBn || defaultSiteSettings.branding!.taglineBn,
+            taglineEn: parsed.branding?.taglineEn || defaultSiteSettings.branding!.taglineEn,
+            showBrandTextHeader: parsed.branding?.showBrandTextHeader !== undefined
+              ? parsed.branding.showBrandTextHeader
+              : true,
+            showBrandTextFooter: parsed.branding?.showBrandTextFooter !== undefined
+              ? parsed.branding.showBrandTextFooter
+              : true,
+          },
           heroSlides: Array.isArray(parsed.heroSlides) && parsed.heroSlides.length > 0 ? parsed.heroSlides : defaultSiteSettings.heroSlides,
           trustBadges: Array.isArray(parsed.trustBadges) && parsed.trustBadges.length > 0 ? parsed.trustBadges : defaultSiteSettings.trustBadges,
           promoBanners: Array.isArray(parsed.promoBanners) && parsed.promoBanners.length > 0 ? parsed.promoBanners : defaultSiteSettings.promoBanners,
         };
 
-        // Automatically migrate any legacy/dummy placeholder phone numbers or address
         let updated = false;
+        if (hasLegacyNav) {
+          updated = true;
+        }
         if (merged.footer?.address?.includes('ধানমন্ডি') || merged.footer?.address?.includes('ওপেন ২৪ ঘণ্টা')) {
           merged.footer.address = 'তেরখাদিয়া, রাজপাড়া, রাজশাহী।';
           updated = true;

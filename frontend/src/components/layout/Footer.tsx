@@ -1,23 +1,63 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PhoneCall, MapPin, Truck, ShieldCheck, MessageCircle } from 'lucide-react';
 import { BRAND_CONFIG } from '@/lib/brand';
+import { SiteSettings } from '@/lib/site-settings';
 
-export function Footer() {
+interface FooterProps {
+  settings?: SiteSettings;
+  logoUrl?: string;
+}
+
+export function Footer({ settings: propSettings, logoUrl }: FooterProps = {}) {
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(propSettings || null);
+
+  useEffect(() => {
+    if (!propSettings) {
+      fetch('/api/site-settings')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.success && data?.settings) {
+            setSiteSettings(data.settings);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [propSettings]);
+
+  const footerLogo =
+    logoUrl ||
+    siteSettings?.branding?.footerLogoUrl ||
+    siteSettings?.footer?.logoUrl ||
+    siteSettings?.branding?.headerLogoUrl ||
+    '';
+  const showBrandText = siteSettings?.branding?.showBrandTextFooter !== false;
+  const logoAlt = siteSettings?.branding?.logoAlt || BRAND_CONFIG.name;
+
   return (
     <footer className="bg-[#2B2B2B] text-[#D0D0D0] text-xs sm:text-sm mt-16 pt-12 pb-24 md:pb-12 border-t border-black/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Column 1: Brand Info */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#D6403B] text-white flex items-center justify-center font-extrabold text-lg">
-              C
-            </div>
-            <span className="font-heading font-black text-xl text-white tracking-tight">
-              {BRAND_CONFIG.name}
-            </span>
+            {footerLogo ? (
+              <img
+                src={footerLogo}
+                alt={logoAlt}
+                className="h-8 sm:h-9 w-auto object-contain"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-xl bg-[#D6403B] text-white flex items-center justify-center font-extrabold text-lg">
+                C
+              </div>
+            )}
+            {showBrandText && (
+              <span className="font-heading font-black text-xl text-white tracking-tight">
+                {BRAND_CONFIG.name}
+              </span>
+            )}
           </div>
           {/* Kept in Bengali as requested */}
           <p className="text-xs text-[#AAAAAA] leading-relaxed">

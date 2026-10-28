@@ -700,6 +700,9 @@ export function updateSiteSettings(newSettings: Partial<SiteSettings>): SiteSett
     pixel: newSettings.pixel
       ? { ...(globalSiteSettings.pixel || defaultSiteSettings.pixel!), ...newSettings.pixel }
       : globalSiteSettings.pixel,
+    branding: newSettings.branding
+      ? { ...(globalSiteSettings.branding || defaultSiteSettings.branding!), ...newSettings.branding }
+      : globalSiteSettings.branding,
   };
   return globalSiteSettings;
 }

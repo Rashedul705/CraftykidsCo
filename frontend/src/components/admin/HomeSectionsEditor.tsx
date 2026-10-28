@@ -556,35 +556,6 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
               </label>
             </div>
 
-            <div>
-              <label className="font-bold block mb-1 text-[#2B2B2B]">অ্যানাউন্সমেন্ট টেক্সট (বাংলা):</label>
-              <input
-                value={settings.announcement?.textBn || ''}
-                onChange={(e) =>
-                  setSettings((prev) => ({
-                    ...prev,
-                    announcement: { ...prev.announcement, textBn: e.target.value },
-                  }))
-                }
-                className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
-                placeholder="যেমন: দেশজুড়ে দ্রুত হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি!"
-              />
-            </div>
-
-            <div>
-              <label className="font-bold block mb-1 text-[#2B2B2B]">অ্যানাউন্সমেন্ট টেক্সট (English):</label>
-              <input
-                value={settings.announcement?.textEn || ''}
-                onChange={(e) =>
-                  setSettings((prev) => ({
-                    ...prev,
-                    announcement: { ...prev.announcement, textEn: e.target.value },
-                  }))
-                }
-                className="w-full p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFEAE2]"
-                placeholder="e.g. Nationwide Fast Home Delivery & Cash on Delivery!"
-              />
-            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>

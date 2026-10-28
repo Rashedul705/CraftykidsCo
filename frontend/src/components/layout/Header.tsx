@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -11,7 +11,6 @@ import {
   Gift,
   Truck,
   User,
-  Globe,
   MessageCircle,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
@@ -23,17 +22,37 @@ interface HeaderProps {
   locale?: 'bn' | 'en';
   onToggleLocale?: () => void;
   announcement?: SiteSettings['announcement'];
+  logoUrl?: string;
+  settings?: SiteSettings;
 }
 
 export function Header({
   locale = 'bn',
   onToggleLocale,
   announcement = defaultSiteSettings.announcement,
+  logoUrl,
+  settings: propSettings,
 }: HeaderProps) {
   const { cartCount, subtotal } = useCart();
   const router = useRouter();
   const [internalLocale, setInternalLocale] = useState<'bn' | 'en'>(locale);
   const [searchQuery, setSearchQuery] = useState('');
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(propSettings || null);
+
+  useEffect(() => {
+    if (propSettings) {
+      setSiteSettings(propSettings);
+    } else {
+      fetch('/api/site-settings')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.success && data?.settings) {
+            setSiteSettings(data.settings);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [propSettings]);
 
   const toggle = () => {
     if (onToggleLocale) {
@@ -46,6 +65,29 @@ export function Header({
   const activeLocale = onToggleLocale ? locale : internalLocale;
   const isBn = activeLocale === 'bn';
 
+  const headerLogo =
+    logoUrl ||
+    siteSettings?.branding?.headerLogoUrl ||
+    siteSettings?.nav?.logoUrl ||
+    '';
+  const showBrandText = siteSettings?.branding?.showBrandTextHeader !== false;
+  const brandName = siteSettings?.branding?.brandName || BRAND_CONFIG.name;
+  const logoAlt = siteSettings?.branding?.logoAlt || brandName;
+
+  const showTopBar = siteSettings?.announcement?.enabled !== false;
+  const topHotline =
+    siteSettings?.announcement?.hotline ||
+    siteSettings?.nav?.hotline ||
+    siteSettings?.contact?.hotline ||
+    BRAND_CONFIG.defaultHotline;
+  const topWhatsapp =
+    siteSettings?.announcement?.whatsapp ||
+    siteSettings?.nav?.whatsapp ||
+    siteSettings?.contact?.whatsapp ||
+    BRAND_CONFIG.defaultWhatsapp;
+  const showTrackOrder = siteSettings?.nav?.showTrackOrder !== false;
+  const showContact = siteSettings?.nav?.showContact !== false;
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -55,82 +97,85 @@ export function Header({
 
   return (
     <>
-      {/* 1. Top Bar (phone, WhatsApp, track order, language toggle) */}
-      <div className="bg-[#2B2B2B] text-white py-1.5 px-3 sm:px-4 text-xs font-medium border-b border-black/10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          {/* Left: Hotline & WhatsApp */}
-          <div className="flex items-center gap-3 sm:gap-4 text-xs text-[#E0E0E0] min-w-0">
-            <a
-              href={`tel:${BRAND_CONFIG.defaultHotline.replace(/[^\d+]/g, '')}`}
-              className="flex items-center gap-1.5 hover:text-white transition-colors truncate"
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-[#D6403B] shrink-0" />
-              <span>{isBn ? `হটলাইন: ${BRAND_CONFIG.defaultHotline}` : `Hotline: ${BRAND_CONFIG.defaultHotline}`}</span>
-            </a>
+      {/* 1. Top Bar (Hotline, WhatsApp, Track Order, Contact Us) */}
+      {showTopBar && (
+        <div className="bg-[#2B2B2B] text-white py-1.5 px-3 sm:px-4 text-xs font-medium border-b border-black/10">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            {/* Left: Hotline & WhatsApp */}
+            <div className="flex items-center gap-3 sm:gap-4 text-xs text-[#E0E0E0] min-w-0">
+              <a
+                href={`tel:${topHotline.replace(/[^\d+]/g, '')}`}
+                className="flex items-center gap-1.5 hover:text-white transition-colors truncate"
+              >
+                <PhoneCall className="w-3.5 h-3.5 text-[#D6403B] shrink-0" />
+                <span>{isBn ? `হটলাইন: ${topHotline}` : `Hotline: ${topHotline}`}</span>
+              </a>
 
-            <span className="hidden sm:inline text-white/20">|</span>
+              <span className="hidden sm:inline text-white/20">|</span>
 
-            <a
-              href={`https://wa.me/${BRAND_CONFIG.defaultWhatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[#25D366] hover:text-[#34D399] font-semibold transition-colors"
-              title="Chat with us on WhatsApp"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              <span>হোয়াটসঅ্যাপ: {BRAND_CONFIG.defaultHotline}</span>
-            </a>
-          </div>
+              <a
+                href={`https://wa.me/${topWhatsapp.replace(/[^\d+]/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[#25D366] hover:text-[#34D399] font-semibold transition-colors truncate"
+                title="Chat with us on WhatsApp"
+              >
+                <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{isBn ? `হোয়াটসঅ্যাপ: ${topWhatsapp}` : `WhatsApp: ${topWhatsapp}`}</span>
+              </a>
+            </div>
 
-          {/* Right: Track Order, Contact Us & Language Toggle */}
-          <div className="flex items-center gap-3 text-xs text-[#CCCCCC] shrink-0">
-            <Link
-              href="/track"
-              className="hidden sm:flex items-center gap-1 hover:text-white transition-colors text-[11px] sm:text-xs"
-            >
-              <Truck className="w-3.5 h-3.5 text-[#5BC0EB]" />
-              <span>{isBn ? 'অর্ডার ট্র্যাক করুন' : 'Track Order'}</span>
-            </Link>
+            {/* Right: Track Order & Contact Us */}
+            <div className="flex items-center gap-2.5 sm:gap-3 text-xs text-[#CCCCCC] shrink-0">
+              {showTrackOrder && (
+                <Link
+                  href="/track"
+                  className="flex items-center gap-1 hover:text-white transition-colors text-[11px] sm:text-xs"
+                >
+                  <Truck className="w-3.5 h-3.5 text-[#5BC0EB]" />
+                  <span>{isBn ? 'অর্ডার ট্র্যাক করুন' : 'Track Order'}</span>
+                </Link>
+              )}
 
-            <span className="hidden sm:inline text-white/30">•</span>
+              {showTrackOrder && showContact && (
+                <span className="text-white/30">•</span>
+              )}
 
-            <Link
-              href="/contact"
-              className="hidden sm:flex items-center gap-1 hover:text-white transition-colors text-[11px] sm:text-xs"
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-[#4ADE80]" />
-              <span>Contact Us</span>
-            </Link>
-
-            <span className="hidden sm:inline text-white/30">•</span>
-
-            <button
-              onClick={toggle}
-              className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer text-[11px] sm:text-xs font-bold"
-            >
-              <Globe className="w-3.5 h-3.5 text-[#FFC93C]" />
-              <span>{isBn ? 'English' : 'বাংলা'}</span>
-            </button>
+              {showContact && (
+                <Link
+                  href="/contact"
+                  className="flex items-center gap-1 hover:text-white transition-colors text-[11px] sm:text-xs"
+                >
+                  <PhoneCall className="w-3.5 h-3.5 text-[#4ADE80]" />
+                  <span>Contact Us</span>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 2. Main Branding & Search Header: logo, wide search bar, wishlist, login, cart with total */}
       <header className="sticky top-0 z-40 bg-white border-b border-[#EFE9E0] shadow-xs transition-all">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-3">
           {/* Brand Logo - CraftyKidsCo */}
           <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0 group">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#D6403B] flex items-center justify-center text-white font-extrabold text-lg sm:text-xl shadow-xs group-hover:scale-105 transition-transform shrink-0">
-              C
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="font-heading font-black text-lg sm:text-2xl text-[#2B2B2B] tracking-tight leading-none">
-                {BRAND_CONFIG.name}
+            {headerLogo ? (
+              <img
+                src={headerLogo}
+                alt={logoAlt}
+                className="h-8 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105 shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#D6403B] flex items-center justify-center text-white font-extrabold text-lg sm:text-xl shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                C
+              </div>
+            )}
+            {showBrandText && (
+              <span className="font-heading font-black text-lg sm:text-2xl text-[#2B2B2B] tracking-tight leading-none min-w-0">
+                {brandName}
               </span>
-              <span className="text-[9px] sm:text-[10px] font-bold text-[#6B6B6B] tracking-wider uppercase mt-0.5">
-                {isBn ? 'শিশুদের নিরাপদ মোমের রঙ ও খেলনা' : 'Safe Colors & Creative Toys'}
-              </span>
-            </div>
+            )}
           </Link>
 
           {/* Desktop Wide Search Bar */}
@@ -219,31 +264,29 @@ export function Header({
         {/* 3. Secondary Category Menu Bar */}
         <div className="bg-[#FAF7F2] border-t border-[#EFE9E0] overflow-x-auto scrollbar-none">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-6 sm:gap-8 h-10 text-xs sm:text-sm font-bold text-[#2B2B2B] whitespace-nowrap">
-            <Link href="/" className="text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1">
-              {isBn ? 'হোম' : 'Home'}
-            </Link>
-            <Link href="/category/wax-crayons" className="hover:text-[#D6403B] transition-colors">
-              {isBn ? 'মোমের রঙ' : 'Wax Crayons'}
-            </Link>
-            <Link href="/category/play-dough-clay" className="hover:text-[#D6403B] transition-colors">
-              {isBn ? 'ক্লে ও ডো' : 'Clay & Dough'}
-            </Link>
-            <Link href="/category/sketchbooks" className="hover:text-[#D6403B] transition-colors">
-              {isBn ? 'ড্রয়িং খাতা' : 'Drawing Books'}
-            </Link>
-            <Link href="/category/wooden-toys" className="hover:text-[#D6403B] transition-colors">
-              {isBn ? 'কাঠের খেলনা' : 'Wooden Toys'}
-            </Link>
-            <Link href="/category/puzzles" className="hover:text-[#D6403B] transition-colors">
-              {isBn ? 'পাজল গেম' : 'Puzzles'}
-            </Link>
-            <Link href="/category/art-kits" className="hover:text-[#D6403B] transition-colors">
-              {isBn ? 'আর্ট কিট' : 'Art Kits'}
-            </Link>
-            <Link href="/shop" className="text-[#D6403B] flex items-center gap-1 font-extrabold hover:underline">
-              <Gift className="w-3.5 h-3.5" />
-              {isBn ? 'অফারসমূহ' : 'Offers'}
-            </Link>
+            {((siteSettings?.nav?.menuItems && siteSettings.nav.menuItems.length > 0)
+              ? siteSettings.nav.menuItems
+              : defaultSiteSettings.nav!.menuItems
+            )
+              .filter((item) => item.enabled !== false)
+              .map((item) => {
+                const label = isBn ? item.labelBn : item.labelEn;
+                const isHighlight = item.isHighlight;
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className={`flex items-center gap-1.5 transition-colors ${
+                      isHighlight
+                        ? 'text-[#D6403B] hover:text-[#BF3430] font-extrabold'
+                        : 'hover:text-[#D6403B]'
+                    }`}
+                  >
+                    {item.badge && <span className="text-xs">{item.badge}</span>}
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
           </div>
         </div>
       </header>
