@@ -214,10 +214,13 @@ export default function CheckoutPage() {
         customerName: customerName.trim(),
         customerPhone: normalizedPhone,
         district: isInsideDhaka ? 'Dhaka' : district.split(' ')[0],
+        thana: finalThana,
         fullAddress: combinedAddress,
         customerNote: customerNote.trim() || undefined,
         paymentMethod,
         couponCode: couponCode || undefined,
+        deliveryCharge,
+        totalAmount: grandTotal,
         items: items.map((i) => ({
           productId: i.productId,
           title: i.titleBn || i.title,

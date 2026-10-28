@@ -14,6 +14,13 @@ import {
 } from '@/lib/store';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Order } from '@/models/Order';
+import { Setting } from '@/models/Setting';
+import {
+  getDeliverySettings,
+  updateDeliverySettings,
+  defaultDeliverySettings,
+  calculateDelivery,
+} from '@/lib/delivery-store';
 import { getNotificationProvider } from '@/core/notification';
 import { verifyAdminRequest } from '@/lib/auth';
 
@@ -171,11 +178,32 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Calculate delivery charge by district
-    const deliveryRes = calculateDeliveryCharge({
+    let currentDeliverySettings = getDeliverySettings();
+    try {
+      await connectToDatabase();
+      const settingDoc = await Setting.findOne({ key: 'delivery_settings' }).lean();
+      if (settingDoc && (settingDoc as any).value) {
+        const parsed = JSON.parse((settingDoc as any).value);
+        currentDeliverySettings = {
+          ...defaultDeliverySettings,
+          ...parsed,
+        };
+        updateDeliverySettings(currentDeliverySettings);
+      }
+    } catch (dbErr) {
+      console.warn('MongoDB error reading delivery_settings in orders route:', dbErr);
+    }
+
+    const deliveryRes = calculateDelivery(
+      data.district,
       subtotal,
-      district: data.district,
-    });
-    const deliveryCharge = data.deliveryCharge !== undefined ? data.deliveryCharge : deliveryRes.deliveryCharge;
+      currentDeliverySettings,
+      data.thana
+    );
+
+    const deliveryCharge = typeof data.deliveryCharge === 'number'
+      ? data.deliveryCharge
+      : deliveryRes.charge;
 
     const totalAmount = data.totalAmount !== undefined
       ? data.totalAmount

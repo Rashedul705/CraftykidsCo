@@ -1,6 +1,7 @@
 import { OrderRecord, globalOrders, getAllProducts } from './store';
 import { OrderCreateInput } from './validations';
 import { normalizeBDPhone } from './utils';
+import { getDeliverySettings, calculateDelivery } from './delivery-store';
 
 export interface DeliveryCalculationResult {
   deliveryCharge: number;
@@ -13,23 +14,28 @@ export function calculateDeliveryCharge(input: {
   district: string;
   freeShippingEnabled?: boolean;
   freeDeliveryThreshold?: number;
+  thana?: string;
 }): DeliveryCalculationResult {
-  const freeEnabled = input.freeShippingEnabled !== false;
-  const threshold = input.freeDeliveryThreshold ?? 1000;
-  const isInsideDhaka = input.district.trim().toLowerCase().includes('dhaka');
-  const baseCharge = isInsideDhaka ? 60 : 120;
+  const currentSettings = getDeliverySettings();
+  const freeEnabled = input.freeShippingEnabled !== undefined
+    ? input.freeShippingEnabled
+    : currentSettings.freeShippingEnabled;
+  const threshold = input.freeDeliveryThreshold ?? currentSettings.freeDeliveryThreshold ?? 1000;
 
-  if (freeEnabled && input.subtotal >= threshold) {
-    return {
-      deliveryCharge: 0,
-      isFreeDelivery: true,
-      remainingForFreeDelivery: 0,
-    };
-  }
+  const res = calculateDelivery(
+    input.district,
+    input.subtotal,
+    {
+      ...currentSettings,
+      freeShippingEnabled: freeEnabled,
+      freeDeliveryThreshold: threshold,
+    },
+    input.thana
+  );
 
   return {
-    deliveryCharge: baseCharge,
-    isFreeDelivery: false,
+    deliveryCharge: res.charge,
+    isFreeDelivery: res.isFree,
     remainingForFreeDelivery: freeEnabled ? Math.max(0, threshold - input.subtotal) : 0,
   };
 }
