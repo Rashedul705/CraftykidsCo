@@ -57,6 +57,9 @@ export class MockCourierProvider implements ICourierProvider {
     returnCount: number;
     totalParcels?: number;
     hasHistory?: boolean;
+    serviceStatus?: 'available' | 'unavailable' | 'rate_limited' | 'error';
+    statusMessage?: string;
+    rateLimit?: { limit: number; current: number };
   }> {
     // High-risk mock if phone ends in '0000'
     const isMockRisky = phone.endsWith('0000');
@@ -72,6 +75,7 @@ export class MockCourierProvider implements ICourierProvider {
       returnCount,
       pastSuccessRate,
       isRisky: isMockRisky,
+      serviceStatus: 'available',
     };
   }
 }

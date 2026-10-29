@@ -5,6 +5,23 @@ import {
   CourierStatusResult,
 } from './courier.interface';
 
+// Fast In-Memory Cache for Steadfast Fraud Check Scores (10 minutes TTL)
+interface CacheEntry<T> {
+  data: T;
+  expiry: number;
+}
+const steadfastScoreCache = new Map<string, CacheEntry<any>>();
+
+export function clearSteadfastCache(phone?: string) {
+  if (phone) {
+    const clean = (phone || '').replace(/\D/g, '');
+    const cleanPhone = clean.startsWith('880') ? clean.substring(2) : clean;
+    steadfastScoreCache.delete(cleanPhone);
+  } else {
+    steadfastScoreCache.clear();
+  }
+}
+
 export class SteadfastCourierProvider implements ICourierProvider {
   name = 'STEADFAST';
   private apiKey: string;
@@ -184,7 +201,9 @@ export class SteadfastCourierProvider implements ICourierProvider {
     cancellationRatio?: number;
     totalReports?: number;
     volumeRange?: string;
-    volumeBand?: string;
+    serviceStatus?: 'available' | 'unavailable' | 'rate_limited' | 'error';
+    statusMessage?: string;
+    rateLimit?: { limit: number; current: number };
   }> {
     try {
       const cleanPhone = this.normalizePhone(phone);
@@ -196,10 +215,21 @@ export class SteadfastCourierProvider implements ICourierProvider {
           returnCount: 0,
           totalParcels: 0,
           hasHistory: false,
+          serviceStatus: 'error',
+          statusMessage: 'Invalid phone number format',
         };
       }
 
+      // Check In-Memory Cache first (instant 0ms response)
+      const cached = steadfastScoreCache.get(cleanPhone);
+      if (cached && cached.expiry > Date.now()) {
+        return cached.data;
+      }
+
       let scoreData: any = null;
+      let isRateLimited = false;
+      let rateLimitInfo = { limit: 30, current: 30 };
+
       const headers = {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -207,51 +237,120 @@ export class SteadfastCourierProvider implements ICourierProvider {
         'Secret-Key': this.secretKey,
       };
 
-      // 1. Query Official Steadfast Live Score Endpoint
+      // 1. Try standard /fraud_check/{phone} endpoint
       try {
-        const response = await fetch(`${this.baseUrl}/fraud_check/score/${cleanPhone}`, {
+        const response = await fetch(`${this.baseUrl}/fraud_check/${cleanPhone}`, {
           headers,
           cache: 'no-store',
+          signal: AbortSignal.timeout(3000),
         });
-        if (response.ok) {
+        if (response.status === 429) {
+          isRateLimited = true;
+          const body = await response.json().catch(() => null);
+          if (body?.limit) {
+            rateLimitInfo = { limit: Number(body.limit), current: Number(body.current || body.limit) };
+          }
+        } else if (response.ok) {
           scoreData = await response.json().catch(() => null);
         }
-      } catch (err) {
-        console.warn('Steadfast score API error:', err);
+      } catch {
+        // Fall through to next endpoint on timeout or error
       }
 
-      // 2. Fallback to direct packzy endpoint if primary failed
-      if (!scoreData || scoreData.status !== 200) {
+      // 2. If rate limited, return specific rate_limited status immediately
+      if (isRateLimited) {
+        const rateLimitResult = {
+          hasHistory: false,
+          serviceStatus: 'rate_limited' as const,
+          statusMessage: `স্টিডফাস্ট এপিআই দৈনিক সার্চ লিমিট (${rateLimitInfo.limit}টি) শেষ হয়ে গেছে`,
+          rateLimit: rateLimitInfo,
+          pastSuccessRate: 0,
+          returnRatio: 0,
+          isRisky: false,
+          totalReports: 0,
+          totalDeliveries: 0,
+          returnCount: 0,
+          totalParcels: 0,
+        };
+        steadfastScoreCache.set(cleanPhone, {
+          data: rateLimitResult,
+          expiry: Date.now() + 2 * 60 * 1000,
+        });
+        return rateLimitResult;
+      }
+
+      // 3. If no valid data, try score-specific endpoint /fraud_check/score/{phone}
+      if (!scoreData || (scoreData.status !== 200 && scoreData.delivery_ratio === undefined && scoreData.total_delivered === undefined)) {
         try {
-          const response = await fetch(`https://portal.packzy.com/api/v1/fraud_check/score/${cleanPhone}`, {
+          const response = await fetch(`${this.baseUrl}/fraud_check/score/${cleanPhone}`, {
             headers,
             cache: 'no-store',
+            signal: AbortSignal.timeout(3000),
           });
-          if (response.ok) {
+          if (response.status === 429) {
+            const body = await response.json().catch(() => null);
+            const rateResult = {
+              hasHistory: false,
+              serviceStatus: 'rate_limited' as const,
+              statusMessage: `স্টিডফাস্ট এপিআই দৈনিক সার্চ লিমিট (${body?.limit || 30}টি) শেষ হয়ে গেছে`,
+              rateLimit: { limit: Number(body?.limit || 30), current: Number(body?.current || 30) },
+              pastSuccessRate: 0,
+              returnRatio: 0,
+              isRisky: false,
+              totalReports: 0,
+              totalDeliveries: 0,
+              returnCount: 0,
+              totalParcels: 0,
+            };
+            steadfastScoreCache.set(cleanPhone, {
+              data: rateResult,
+              expiry: Date.now() + 2 * 60 * 1000,
+            });
+            return rateResult;
+          } else if (response.ok) {
             scoreData = await response.json().catch(() => null);
           }
-        } catch {}
+        } catch {
+          // Handled below
+        }
       }
 
-      // 3. Process Authentic Live Response from Steadfast
-      if (scoreData && (scoreData.status === 200 || scoreData.delivery_ratio !== undefined)) {
-        const volumeBand = scoreData.volume_band || 'none';
-        const volumeRange = scoreData.volume_range || null;
-        const totalReports = Number(scoreData.total_reports || 0);
+      // 3. Process Authentic Live Response from Steadfast (handles all payload variants)
+      if (scoreData && (scoreData.status === 200 || scoreData.delivery_ratio !== undefined || scoreData.total_delivered !== undefined || scoreData.Total_parcels !== undefined)) {
+        const delivered = Number(scoreData.total_delivered ?? scoreData.delivered_count ?? scoreData.total_deliveries ?? 0);
+        const cancelled = Number(scoreData.total_cancelled ?? scoreData.cancelled_count ?? scoreData.total_return ?? scoreData.return_count ?? 0);
+        const parcels = Number(scoreData.Total_parcels ?? scoreData.total_parcels ?? (delivered + cancelled));
+        const totalReports = Array.isArray(scoreData.total_fraud_reports)
+          ? scoreData.total_fraud_reports.length
+          : Number(scoreData.total_reports || 0);
 
-        // A customer has history if delivery_ratio is not null and volume_band is not none
-        const hasHistory =
-          scoreData.delivery_ratio !== null &&
-          scoreData.delivery_ratio !== undefined &&
-          volumeBand !== 'none';
+        let pastSuccessRate = 0;
+        if (scoreData.delivery_ratio !== undefined && scoreData.delivery_ratio !== null) {
+          pastSuccessRate = Math.round(Number(scoreData.delivery_ratio));
+        } else if (parcels > 0) {
+          pastSuccessRate = Math.round((delivered / parcels) * 100);
+        }
+
+        let returnRatio = 0;
+        if (scoreData.return_ratio !== undefined && scoreData.return_ratio !== null) {
+          returnRatio = Math.round(Number(scoreData.return_ratio));
+        } else if (scoreData.cancellation_ratio !== undefined && scoreData.cancellation_ratio !== null) {
+          returnRatio = Math.round(Number(scoreData.cancellation_ratio));
+        } else if (parcels > 0) {
+          returnRatio = Math.round((cancelled / parcels) * 100);
+        }
+
+        const volumeBand = scoreData.volume_band || (parcels > 0 ? (parcels >= 20 ? 'high' : parcels >= 5 ? 'medium' : 'low') : 'none');
+        const volumeRange = scoreData.volume_range || (parcels > 0 ? `${parcels} টি পার্সেল` : null);
+
+        // A customer has history if they have parcels recorded, or delivery ratio provided
+        const hasHistory = parcels > 0 || delivered > 0 || cancelled > 0 || (scoreData.delivery_ratio !== undefined && scoreData.delivery_ratio !== null && volumeBand !== 'none');
 
         if (hasHistory) {
-          const pastSuccessRate = Number(scoreData.delivery_ratio ?? 0);
-          const returnRatio = Number(scoreData.return_ratio ?? scoreData.cancellation_ratio ?? 0);
-          const isRisky = returnRatio > 30 || totalReports > 0 || (pastSuccessRate < 70 && pastSuccessRate > 0);
-
-          return {
+          const isRisky = returnRatio > 30 || totalReports > 0 || (pastSuccessRate < 70 && pastSuccessRate > 0 && parcels >= 3);
+          const result = {
             hasHistory: true,
+            serviceStatus: 'available' as const,
             pastSuccessRate,
             returnRatio,
             deliveryRatio: pastSuccessRate,
@@ -259,15 +358,21 @@ export class SteadfastCourierProvider implements ICourierProvider {
             volumeBand,
             totalReports,
             isRisky,
-            totalDeliveries: scoreData.delivered_count ?? undefined,
-            returnCount: scoreData.cancelled_count ?? undefined,
-            totalParcels: scoreData.total_parcels ?? undefined,
+            totalDeliveries: delivered,
+            returnCount: cancelled,
+            totalParcels: parcels,
           };
+          steadfastScoreCache.set(cleanPhone, {
+            data: result,
+            expiry: Date.now() + 10 * 60 * 1000, // 10 minutes cache
+          });
+          return result;
         }
 
         // Authentic New Customer with 0 previous history on Steadfast
-        return {
+        const result = {
           hasHistory: false,
+          serviceStatus: 'available' as const,
           pastSuccessRate: 0,
           returnRatio: 0,
           deliveryRatio: 0,
@@ -279,10 +384,18 @@ export class SteadfastCourierProvider implements ICourierProvider {
           returnCount: 0,
           totalParcels: 0,
         };
+        steadfastScoreCache.set(cleanPhone, {
+          data: result,
+          expiry: Date.now() + 5 * 60 * 1000,
+        });
+        return result;
       }
 
-      return {
+      // Courier Gateway Server is Offline / Unreachable (HTTP 500, network timeout, etc.)
+      const unavailableResult = {
         hasHistory: false,
+        serviceStatus: 'unavailable' as const,
+        statusMessage: 'স্টিডফাস্ট কুরিয়ার গেটওয়ে সাময়িকভাবে অফলাইন বা রেসপন্স করেনি (HTTP 500 / টাইমআউট)',
         pastSuccessRate: 0,
         returnRatio: 0,
         isRisky: false,
@@ -291,9 +404,17 @@ export class SteadfastCourierProvider implements ICourierProvider {
         returnCount: 0,
         totalParcels: 0,
       };
+      // Short cache (15 seconds) so retry button re-attempts immediately
+      steadfastScoreCache.set(cleanPhone, {
+        data: unavailableResult,
+        expiry: Date.now() + 15 * 1000,
+      });
+      return unavailableResult;
     } catch {
       return {
         hasHistory: false,
+        serviceStatus: 'unavailable',
+        statusMessage: 'কুরিয়ার নেটওয়ার্ক সংযোগ বিঘ্নিত হয়েছে',
         totalParcels: 0,
         totalDeliveries: 0,
         returnCount: 0,

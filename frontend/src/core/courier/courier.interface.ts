@@ -46,6 +46,9 @@ export interface ICourierProvider {
     totalReports?: number;
     volumeRange?: string;
     volumeBand?: string;
+    serviceStatus?: 'available' | 'unavailable' | 'rate_limited' | 'error';
+    statusMessage?: string;
+    rateLimit?: { limit: number; current: number };
   }>;
   getBalance?(): Promise<{ success: boolean; balance: number; currency: string; message?: string }>;
 }

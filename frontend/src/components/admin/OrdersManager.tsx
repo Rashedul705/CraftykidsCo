@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Search,
@@ -335,6 +335,9 @@ export default function OrdersManager({
     volumeRange?: string;
     volumeBand?: string;
     provider?: string;
+    serviceStatus?: 'available' | 'unavailable' | 'rate_limited' | 'error';
+    statusMessage?: string;
+    rateLimit?: { limit: number; current: number };
     storeHistory?: {
       total: number;
       delivered: number;
@@ -400,24 +403,55 @@ export default function OrdersManager({
     };
   }, [activeOrder, orders, customerRisk]);
 
-  // Load customer risk whenever active order changes
+  // Fast Customer Risk fetching with client-side cache & abort controller
+  const customerRiskCacheRef = useRef<Record<string, any>>({});
+
   useEffect(() => {
-    if (activeOrder?.customerPhone) {
-      setIsLoadingRisk(true);
-      fetch(`/api/courier/fraud-check?phone=${encodeURIComponent(activeOrder.customerPhone)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            setCustomerRisk(data);
-          } else {
-            setCustomerRisk(null);
-          }
-        })
-        .catch(() => setCustomerRisk(null))
-        .finally(() => setIsLoadingRisk(false));
-    } else {
+    const phone = activeOrder?.customerPhone;
+    if (!phone) {
       setCustomerRisk(null);
+      setIsLoadingRisk(false);
+      return;
     }
+
+    // Instant load from client-side cache if previously fetched
+    if (customerRiskCacheRef.current[phone]) {
+      setCustomerRisk(customerRiskCacheRef.current[phone]);
+      setIsLoadingRisk(false);
+      return;
+    }
+
+    setIsLoadingRisk(true);
+    const controller = new AbortController();
+
+    fetch(`/api/courier/fraud-check?phone=${encodeURIComponent(phone)}`, {
+      signal: controller.signal,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          if (data.serviceStatus === 'available') {
+            customerRiskCacheRef.current[phone] = data;
+          }
+          setCustomerRisk(data);
+        } else {
+          setCustomerRisk(null);
+        }
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          setCustomerRisk(null);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsLoadingRisk(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
   }, [activeOrder?.customerPhone]);
 
   // Sync internal note input when active order changes
@@ -2077,6 +2111,32 @@ export default function OrdersManager({
                         <span className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
                           স্টিডফাস্ট ডেলিভারি রিপোর্ট
                         </span>
+                        {!isLoadingRisk && activeOrder?.customerPhone && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const phone = activeOrder.customerPhone;
+                              if (phone) {
+                                delete customerRiskCacheRef.current[phone];
+                                setIsLoadingRisk(true);
+                                fetch(`/api/courier/fraud-check?phone=${encodeURIComponent(phone)}&refresh=1`)
+                                  .then((res) => res.json())
+                                  .then((data) => {
+                                    if (data.success) {
+                                      customerRiskCacheRef.current[phone] = data;
+                                      setCustomerRisk(data);
+                                    }
+                                  })
+                                  .finally(() => setIsLoadingRisk(false));
+                              }
+                            }}
+                            className="p-1 rounded hover:bg-black/5 text-[#888] hover:text-[#2B2B2B] transition-colors cursor-pointer"
+                            title="রিপোর্ট রিফ্রেশ করুন"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                       {isLoadingRisk ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-[#6B6B6B]" />
@@ -2091,6 +2151,16 @@ export default function OrdersManager({
                           }`}
                         >
                           {customerRisk.pastSuccessRate}% সাকসেস রেট
+                        </span>
+                      ) : customerRisk?.serviceStatus === 'rate_limited' ? (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-red-600" />
+                          সার্চ লিমিট শেষ ({customerRisk.rateLimit?.current || 30}/{customerRisk.rateLimit?.limit || 30})
+                        </span>
+                      ) : customerRisk?.serviceStatus === 'unavailable' ? (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#FEF6E6] text-[#A86400] flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-[#D97706]" />
+                          কুরিয়ার অফলাইন
                         </span>
                       ) : (
                         <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-[#6B6B6B]">
@@ -2163,18 +2233,120 @@ export default function OrdersManager({
                           </div>
                         )}
                       </div>
+                    ) : customerRisk?.serviceStatus === 'rate_limited' ? (
+                      <div className="bg-white p-3.5 rounded-[12px] border border-red-200 text-xs text-[#6B6B6B] mt-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-[#C23631] font-semibold">
+                            <Clock className="w-4 h-4 text-[#C23631] shrink-0" />
+                            <span>স্টিডফাস্ট এপিআই সার্চ লিমিট শেষ</span>
+                          </div>
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-red-100 text-[#C23631]">
+                            দৈনিক ৩০টি কোটা পূর্ণ
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#555] leading-relaxed">
+                          আপনার স্টিডফাস্ট এপিআই কী দিয়ে আজকের সর্বোচ্চ ৩০টি সার্চ সম্পন্ন হয়েছে। আনলিমিটেড লাইভ হিস্ট্রি দেখতে স্টিডফাস্ট পোর্টালে সরাসরি ফ্রড চেক করুন।
+                        </p>
+                        <div className="pt-2 border-t border-red-100 flex items-center justify-between text-[11px]">
+                          <a
+                            href="https://steadfast.com.bd/user/frauds/check"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[#C23631] font-semibold hover:underline text-[10px]"
+                          >
+                            <span>পোর্টালে সরাসরি ফ্রড চেক দেখুন</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const phone = activeOrder?.customerPhone;
+                              if (phone) {
+                                delete customerRiskCacheRef.current[phone];
+                                setIsLoadingRisk(true);
+                                fetch(`/api/courier/fraud-check?phone=${encodeURIComponent(phone)}&refresh=1`)
+                                  .then((res) => res.json())
+                                  .then((data) => {
+                                    if (data.success) {
+                                      if (data.serviceStatus === 'available') {
+                                        customerRiskCacheRef.current[phone] = data;
+                                      }
+                                      setCustomerRisk(data);
+                                    }
+                                  })
+                                  .finally(() => setIsLoadingRisk(false));
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] bg-white border border-[#EFE9E0] text-[#444] font-medium hover:bg-gray-50 text-[10px] transition-colors cursor-pointer"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            রিফ্রেশ
+                          </button>
+                        </div>
+                      </div>
+                    ) : customerRisk?.serviceStatus === 'unavailable' ? (
+                      <div className="bg-white p-3.5 rounded-[12px] border border-[#FDE6D2] text-xs text-[#6B6B6B] mt-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-[#B8561B] font-semibold">
+                            <AlertTriangle className="w-4 h-4 text-[#D97706] shrink-0" />
+                            <span>স্টিডফাস্ট লাইভ ডাটা লোড হয়নি</span>
+                          </div>
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-[#FEF6E6] text-[#B8561B]">
+                            সার্ভার রেসপন্স করেনি
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                          স্টিডফাস্ট কুরিয়ার গেটওয়ে সাময়িকভাবে অফলাইন বা নেটওয়ার্ক টাইমআউট হয়েছে (HTTP 500)। তাই এই কাস্টমারের লাইভ পার্সেল ডাটা এখন প্রদর্শিত হচ্ছে না।
+                        </p>
+                        <div className="pt-2 border-t border-[#FDE6D2] flex items-center justify-between text-[11px]">
+                          <a
+                            href={`https://steadfast.com.bd/user/frauds/check`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[#0B5F85] hover:underline font-medium text-[10px]"
+                          >
+                            <span>পোর্টালে ফ্রড চেক করুন</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const phone = activeOrder?.customerPhone;
+                              if (phone) {
+                                delete customerRiskCacheRef.current[phone];
+                                setIsLoadingRisk(true);
+                                fetch(`/api/courier/fraud-check?phone=${encodeURIComponent(phone)}&refresh=1`)
+                                  .then((res) => res.json())
+                                  .then((data) => {
+                                    if (data.success) {
+                                      customerRiskCacheRef.current[phone] = data;
+                                      setCustomerRisk(data);
+                                    }
+                                  })
+                                  .finally(() => setIsLoadingRisk(false));
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] bg-[#D97706] text-white font-medium hover:bg-[#B45309] text-[10px] transition-colors cursor-pointer"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            পুনরায় চেষ্টা করুন
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <div className="bg-white p-3.5 rounded-[12px] border border-[#EFE9E0] text-xs text-[#6B6B6B] mt-2 space-y-1.5">
                         <div className="flex items-center gap-1.5 text-[#1F6B43] font-semibold">
                           <CheckCircle2 className="w-4 h-4 text-[#1F6B43] shrink-0" />
-                          <span>স্টিডফাস্টে কোনো ফ্রড বা অভিযোগ নেই</span>
+                          <span>স্টিডফাস্টে পূর্বে কোনো পার্সেল হিস্ট্রি নেই</span>
                         </div>
                         <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
                           স্টিডফাস্ট কুরিয়ার নেটওয়ার্কে এই নম্বরে পূর্বে কোনো পার্সেল হিস্ট্রি পাওয়া যায়নি (কাস্টমারের নতুন নম্বর)।
                         </p>
                         <div className="pt-1 border-t border-[#EFE9E0] flex items-center justify-between text-[10px] text-[#8C8C8C]">
                           <span>লাইভ ভেরিফিকেশন: সম্পন্ন</span>
-                          <span className="text-[#1F6B43] font-medium">নিরাপদ কাস্টমার</span>
+                          <span className="text-[#1F6B43] font-medium">নতুন কাস্টমার</span>
                         </div>
                       </div>
                     )}
