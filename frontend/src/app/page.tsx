@@ -512,7 +512,8 @@ export default function HomePage() {
                 rating={product.rating}
                 imageUrl={product.imageUrl || product.image}
                 locale={locale}
-                hasVariations={!!(product.variations && product.variations.length > 0)}
+                hasVariations={Boolean(product.hasVariations || (product.variants && product.variants.length > 0) || (product.variations && product.variations.length > 0))}
+                variants={product.variants || product.variations}
                 stock={product.stock}
                 isOutOfStock={isProductOutOfStock(product)}
               />
@@ -565,7 +566,8 @@ export default function HomePage() {
                 rating={product.rating}
                 imageUrl={product.imageUrl || product.image}
                 locale={locale}
-                hasVariations={!!(product.variations && product.variations.length > 0)}
+                hasVariations={Boolean(product.hasVariations || (product.variants && product.variants.length > 0) || (product.variations && product.variations.length > 0))}
+                variants={product.variants || product.variations}
                 stock={product.stock}
                 isOutOfStock={isProductOutOfStock(product)}
               />
@@ -620,7 +622,8 @@ export default function HomePage() {
                   rating={product.rating}
                   imageUrl={product.imageUrl || product.image}
                   locale={locale}
-                  hasVariations={!!(product.variations && product.variations.length > 0)}
+                  hasVariations={Boolean(product.hasVariations || (product.variants && product.variants.length > 0) || (product.variations && product.variations.length > 0))}
+                  variants={product.variants || product.variations}
                   stock={product.stock}
                   isOutOfStock={isProductOutOfStock(product)}
                 />

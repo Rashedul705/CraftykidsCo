@@ -27,6 +27,11 @@ import {
   Filter,
   Minus,
   LogOut,
+  ChevronDown,
+  Check,
+  CheckCircle2,
+  Layers,
+  History,
 } from 'lucide-react';
 import {
   getAllOrders,
@@ -94,12 +99,22 @@ export default function AdminDashboardPage() {
   const [productViewMode, setProductViewMode] = useState<'list' | 'add' | 'edit'>('list');
 
   // Unified Tab Change Handler that keeps URL & localStorage in sync
-  const handleNavChange = (tabId: string, customMode?: 'list' | 'add' | 'edit') => {
+  const handleNavChange = (tabId: string, customModeOrFilter?: any) => {
     setActiveNav(tabId);
-    if (customMode) {
-      setProductViewMode(customMode);
-    } else if (tabId === 'products') {
-      setProductViewMode('list');
+    if (tabId === 'products') {
+      if (customModeOrFilter === 'add' || customModeOrFilter === 'edit' || customModeOrFilter === 'list') {
+        setProductViewMode(customModeOrFilter);
+      } else if (
+        customModeOrFilter === 'LOW_STOCK' ||
+        customModeOrFilter === 'OUT_OF_STOCK' ||
+        customModeOrFilter === 'IN_STOCK' ||
+        customModeOrFilter === 'ALL'
+      ) {
+        setProductViewMode('list');
+        setProductStockFilter(customModeOrFilter);
+      } else {
+        setProductViewMode('list');
+      }
     }
     setIsMobileNavOpen(false);
 
@@ -151,14 +166,22 @@ export default function AdminDashboardPage() {
 
   // Edit & Delete Product States
   const [editingProduct, setEditingProduct] = useState<SampleProduct | null>(null);
+  const [productEditInitialTab, setProductEditInitialTab] = useState<'general' | 'stock_history'>('general');
 
   // Delete Product Confirmation State
   const [deletingProduct, setDeletingProduct] = useState<SampleProduct | null>(null);
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
 
-  // Product Catalog Search & Category Filter
+  // Product Catalog Search, Category & Stock Filters (Section 5 Requirement)
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
+  const [productStockFilter, setProductStockFilter] = useState<'ALL' | 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'>('ALL');
+
+  // Product Variations Expandable & Inline Stock Editing States (Section 5 Requirement)
+  const [expandedProductIds, setExpandedProductIds] = useState<string[]>([]);
+  const [editingStocks, setEditingStocks] = useState<Record<string, number | ''>>({});
+  const [savingStockKey, setSavingStockKey] = useState<string | null>(null);
+  const [savedStockKey, setSavedStockKey] = useState<string | null>(null);
 
   // Sync data from API / store
   const refreshData = async () => {
@@ -281,10 +304,78 @@ export default function AdminDashboardPage() {
     });
   }, [orders, ordersStatusFilter, searchQuery]);
 
-  // Filtered products for Catalog tab (recently added first, stock-out products last)
+  // Helper to determine product stock status: 'in_stock' | 'low' | 'out'
+  const getProductStockStatus = (p: any): 'in_stock' | 'low' | 'out' => {
+    if (p.stockStatus) {
+      if (p.stockStatus === 'in_stock' || p.stockStatus === 'IN_STOCK') return 'in_stock';
+      if (p.stockStatus === 'low' || p.stockStatus === 'LOW_STOCK') return 'low';
+      if (p.stockStatus === 'out' || p.stockStatus === 'OUT_OF_STOCK') return 'out';
+    }
+    const hasVars = Boolean(
+      p.hasVariations ||
+      (p.variants && p.variants.length > 0) ||
+      (p.variations && p.variations.length > 0)
+    );
+    const varList =
+      p.variants && p.variants.length > 0
+        ? p.variants
+        : p.variations && p.variations.length > 0
+        ? p.variations
+        : [];
+
+    if (hasVars && varList.length > 0) {
+      const activeVars = varList.filter((v: any) => v.isActive !== false);
+      const totalStock = activeVars.reduce((sum: number, v: any) => sum + Number(v.stock ?? 0), 0);
+      if (totalStock <= 0) return 'out';
+      const hasLowVar = activeVars.some((v: any) => {
+        const s = Number(v.stock ?? 0);
+        const alert = Number(v.lowStockAlert ?? 5);
+        return s > 0 && s <= alert;
+      });
+      if (hasLowVar || totalStock <= 15) return 'low';
+      return 'in_stock';
+    }
+
+    const currentStock = Number(p.stock ?? 0);
+    const alert = Number(p.lowStockAlert ?? 5);
+    if (currentStock <= 0) return 'out';
+    if (currentStock <= alert) return 'low';
+    return 'in_stock';
+  };
+
+  // Stock Filter Counts for All, In stock, Low stock, Out of stock
+  const stockCounts = useMemo(() => {
+    let inStock = 0;
+    let lowStock = 0;
+    let outOfStock = 0;
+
+    products.forEach((p) => {
+      const st = getProductStockStatus(p);
+      if (st === 'out') outOfStock++;
+      else if (st === 'low') lowStock++;
+      else inStock++;
+    });
+
+    return {
+      all: products.length,
+      inStock,
+      lowStock,
+      outOfStock,
+    };
+  }, [products]);
+
+  // Filtered products for Catalog tab (recently added first, stock-out products last, with stock filters)
   const filteredProducts = useMemo(() => {
     const list = products.filter((p) => {
       if (productCategoryFilter !== 'ALL' && p.categorySlug !== productCategoryFilter) return false;
+
+      if (productStockFilter !== 'ALL') {
+        const st = getProductStockStatus(p);
+        if (productStockFilter === 'IN_STOCK' && st !== 'in_stock') return false;
+        if (productStockFilter === 'LOW_STOCK' && st !== 'low') return false;
+        if (productStockFilter === 'OUT_OF_STOCK' && st !== 'out') return false;
+      }
+
       if (productSearchQuery.trim()) {
         const q = productSearchQuery.toLowerCase();
         const matchTitleBn = p.titleBn?.toLowerCase().includes(q);
@@ -295,7 +386,7 @@ export default function AdminDashboardPage() {
       return true;
     });
     return sortProductsByStockAndRecency(list);
-  }, [products, productCategoryFilter, productSearchQuery]);
+  }, [products, productCategoryFilter, productStockFilter, productSearchQuery]);
 
   // Order status update
   const handleStatusChange = async (orderId: string, newStatus: OrderRecord['status']) => {
@@ -522,6 +613,14 @@ export default function AdminDashboardPage() {
   // Open Edit Product Page
   const handleOpenEditProduct = (p: SampleProduct) => {
     setEditingProduct(p);
+    setProductEditInitialTab('general');
+    setProductViewMode('edit');
+  };
+
+  // Open Stock History for Product (Section 6 Requirement)
+  const handleOpenProductStockHistory = (p: SampleProduct) => {
+    setEditingProduct(p);
+    setProductEditInitialTab('stock_history');
     setProductViewMode('edit');
   };
 
@@ -553,6 +652,139 @@ export default function AdminDashboardPage() {
     } finally {
       setIsDeletingProduct(false);
       setDeletingProduct(null);
+    }
+  };
+
+  // Toggle Expand / Collapse Variations Mini-Table (Section 5 Requirement)
+  const toggleExpandProduct = (id: string) => {
+    setExpandedProductIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // Inline Stock Edit with Save Tick for Simple Product (Section 5 Requirement)
+  const handleSaveSimpleStock = async (p: SampleProduct) => {
+    const current = (p as any).stock ?? 0;
+    const inputVal = editingStocks[p.id];
+    const newStock = inputVal !== undefined && inputVal !== '' ? Math.max(0, Math.floor(Number(inputVal))) : current;
+
+    const key = p.id;
+    setSavingStockKey(key);
+
+    try {
+      const res = await fetch(`/api/products/${p.id || p.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stock: newStock,
+          isStockOnly: true,
+          reason: 'manual_edit',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProducts((prev) =>
+          prev.map((item) =>
+            item.id === p.id || item.slug === p.slug
+              ? {
+                  ...item,
+                  stock: newStock,
+                  totalStock: newStock,
+                  stockStatus:
+                    newStock <= 0
+                      ? 'out'
+                      : newStock <= ((p as any).lowStockAlert || 5)
+                      ? 'low'
+                      : 'in_stock',
+                }
+              : item
+          )
+        );
+        setSavedStockKey(key);
+        setTimeout(() => setSavedStockKey(null), 2500);
+        setActionFeedback(`স্টক সেভ হয়েছে: ${p.titleBn || p.titleEn} (${newStock} units - Logged: manual_edit)`);
+        setTimeout(() => setActionFeedback(null), 3000);
+      } else {
+        alert(data.message || 'Stock save failed');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to save stock');
+    } finally {
+      setSavingStockKey(null);
+    }
+  };
+
+  // Inline Stock Edit with Save Tick for Variation of Variable Product (Section 5 Requirement)
+  const handleSaveVariantStock = async (p: SampleProduct, v: any) => {
+    const varKey = `${p.id}_${v.id || v._id || v.sku}`;
+    const current = Number(v.stock ?? 0);
+    const inputVal = editingStocks[varKey];
+    const newStock = inputVal !== undefined && inputVal !== '' ? Math.max(0, Math.floor(Number(inputVal))) : current;
+
+    setSavingStockKey(varKey);
+
+    try {
+      const res = await fetch(`/api/products/${p.id || p.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          variantId: v._id || v.id,
+          variationSku: v.sku,
+          stock: newStock,
+          reason: 'manual_edit',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProducts((prev) =>
+          prev.map((item) => {
+            if (item.id !== p.id && item.slug !== p.slug) return item;
+            const updatedVariants = (item.variants || item.variations || []).map((vt: any) => {
+              if (
+                (v._id && vt._id === v._id) ||
+                (v.id && vt.id === v.id) ||
+                (v.sku && vt.sku === v.sku)
+              ) {
+                return {
+                  ...vt,
+                  stock: newStock,
+                  stockStatus:
+                    newStock <= 0
+                      ? 'out'
+                      : newStock <= (vt.lowStockAlert || 5)
+                      ? 'low'
+                      : 'in_stock',
+                };
+              }
+              return vt;
+            });
+            const newTotal = updatedVariants
+              .filter((vt: any) => vt.isActive !== false)
+              .reduce((s: number, vt: any) => s + Number(vt.stock || 0), 0);
+
+            return {
+              ...item,
+              variants: updatedVariants,
+              variations: updatedVariants,
+              totalStock: newTotal,
+              stock: newTotal,
+              stockStatus: newTotal <= 0 ? 'out' : newTotal <= 15 ? 'low' : 'in_stock',
+            };
+          })
+        );
+        setSavedStockKey(varKey);
+        setTimeout(() => setSavedStockKey(null), 2500);
+        setActionFeedback(
+          `ভেরিয়েশন স্টক সেভ হয়েছে: ${v.optionValue || v.name || v.sku} (${newStock} units - Logged: manual_edit)`
+        );
+        setTimeout(() => setActionFeedback(null), 3000);
+      } else {
+        alert(data.message || 'Variation stock save failed');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to save variation stock');
+    } finally {
+      setSavingStockKey(null);
     }
   };
 
@@ -696,9 +928,11 @@ export default function AdminDashboardPage() {
             <AddProductForm
               key={productViewMode === 'edit' ? (editingProduct?.id || editingProduct?.slug || 'edit') : 'add'}
               initialProduct={productViewMode === 'edit' ? editingProduct : null}
+              initialTab={productViewMode === 'edit' ? productEditInitialTab : 'general'}
               onCancel={() => {
                 setProductViewMode('list');
                 setEditingProduct(null);
+                setProductEditInitialTab('general');
               }}
               onSuccess={(saved) => {
                 refreshData();
@@ -734,7 +968,61 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-            {/* Product Search & Filter Bar */}
+            {/* Product Stock Filters (Section 5 Requirement) */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-b border-[#EFEAE2] pb-3">
+              <span className="text-xs font-bold text-[#6B6B6B] mr-1 flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5" /> Stock:
+              </span>
+              <button
+                type="button"
+                onClick={() => setProductStockFilter('ALL')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  productStockFilter === 'ALL'
+                    ? 'bg-[#2B2B2B] text-white shadow-xs'
+                    : 'bg-[#FAF7F2] text-[#6B6B6B] hover:bg-[#EFEAE2] border border-[#EFEAE2]'
+                }`}
+              >
+                All ({stockCounts.all})
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductStockFilter('IN_STOCK')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  productStockFilter === 'IN_STOCK'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                In stock ({stockCounts.inStock})
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductStockFilter('LOW_STOCK')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  productStockFilter === 'LOW_STOCK'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                Low stock ({stockCounts.lowStock})
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductStockFilter('OUT_OF_STOCK')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  productStockFilter === 'OUT_OF_STOCK'
+                    ? 'bg-red-700 text-white shadow-xs'
+                    : 'bg-red-50 text-red-800 hover:bg-red-100 border border-red-200'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                Out of stock ({stockCounts.outOfStock})
+              </button>
+            </div>
+
+            {/* Product Search & Category Filter Bar */}
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
               <div className="relative flex-1 w-full">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8A8A]" />
@@ -771,87 +1059,191 @@ export default function AdminDashboardPage() {
                     <th className="pb-3 font-semibold">Image</th>
                     <th className="pb-3 font-semibold">Product Name</th>
                     <th className="pb-3 font-semibold">Price</th>
-                    <th className="pb-3 font-semibold">Inventory / Stock</th>
+                    <th className="pb-3 font-semibold min-w-[200px]">Stock</th>
                     <th className="pb-3 font-semibold text-right pr-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EFEAE2]">
                   {filteredProducts.map((p) => {
-                    const currentStock = (p as any).stock ?? 25;
-                    const isOutOfStock = currentStock <= 0;
-                    const isLowStock = currentStock > 0 && currentStock <= 5;
+                    const isVariable = Boolean(
+                      p.hasVariations ||
+                      (p.variants && p.variants.length > 0) ||
+                      (p.variations && p.variations.length > 0)
+                    );
+                    const variants: any[] =
+                      p.variants && p.variants.length > 0
+                        ? p.variants
+                        : p.variations && p.variations.length > 0
+                        ? p.variations
+                        : [];
+
+                    const isExpanded = expandedProductIds.includes(p.id);
+                    const currentStock = isVariable
+                      ? (p.totalStock !== undefined ? p.totalStock : (p as any).stock ?? 0)
+                      : ((p as any).stock ?? 0);
+
+                    const alertLevel = (p as any).lowStockAlert || 5;
+                    const stockStatus = getProductStockStatus(p);
+                    const isOutOfStock = stockStatus === 'out';
+                    const isLowStock = stockStatus === 'low';
+
+                    const simpleKey = p.id;
+                    const curSimpleStockInput =
+                      editingStocks[simpleKey] !== undefined ? editingStocks[simpleKey] : currentStock;
+                    const isSavingSimple = savingStockKey === simpleKey;
+                    const isSavedSimple = savedStockKey === simpleKey;
 
                     return (
-                      <tr key={p.id} className="hover:bg-[#FAF7F2]/50 transition-colors">
-                        <td className="py-3">
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shrink-0">
-                            <Image src={p.imageUrl} alt={p.titleBn} fill className="object-cover" />
-                          </div>
-                        </td>
-                        <td className="py-3 font-bold text-[#1A1A1A]">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span>{p.titleBn}</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FAF7F2] border border-[#E5E0D8] text-[#666]">
-                              {p.categorySlug}
-                            </span>
-                            {(p as any).badge && (
-                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
-                                {(p as any).badge}
-                              </span>
-                            )}
-                          </div>
-                          <span className="block text-[11px] text-[#6B6B6B] font-normal">{p.titleEn}</span>
-                          <span className="block text-[10px] font-mono text-[#8A8A8A]">{p.slug}</span>
-                        </td>
-                        <td className="py-3">
-                          <div className="flex flex-col">
-                            <span className="font-black text-[#D32F2F] text-sm">
-                              ৳{p.baseSalePrice || p.basePrice}
-                            </span>
-                            {p.baseSalePrice && p.baseSalePrice < p.basePrice && (
-                              <span className="text-[10px] text-[#8A8A8A] line-through">
-                                ৳{p.basePrice}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                isOutOfStock
-                                  ? 'bg-[#FEE2E2] text-[#DC2626]'
-                                  : isLowStock
-                                  ? 'bg-[#FEF3C7] text-[#B45309]'
-                                  : 'bg-[#DCFCE7] text-[#15803D]'
-                              }`}
-                            >
-                              {isOutOfStock ? 'Out of Stock' : isLowStock ? `Low (${currentStock})` : `In Stock (${currentStock})`}
-                            </span>
-
-                            {/* Quick Stock Counter +/- */}
-                            <div className="inline-flex items-center border border-[#E5E0D8] rounded-lg bg-white overflow-hidden shadow-2xs">
-                              <button
-                                onClick={() => handleQuickStockChange(p, -1)}
-                                disabled={currentStock <= 0}
-                                className="px-1.5 py-0.5 hover:bg-[#FAF7F2] text-[#666] disabled:opacity-30 cursor-pointer transition-colors"
-                                title="Decrease stock by 1"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </button>
-                              <span className="px-1.5 text-[11px] font-bold text-[#1A1A1A] min-w-[20px] text-center">
-                                {currentStock}
-                              </span>
-                              <button
-                                onClick={() => handleQuickStockChange(p, 1)}
-                                className="px-1.5 py-0.5 hover:bg-[#FAF7F2] text-[#666] cursor-pointer transition-colors"
-                                title="Increase stock by 1"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
+                      <React.Fragment key={p.id}>
+                        <tr className="hover:bg-[#FAF7F2]/50 transition-colors">
+                          <td className="py-3">
+                            <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shrink-0">
+                              <Image src={p.imageUrl} alt={p.titleBn} fill className="object-cover" />
                             </div>
-                          </div>
-                        </td>
+                          </td>
+                          <td className="py-3 font-bold text-[#1A1A1A]">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span>{p.titleBn}</span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FAF7F2] border border-[#E5E0D8] text-[#666]">
+                                {p.categorySlug}
+                              </span>
+                              {isVariable && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FDE3E1] text-[#D6403B] border border-[#FCD2CF]">
+                                  Variable ({variants.length})
+                                </span>
+                              )}
+                              {(p as any).badge && (
+                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                                  {(p as any).badge}
+                                </span>
+                              )}
+                            </div>
+                            <span className="block text-[11px] text-[#6B6B6B] font-normal">{p.titleEn}</span>
+                            <span className="block text-[10px] font-mono text-[#8A8A8A]">{p.slug}</span>
+                          </td>
+                          <td className="py-3">
+                            <div className="flex flex-col">
+                              <span className="font-black text-[#D32F2F] text-sm">
+                                ৳{p.baseSalePrice || p.basePrice || (p as any).regularPrice || 0}
+                              </span>
+                              {p.baseSalePrice && p.baseSalePrice < (p.basePrice || (p as any).regularPrice) && (
+                                <span className="text-[10px] text-[#8A8A8A] line-through">
+                                  ৳{p.basePrice || (p as any).regularPrice}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Stock Column (Section 5 Requirement) */}
+                          <td className="py-3">
+                            {isVariable ? (
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                                      isOutOfStock
+                                        ? 'bg-[#FEE2E2] text-[#DC2626]'
+                                        : isLowStock
+                                        ? 'bg-[#FEF3C7] text-[#B45309]'
+                                        : 'bg-[#DCFCE7] text-[#15803D]'
+                                    }`}
+                                  >
+                                    <span
+                                      className={`w-1.5 h-1.5 rounded-full ${
+                                        isOutOfStock ? 'bg-red-600' : isLowStock ? 'bg-amber-600' : 'bg-emerald-600'
+                                      }`}
+                                    />
+                                    {isOutOfStock
+                                      ? 'Out of Stock'
+                                      : isLowStock
+                                      ? `Low (${currentStock} units)`
+                                      : `In Stock (${currentStock} units)`}
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpandProduct(p.id)}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-colors cursor-pointer ${
+                                      isExpanded
+                                        ? 'bg-[#2B2B2B] text-white border-[#2B2B2B]'
+                                        : 'bg-[#FAF7F2] hover:bg-[#F5EFE6] border-[#EFEAE2] text-[#2B2B2B]'
+                                    }`}
+                                  >
+                                    <Layers className="w-3 h-3" />
+                                    <span>
+                                      {isExpanded
+                                        ? 'Hide variations'
+                                        : `View ${variants.length} variations`}
+                                    </span>
+                                    <ChevronDown
+                                      className={`w-3.5 h-3.5 transition-transform ${
+                                        isExpanded ? 'rotate-180' : ''
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                                    isOutOfStock
+                                      ? 'bg-[#FEE2E2] text-[#DC2626]'
+                                      : isLowStock
+                                      ? 'bg-[#FEF3C7] text-[#B45309]'
+                                      : 'bg-[#DCFCE7] text-[#15803D]'
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      isOutOfStock ? 'bg-red-600' : isLowStock ? 'bg-amber-600' : 'bg-emerald-600'
+                                    }`}
+                                  />
+                                  {isOutOfStock
+                                    ? 'Out of Stock'
+                                    : isLowStock
+                                    ? `Low stock (${currentStock})`
+                                    : `In Stock (${currentStock})`}
+                                </span>
+
+                                {/* Inline stock edit with Save tick (Section 5 Requirement) */}
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={curSimpleStockInput}
+                                    onChange={(e) =>
+                                      setEditingStocks((prev) => ({
+                                        ...prev,
+                                        [simpleKey]:
+                                          e.target.value === ''
+                                            ? ''
+                                            : Math.max(0, Number(e.target.value)),
+                                      }))
+                                    }
+                                    className="w-16 px-2 py-1 text-center font-bold text-xs border rounded-lg bg-white border-[#EFEAE2] focus:border-[#D6403B] outline-none shadow-2xs"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveSimpleStock(p)}
+                                    disabled={isSavingSimple}
+                                    className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer disabled:opacity-50"
+                                    title="Save stock (writes stockLogs entry)"
+                                  >
+                                    {isSavingSimple ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : isSavedSimple ? (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    ) : (
+                                      <Check className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </td>
                         <td className="py-3 text-right pr-2">
                           <div className="flex items-center justify-end gap-1.5">
                             {/* Edit Button */}
@@ -861,6 +1253,15 @@ export default function AdminDashboardPage() {
                               title="Edit Product"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Stock History Button (Section 6 Requirement) */}
+                            <button
+                              onClick={() => handleOpenProductStockHistory(p)}
+                              className="p-1.5 rounded-lg bg-[#FAF5FF] text-[#7C3AED] hover:bg-[#F3E8FF] transition-colors cursor-pointer border border-[#E9D5FF]"
+                              title="Stock History & Audit Log"
+                            >
+                              <History className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Delete Button */}
@@ -884,8 +1285,168 @@ export default function AdminDashboardPage() {
                           </div>
                         </td>
                       </tr>
-                    );
-                  })}
+
+                      {/* Expandable Variations Mini-Table (Section 5 Requirement) */}
+                      {isVariable && isExpanded && (
+                        <tr className="bg-[#FAF7F2]/60 border-b border-[#EFEAE2]">
+                          <td colSpan={5} className="p-3 sm:p-4">
+                            <div className="bg-white rounded-xl border border-[#EFEAE2] p-3.5 shadow-2xs space-y-2.5">
+                              <div className="flex items-center justify-between pb-2 border-b border-[#EFEAE2]">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-[#D6403B]"></span>
+                                  <span className="text-xs font-bold text-[#1A1A1A]">
+                                    Variations Stock for &quot;{p.titleBn || p.titleEn}&quot;
+                                  </span>
+                                  <span className="text-[11px] font-semibold text-[#6B6B6B]">
+                                    ({variants.length} variations &bull; {currentStock} total active units)
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setEditingProduct(p);
+                                    setProductEditInitialTab('stock_history');
+                                    setProductViewMode('edit');
+                                  }}
+                                  className="text-[11px] font-bold text-[#7C3AED] hover:text-[#6D28D9] flex items-center gap-1 cursor-pointer bg-[#FAF5FF] border border-[#E9D5FF] px-2 py-0.5 rounded-lg transition"
+                                  title="View full stock history"
+                                >
+                                  <History className="w-3 h-3" />
+                                  <span>Stock History</span>
+                                </button>
+                              </div>
+
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs min-w-[550px]">
+                                  <thead>
+                                    <tr className="text-[10px] text-[#8C8C8C] uppercase border-b border-[#EFEAE2]">
+                                      <th className="py-1.5 font-semibold">Image</th>
+                                      <th className="py-1.5 font-semibold">Option / Set</th>
+                                      <th className="py-1.5 font-semibold">Detail (কী কী আছে)</th>
+                                      <th className="py-1.5 font-semibold">SKU</th>
+                                      <th className="py-1.5 font-semibold">Price</th>
+                                      <th className="py-1.5 font-semibold">Stock</th>
+                                      <th className="py-1.5 font-semibold">Status</th>
+                                      <th className="py-1.5 font-semibold text-right">Save</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-[#EFEAE2]">
+                                    {variants.map((v: any) => {
+                                      const varKey = `${p.id}_${v.id || v._id || v.sku}`;
+                                      const curStock =
+                                        editingStocks[varKey] !== undefined ? editingStocks[varKey] : (v.stock ?? 0);
+                                      const isSaving = savingStockKey === varKey;
+                                      const isSaved = savedStockKey === varKey;
+                                      const varAlertLevel = v.lowStockAlert || 5;
+                                      const s = Number(v.stock ?? 0);
+                                      const isOut = s <= 0;
+                                      const isLow = s > 0 && s <= varAlertLevel;
+
+                                      return (
+                                        <tr
+                                          key={v.id || v._id || v.sku}
+                                          className={`hover:bg-[#FAF7F2]/40 transition-colors ${
+                                            v.isActive === false ? 'opacity-50 bg-gray-50/50' : ''
+                                          }`}
+                                        >
+                                          <td className="py-2 w-10">
+                                            <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2]">
+                                              <Image
+                                                src={v.imageUrl || v.image || p.imageUrl || '/placeholder.png'}
+                                                alt={v.optionValue || 'Variation'}
+                                                fill
+                                                className="object-cover"
+                                              />
+                                            </div>
+                                          </td>
+                                          <td className="py-2 font-bold text-[#1A1A1A]">
+                                            {v.optionValue || v.name || v.titleBn || v.titleEn}
+                                            {v.isActive === false && (
+                                              <span className="ml-1.5 text-[9px] font-semibold text-[#8C8C8C] bg-gray-100 px-1.5 py-0.5 rounded">
+                                                Inactive
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td className="py-2 text-[#6B6B6B] max-w-[200px] truncate" title={v.detail}>
+                                            {v.detail || '-'}
+                                          </td>
+                                          <td className="py-2 font-mono text-[11px] text-[#6B6B6B]">
+                                            {v.sku}
+                                          </td>
+                                          <td className="py-2">
+                                            <span className="font-bold text-[#D6403B]">
+                                              ৳{v.salePrice || v.regularPrice || v.price}
+                                            </span>
+                                            {v.salePrice && v.salePrice < (v.regularPrice || v.price) && (
+                                              <span className="text-[10px] text-[#8C8C8C] line-through ml-1">
+                                                ৳{v.regularPrice || v.price}
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td className="py-2">
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              value={curStock}
+                                              onChange={(e) =>
+                                                setEditingStocks((prev) => ({
+                                                  ...prev,
+                                                  [varKey]:
+                                                    e.target.value === ''
+                                                      ? ''
+                                                      : Math.max(0, Number(e.target.value)),
+                                                }))
+                                              }
+                                              className="w-16 px-2 py-1 text-center font-bold text-xs border rounded-lg bg-white border-[#EFEAE2] focus:border-[#D6403B] outline-none shadow-2xs"
+                                            />
+                                          </td>
+                                          <td className="py-2">
+                                            <span
+                                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                isOut
+                                                  ? 'bg-red-50 text-red-700 border border-red-200'
+                                                  : isLow
+                                                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                              }`}
+                                            >
+                                              <span
+                                                className={`w-1.5 h-1.5 rounded-full ${
+                                                  isOut ? 'bg-red-600' : isLow ? 'bg-amber-500' : 'bg-emerald-500'
+                                                }`}
+                                              />
+                                              {isOut ? 'Out of stock' : isLow ? `Low (${s})` : `In stock (${s})`}
+                                            </span>
+                                          </td>
+                                          <td className="py-2 text-right">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleSaveVariantStock(p, v)}
+                                              disabled={isSaving}
+                                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer disabled:opacity-50"
+                                              title="Save stock (writes stockLogs entry)"
+                                            >
+                                              {isSaving ? (
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                              ) : isSaved ? (
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                              ) : (
+                                                <Check className="w-3.5 h-3.5" />
+                                              )}
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
                 </tbody>
               </table>
             </div>

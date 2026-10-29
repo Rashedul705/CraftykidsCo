@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ShoppingBag, Check, Heart, Star, Zap } from 'lucide-react';
 import { formatBDT, toBanglaDigits } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
+import { trackAddToCart, trackInitiateCheckout } from '@/lib/analytics';
 
 export interface ProductCardProps {
   id: string;
@@ -23,6 +24,8 @@ export interface ProductCardProps {
   imageUrl: string;
   locale?: 'bn' | 'en';
   hasVariations?: boolean;
+  variants?: any[];
+  lowestPrice?: number;
   stock?: number;
   isOutOfStock?: boolean;
   onQuickAdd?: (id: string) => void;
@@ -32,6 +35,7 @@ export function ProductCard({
   id,
   slug,
   title,
+  titleEn,
   price,
   salePrice,
   badge,
@@ -41,6 +45,8 @@ export function ProductCard({
   imageUrl,
   locale = 'bn',
   hasVariations = false,
+  variants,
+  lowestPrice,
   stock,
   isOutOfStock = false,
   onQuickAdd,
@@ -57,6 +63,21 @@ export function ProductCard({
     : 0;
 
   const currentPrice = salePrice || price;
+
+  // Calculate lowest price if hasVariations (Section 7 Requirement: "Product cards on listings show the lowest price as 'From ৳1200'")
+  const effectiveLowestPrice = React.useMemo(() => {
+    if (!hasVariations) return currentPrice;
+    if (typeof lowestPrice === 'number' && lowestPrice > 0) return lowestPrice;
+    if (variants && Array.isArray(variants) && variants.length > 0) {
+      const activeVars = variants.filter((v: any) => v.isActive !== false);
+      const list = activeVars.length > 0 ? activeVars : variants;
+      const prices = list
+        .map((v: any) => Number((v.salePrice && v.salePrice > 0) ? v.salePrice : (v.regularPrice ?? v.price ?? currentPrice)))
+        .filter((p: number) => !isNaN(p) && p > 0);
+      if (prices.length > 0) return Math.min(...prices);
+    }
+    return currentPrice;
+  }, [hasVariations, lowestPrice, variants, currentPrice]);
 
   // 1. Add to Cart Handler (Stays on page with feedback)
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -80,6 +101,14 @@ export function ProductCard({
       price: currentPrice,
       quantity: 1,
     });
+
+    trackAddToCart({
+      id,
+      title: titleEn || title,
+      price: currentPrice,
+      quantity: 1,
+    });
+
     setAdded(true);
     if (onQuickAdd) onQuickAdd(id);
     setTimeout(() => setAdded(false), 1500);
@@ -107,6 +136,26 @@ export function ProductCard({
       price: currentPrice,
       quantity: 1,
     });
+
+    trackAddToCart({
+      id,
+      title: titleEn || title,
+      price: currentPrice,
+      quantity: 1,
+    });
+
+    trackInitiateCheckout(
+      [
+        {
+          id,
+          title: titleEn || title,
+          price: currentPrice,
+          quantity: 1,
+        },
+      ],
+      currentPrice
+    );
+
     router.push('/checkout');
   };
 
@@ -208,11 +257,16 @@ export function ProductCard({
         {/* Price & Action Buttons */}
         <div className="mt-2.5">
           {/* Pricing */}
-          <div className="flex items-baseline gap-2 mb-2">
+          <div className="flex items-baseline gap-1.5 mb-2 flex-wrap">
+            {hasVariations && (
+              <span className="text-xs text-[#6B6B6B] font-bold">
+                From
+              </span>
+            )}
             <span className="text-base sm:text-lg font-extrabold text-[#C23631]">
-              {formatBDT(currentPrice, { locale })}
+              {formatBDT(hasVariations ? effectiveLowestPrice : currentPrice, { locale })}
             </span>
-            {salePrice && (
+            {!hasVariations && salePrice && (
               <span className="text-xs text-[#6B6B6B] line-through font-normal">
                 {formatBDT(price, { locale })}
               </span>

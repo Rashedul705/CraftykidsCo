@@ -28,18 +28,25 @@ export interface ProductReview {
 }
 
 export interface ProductVariation {
+  _id?: string;
   id?: string;
+  optionValue?: string;
   name?: string;
   detail?: string;
   whatsInIt?: string;
   descriptionBn?: string;
   sku: string;
-  titleBn: string;
-  titleEn: string;
+  titleBn?: string;
+  titleEn?: string;
+  regularPrice?: number;
   price: number;
-  salePrice: number;
+  salePrice?: number | null;
   stock: number;
+  lowStockAlert?: number;
+  image?: string;
   imageUrl?: string;
+  isActive?: boolean;
+  stockStatus?: 'in_stock' | 'low' | 'out';
   badge?: string;
   attributes?: Record<string, any>;
 }
@@ -55,15 +62,21 @@ export interface ProductVideo {
 
 export interface SampleProduct {
   id: string;
+  _id?: string;
   slug: string;
   titleBn: string;
   titleEn: string;
+  hasVariations?: boolean;
+  regularPrice?: number;
   categorySlug?: string;
   basePrice: number;
-  baseSalePrice: number;
+  baseSalePrice?: number | null;
   price?: number;
-  salePrice?: number;
+  salePrice?: number | null;
+  sku?: string;
   stock?: number;
+  lowStockAlert?: number;
+  optionName?: string;
   rating?: number;
   reviewCount?: number;
   isVariable: boolean;
@@ -92,7 +105,10 @@ export interface SampleProduct {
   careInstructions?: string;
   faqs?: { question: string; answer: string }[];
   reviews?: ProductReview[];
+  variants?: ProductVariation[];
   variations?: ProductVariation[];
+  totalStock?: number;
+  stockStatus?: 'in_stock' | 'low' | 'out';
 }
 
 export function getVideoEmbedInfo(url?: string): {

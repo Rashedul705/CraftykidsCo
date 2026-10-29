@@ -247,7 +247,9 @@ export default function ShopPage() {
                     salePrice={p.baseSalePrice}
                     imageUrl={p.imageUrl}
                     ageBadgeText={`${p.targetAgeMin}+ বছর`}
-                    safetyBadgeText="১০০% নিরাপদ"
+                    hasVariations={Boolean(p.hasVariations || (p.variants && p.variants.length > 0) || (p.variations && p.variations.length > 0))}
+                    variants={p.variants || p.variations}
+                    stock={p.stock}
                     locale={locale}
                     onQuickAdd={() => handleQuickAdd(p.slug)}
                   />

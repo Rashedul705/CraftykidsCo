@@ -13,6 +13,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/Button';
 import { getOrderByIdOrNumber, getAllOrders } from '@/lib/store';
+import { trackPurchase } from '@/lib/analytics';
 
 function ConfirmationContent() {
   const params = useParams();
@@ -32,6 +33,24 @@ function ConfirmationContent() {
         .catch(() => {});
     }
   }, [id]);
+
+  // Fallback Purchase event tracking (protected against reloads via sessionStorage)
+  React.useEffect(() => {
+    if (order && order.orderNumber && typeof window !== 'undefined') {
+      const sessionKey = `tracked_purchase_${order.orderNumber}`;
+      if (!sessionStorage.getItem(sessionKey)) {
+        sessionStorage.setItem(sessionKey, 'true');
+        trackPurchase({
+          orderNumber: order.orderNumber,
+          totalAmount: order.totalAmount,
+          items: order.items || [],
+          customerPhone: order.customerPhone,
+          customerName: order.customerName,
+          district: order.district,
+        });
+      }
+    }
+  }, [order?.orderNumber, order?.totalAmount]);
 
   if (!order) {
     return <div className="p-12 text-center text-xs">অর্ডার লোড হচ্ছে...</div>;

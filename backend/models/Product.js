@@ -20,52 +20,104 @@ const reviewSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: true }
 }, { _id: false });
 
-const variationSchema = new mongoose.Schema({
-  sku: { type: String, required: true },
-  titleBn: { type: String },
-  titleEn: { type: String },
-  price: { type: Number, required: true },
-  salePrice: { type: Number },
-  stock: { type: Number, default: 50 },
-  imageUrl: { type: String }
-}, { _id: false });
+const variantSchema = new mongoose.Schema(
+  {
+    optionValue: { type: String, required: true },
+    detail: { type: String, default: '' },
+    sku: { type: String, required: true, trim: true },
+    regularPrice: { type: Number, required: true },
+    salePrice: { type: Number, default: null },
+    stock: { type: Number, default: 0, min: 0 },
+    lowStockAlert: { type: Number, default: 5 },
+    image: { type: String, default: '' },
+    isActive: { type: Boolean, default: true },
+  },
+  {
+    _id: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
 
-const productSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
-  title: { type: String, required: true },
-  titleBn: { type: String, required: true },
-  titleEn: { type: String, required: true },
-  slug: { type: String, required: true, unique: true, index: true },
-  price: { type: Number, required: true },
-  basePrice: { type: Number, required: true },
-  salePrice: { type: Number, required: true },
-  baseSalePrice: { type: Number, required: true },
-  category: { type: String, default: 'General' },
-  categorySlug: { type: String, required: true, index: true },
-  description: { type: String },
-  pieces: { type: String },
-  badge: { type: String },
-  rating: { type: Number, default: 4.9 },
-  reviewsCount: { type: Number, default: 0 },
-  reviewCount: { type: Number, default: 0 },
-  image: { type: String, required: true },
-  imageUrl: { type: String, required: true },
-  galleryImages: [{ type: String }],
-  accentColor: { type: String },
-  tagColor: { type: String },
-  isNewArrival: { type: Boolean, default: false },
-  isBestSeller: { type: Boolean, default: false },
-  targetAgeMin: { type: Number, default: 2 },
-  targetAgeMax: { type: Number, default: 8 },
-  safetyBadges: [{ type: String }],
-  specifications: [specificationSchema],
-  careInstructions: { type: String },
-  faqs: [faqSchema],
-  reviews: [reviewSchema],
-  variations: [variationSchema],
-  stock: { type: Number, default: 100 }
-}, {
-  timestamps: true
+variantSchema.virtual('stockStatus').get(function () {
+  const stock = typeof this.stock === 'number' ? this.stock : 0;
+  const alert = typeof this.lowStockAlert === 'number' ? this.lowStockAlert : 5;
+  if (stock === 0) return 'out';
+  if (stock <= alert) return 'low';
+  return 'in_stock';
+});
+
+const productSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true, unique: true },
+    title: { type: String, required: true },
+    titleBn: { type: String, required: true },
+    titleEn: { type: String, required: true },
+    slug: { type: String, required: true, unique: true, index: true },
+    hasVariations: { type: Boolean, default: false, index: true },
+    regularPrice: { type: Number },
+    salePrice: { type: Number, default: null },
+    sku: { type: String },
+    stock: { type: Number, default: 100 },
+    lowStockAlert: { type: Number, default: 5 },
+    optionName: { type: String, default: 'Set Options' },
+    variants: [variantSchema],
+    price: { type: Number },
+    basePrice: { type: Number },
+    baseSalePrice: { type: Number },
+    category: { type: String, default: 'General' },
+    categorySlug: { type: String, required: true, index: true },
+    description: { type: String },
+    pieces: { type: String },
+    badge: { type: String },
+    rating: { type: Number, default: 4.9 },
+    reviewsCount: { type: Number, default: 0 },
+    reviewCount: { type: Number, default: 0 },
+    image: { type: String, required: true },
+    imageUrl: { type: String, required: true },
+    galleryImages: [{ type: String }],
+    accentColor: { type: String },
+    tagColor: { type: String },
+    isNewArrival: { type: Boolean, default: false },
+    isBestSeller: { type: Boolean, default: false },
+    targetAgeMin: { type: Number, default: 2 },
+    targetAgeMax: { type: Number, default: 8 },
+    safetyBadges: [{ type: String }],
+    specifications: [specificationSchema],
+    careInstructions: { type: String },
+    faqs: [faqSchema],
+    reviews: [reviewSchema],
+    variations: [variantSchema],
+  },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
+
+productSchema.virtual('totalStock').get(function () {
+  if (this.hasVariations && Array.isArray(this.variants) && this.variants.length > 0) {
+    return this.variants
+      .filter((v) => v.isActive !== false)
+      .reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+  }
+  return typeof this.stock === 'number' ? this.stock : 0;
+});
+
+productSchema.virtual('stockStatus').get(function () {
+  const total =
+    this.hasVariations && Array.isArray(this.variants) && this.variants.length > 0
+      ? this.variants
+          .filter((v) => v.isActive !== false)
+          .reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
+      : typeof this.stock === 'number'
+      ? this.stock
+      : 0;
+  const alert = typeof this.lowStockAlert === 'number' ? this.lowStockAlert : 5;
+  if (total === 0) return 'out';
+  if (total <= alert) return 'low';
+  return 'in_stock';
 });
 
 module.exports = mongoose.models.Product || mongoose.model('Product', productSchema);

@@ -72,6 +72,13 @@ export function SiteSettingsManager() {
   const [showCapiToken, setShowCapiToken] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [uploadingTarget, setUploadingTarget] = useState<'header' | 'footer' | 'favicon' | null>(null);
+  const [isTestingCapi, setIsTestingCapi] = useState<boolean>(false);
+  const [capiTestFeedback, setCapiTestFeedback] = useState<{
+    success: boolean;
+    message: string;
+    eventsReceived?: number;
+    fbTraceId?: string;
+  } | null>(null);
 
   // Complete settings state initialized with defaults
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
@@ -285,6 +292,55 @@ export function SiteSettingsManager() {
       ...prev,
       pixel: { ...(prev.pixel || defaultSiteSettings.pixel!), ...patch },
     }));
+  };
+
+  const handleTestCapi = async () => {
+    const curPixel = settings.pixel || defaultSiteSettings.pixel!;
+    if (!curPixel.pixelId) {
+      showToast('❌ অনুগ্রহ করে প্রথমে Pixel ID প্রদান করুন।');
+      return;
+    }
+    if (!curPixel.capiToken) {
+      showToast('❌ Conversions API (CAPI) Access Token প্রদান করুন।');
+      return;
+    }
+    setIsTestingCapi(true);
+    setCapiTestFeedback(null);
+    try {
+      const res = await fetch('/api/tracking/meta-capi/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pixelId: curPixel.pixelId,
+          capiToken: curPixel.capiToken,
+          testEventCode: curPixel.testEventCode,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCapiTestFeedback({
+          success: true,
+          message: data.message || 'মেটা সিএপিআই টেস্ট সফল হয়েছে!',
+          eventsReceived: data.eventsReceived,
+          fbTraceId: data.fbTraceId,
+        });
+        showToast('✅ মেটা সার্ভার টেস্ট সফল! Events Manager-এ টেস্ট ইভেন্ট চেক করুন।');
+      } else {
+        setCapiTestFeedback({
+          success: false,
+          message: data.message || 'টেস্ট ইভেন্ট পাঠাতে সমস্যা হয়েছে।',
+        });
+        showToast('❌ মেটা CAPI ত্রুটি: ' + (data.message || ''));
+      }
+    } catch (e: any) {
+      setCapiTestFeedback({
+        success: false,
+        message: e?.message || 'নেটওয়ার্ক সংযোগ ত্রুটি',
+      });
+      showToast('❌ টেস্ট সম্পন্ন করা যায়নি');
+    } finally {
+      setIsTestingCapi(false);
+    }
   };
 
   // Navigation menu item helpers
@@ -2224,15 +2280,80 @@ export function SiteSettingsManager() {
               </div>
             </div>
 
-            {/* Instruction */}
-            <div className="p-4 rounded-xl bg-[#1877F2]/5 border border-[#1877F2]/20 text-xs text-[#1877F2] space-y-1">
-              <div className="flex items-center gap-1.5 font-bold">
-                <HelpCircle className="w-4 h-4" />
-                <span>Pixel ID কোথায় পাবেন?</span>
+            {/* CAPI Live Verification & Test Button */}
+            <div className="p-5 rounded-2xl border border-[#1877F2]/20 bg-[#1877F2]/5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <h4 className="font-bold text-xs text-[#2B2B2B] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#1877F2]" />
+                    <span>Conversions API (CAPI) সার্ভার কানেকশন পরীক্ষা</span>
+                  </h4>
+                  <p className="text-[11px] text-[#6B6B6B]">
+                    উপরের টোকেন ও পিক্সেল আইডি দিয়ে মেটা গ্রাফ এপিআই (v21.0)-এ তাৎক্ষণিক টেস্ট ইভেন্ট পাঠিয়ে যাচাই করুন।
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleTestCapi}
+                  disabled={isTestingCapi}
+                  className="px-4 py-2.5 rounded-xl bg-[#1877F2] hover:bg-[#166FE5] active:scale-95 text-white font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  {isTestingCapi ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>টেস্ট ইভেন্ট পাঠানো হচ্ছে...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>🧪 টেস্ট ইভেন্ট পাঠান (Test CAPI)</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <p className="text-[11px] text-[#4B5563]">
-                business.facebook.com &gt; Events Manager-এ গিয়ে আপনার পিক্সেল ডেটাসেট নির্বাচন করুন। সেখানে Settings ট্যাবে আপনার Pixel ID ও Conversions API জেনারেট অপশন পেয়ে যাবেন।
-              </p>
+
+              {capiTestFeedback && (
+                <div
+                  className={`p-3.5 rounded-xl border text-xs space-y-1 ${
+                    capiTestFeedback.success
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-rose-50 border-rose-200 text-rose-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-bold">
+                    {capiTestFeedback.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-600" />
+                    )}
+                    <span>{capiTestFeedback.message}</span>
+                  </div>
+                  {capiTestFeedback.success && capiTestFeedback.eventsReceived !== undefined && (
+                    <div className="text-[11px] text-emerald-700 pl-6 space-y-0.5">
+                      <p>• গ্রহণকৃত ইভেন্ট সংখ্যা: <strong>{capiTestFeedback.eventsReceived}</strong></p>
+                      {capiTestFeedback.fbTraceId && (
+                        <p className="font-mono text-[10px] text-emerald-600">
+                          • FB Trace ID: {capiTestFeedback.fbTraceId}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Instruction */}
+            <div className="p-4 rounded-xl bg-white border border-[#EFE9E0] text-xs text-[#2B2B2B] space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-[#1877F2]">
+                <HelpCircle className="w-4 h-4" />
+                <span>Pixel ID ও CAPI Token কীভাবে সংগ্রহ করবেন?</span>
+              </div>
+              <ul className="text-[11px] text-[#4B5563] space-y-1 list-disc pl-5">
+                <li><strong>Facebook Events Manager:</strong> <span className="font-mono text-[#1877F2]">business.facebook.com</span> &gt; Events Manager-এ যান।</li>
+                <li><strong>Pixel ID:</strong> আপনার ডেটাসেট (Dataset) নির্বাচন করে Settings ট্যাব থেকে Pixel ID কপি করুন।</li>
+                <li><strong>CAPI Token:</strong> Settings ট্যাবের <em>Set up direct integration</em> সেকশনে <em>Generate access token</em> বাটনে ক্লিক করে কপি করুন।</li>
+                <li><strong>Deduplication:</strong> ওয়েবসাইট ও সার্ভার উভয়েই একই <code>event_id</code> এবং SHA-256 হ্যাশ করা ডেটা পাঠিয়ে ডুপ্লিকেট রোধ করে।</li>
+              </ul>
             </div>
           </div>
         </div>

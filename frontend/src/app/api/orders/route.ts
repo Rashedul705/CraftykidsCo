@@ -4,8 +4,8 @@ import {
   calculateDeliveryCharge,
   validateAndApplyCoupon,
   deductInventoryStock,
-  deductDatabaseStock,
 } from '@/lib/order-service';
+import { deductOrderStockAtomic, ensureStockCollections, OutOfStockError } from '@/lib/order-stock';
 import {
   createOrder as createMemoryOrder,
   getAllOrders as getMemoryOrders,
@@ -23,6 +23,7 @@ import {
 } from '@/lib/delivery-store';
 import { getNotificationProvider } from '@/core/notification';
 import { verifyAdminRequest } from '@/lib/auth';
+import { sendMetaCapiEvent } from '@/lib/meta-capi';
 
 export async function GET(req: NextRequest) {
   try {
@@ -209,16 +210,7 @@ export async function POST(req: NextRequest) {
       ? data.totalAmount
       : Math.max(0, subtotal - discountAmount + deliveryCharge);
 
-    // 5. Stock check & deduction
-    const stockDeductRes = deductInventoryStock(data.items);
-    if (!stockDeductRes.success) {
-      return NextResponse.json(
-        { success: false, message: stockDeductRes.error || 'পর্যাপ্ত স্টক নেই' },
-        { status: 400 }
-      );
-    }
-
-    // 6. Generate Order ID
+    // 5. Generate Order ID
     const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const orderNumber = `CKC-${todayStr}-${randomSuffix}`;
@@ -245,6 +237,7 @@ export async function POST(req: NextRequest) {
       items: data.items.map((it, idx) => ({
         id: `item-${Date.now()}-${idx}`,
         productId: it.productId,
+        variantId: it.variantId || undefined,
         title: it.title,
         titleBn: it.title,
         titleEn: it.title,
@@ -277,16 +270,47 @@ export async function POST(req: NextRequest) {
 
     let savedOrder: any = null;
 
-    // 7. Persist to MongoDB Atlas
+    // 6. Atomic stock deduction & order persistence in MongoDB transaction
     try {
       await connectToDatabase();
-      const mongoOrder = await Order.create(orderPayload);
-      savedOrder = mongoOrder.toObject ? mongoOrder.toObject() : mongoOrder;
-      console.log(`✅ Order ${orderNumber} persisted to MongoDB Atlas!`);
-      // Deduct inventory stock in MongoDB Atlas
-      await deductDatabaseStock(data.items);
+      await ensureStockCollections();
+      const mongoose = (await import('mongoose')).default;
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        // Atomic stock deduction for all items using $elemMatch & $gte
+        await deductOrderStockAtomic(data.items, orderNumber, session);
+
+        // Save order document inside the same transaction
+        const [createdOrder] = await Order.create([orderPayload], { session });
+        savedOrder = createdOrder.toObject ? createdOrder.toObject() : createdOrder;
+
+        await session.commitTransaction();
+        console.log(`✅ Order ${orderNumber} persisted with atomic stock deduction!`);
+      } catch (txErr: any) {
+        await session.abortTransaction();
+        console.warn(`[Stock Deduction / Order Error]: ${txErr.message}`);
+        return NextResponse.json(
+          {
+            success: false,
+            message: txErr.message || 'পর্যাপ্ত স্টক নেই বা অর্ডার সম্পন্ন করা যায়নি',
+          },
+          { status: 400 }
+        );
+      } finally {
+        session.endSession();
+      }
     } catch (dbErr: any) {
-      console.error('Failed to save order to MongoDB Atlas:', dbErr.message);
+      console.warn('MongoDB connection / session error in /api/orders (falling back to memory):', dbErr.message);
+      // Fallback for offline / memory mode
+      const stockDeductRes = deductInventoryStock(data.items);
+      if (!stockDeductRes.success) {
+        return NextResponse.json(
+          { success: false, message: stockDeductRes.error || 'পর্যাপ্ত স্টক নেই' },
+          { status: 400 }
+        );
+      }
     }
 
     // Also update in-memory store as fallback
@@ -321,6 +345,53 @@ export async function POST(req: NextRequest) {
       });
     } catch (notifErr) {
       console.warn('[Notification Error]:', notifErr);
+    }
+
+    // 9. Meta Conversions API (CAPI) Server-Side Purchase Event
+    try {
+      const forwardedFor = req.headers.get('x-forwarded-for');
+      const realIp = req.headers.get('x-real-ip');
+      const clientIp = forwardedFor ? forwardedFor.split(',')[0].trim() : (realIp || undefined);
+      const clientUserAgent = req.headers.get('user-agent') || undefined;
+      const fbp = data.fbp || req.cookies.get('_fbp')?.value;
+      const fbc = data.fbc || req.cookies.get('_fbc')?.value;
+      const purchaseEventId = data.eventId || `purch_${finalOrder.orderNumber}`;
+
+      // Fire in background non-blocking
+      sendMetaCapiEvent({
+        eventName: 'Purchase',
+        eventId: purchaseEventId,
+        eventTime: Math.floor(Date.now() / 1000),
+        eventSourceUrl: req.headers.get('referer') || `${process.env.NEXT_PUBLIC_APP_URL || 'https://craftykidsco.com'}/checkout`,
+        actionSource: 'website',
+        userData: {
+          phone: finalOrder.customerPhone,
+          name: finalOrder.customerName,
+          district: finalOrder.district,
+          clientIp,
+          clientUserAgent,
+          fbp,
+          fbc,
+        },
+        customData: {
+          currency: 'BDT',
+          value: Number(finalOrder.totalAmount),
+          order_id: finalOrder.orderNumber,
+          num_items: finalOrder.items.reduce((s: number, it: any) => s + (it.quantity || 1), 0),
+          content_type: 'product',
+          content_ids: finalOrder.items.map((it: any) => it.variantId || it.productId || it.variationSku || it.id),
+          contents: finalOrder.items.map((it: any) => ({
+            id: it.variantId || it.productId || it.variationSku || it.id,
+            quantity: it.quantity,
+            item_price: it.price || it.unitPrice,
+            title: it.title,
+          })),
+        },
+      }).catch((capiErr) => {
+        console.warn('[Meta CAPI Purchase Error]:', capiErr);
+      });
+    } catch (capiWrapperErr) {
+      console.warn('[Meta CAPI Purchase Trigger Error]:', capiWrapperErr);
     }
 
     return NextResponse.json(

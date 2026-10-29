@@ -6,6 +6,7 @@ export const OrderItemSchema = z.object({
   id: z.string().optional(),
   productId: z.string().min(1, 'Product ID is required'),
   title: z.string().min(1, 'Product title is required'),
+  variantId: z.string().optional(),
   variationSku: z.string().optional(),
   variationTitle: z.string().optional(),
   variationTitleBn: z.string().optional(),
@@ -32,6 +33,10 @@ export const OrderCreateInputSchema = z.object({
   deliveryCharge: z.number().int().optional(),
   totalAmount: z.number().int().optional(),
   items: z.array(OrderItemSchema).min(1, 'কার্টে অন্তত একটি পণ্য থাকতে হবে'),
+  // Meta Pixel & CAPI Deduplication & Attribution Tracking
+  eventId: z.string().trim().optional(),
+  fbp: z.string().trim().optional(),
+  fbc: z.string().trim().optional(),
 });
 
 export type OrderCreateInput = z.infer<typeof OrderCreateInputSchema>;

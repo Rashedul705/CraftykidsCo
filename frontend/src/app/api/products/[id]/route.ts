@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
+import { StockLog } from '@/models/StockLog';
 import { getProductBySlug, updateProduct as updateMemoryProduct, deleteProduct as deleteMemoryProduct } from '@/lib/store';
 import { verifyAdminRequest } from '@/lib/auth';
+import { computeProductStockAndStatus } from '@/lib/product-stock';
+import { validateAndSanitizeProduct } from '@/lib/product-validation';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -29,7 +32,7 @@ export async function GET(req: NextRequest, context: RouteParams) {
       if (dbProduct) {
         return NextResponse.json({
           success: true,
-          product: dbProduct,
+          product: computeProductStockAndStatus(dbProduct),
           source: 'mongodb',
         });
       }
@@ -42,7 +45,7 @@ export async function GET(req: NextRequest, context: RouteParams) {
     if (memProduct) {
       return NextResponse.json({
         success: true,
-        product: memProduct,
+        product: computeProductStockAndStatus(memProduct),
         source: 'memory',
       });
     }
@@ -70,24 +73,50 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
     const { id } = await context.params;
     const body = await req.json();
 
-    // 2a. Handle specific variation stock update (from StockManager)
-    if (body.variationSku) {
-      const finalStock = Math.max(0, Number(body.stock ?? 0));
+    // 2a. Handle specific variation stock update (e.g. from StockManager or inline mini-table)
+    if (body.variantId || body.variationSku) {
+      if (
+        body.stock === undefined ||
+        body.stock === null ||
+        isNaN(Number(body.stock)) ||
+        !Number.isInteger(Number(body.stock)) ||
+        Number(body.stock) < 0
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'স্টক অবশ্যই ০ বা তার বেশি পূর্ণসংখ্যা হতে হবে (Stock must be an integer >= 0).',
+          },
+          { status: 400 }
+        );
+      }
+      const finalStock = Math.floor(Number(body.stock));
       let updatedDoc: any = null;
+      let matchedVariant: any = null;
+      let previousStock = 0;
 
-      // 1. Update in MongoDB Atlas
       try {
         await connectToDatabase();
+        await StockLog.createCollection().catch(() => {});
         const dbProduct = await Product.findOne(getProductMongoQuery(id));
         if (dbProduct) {
-          if (dbProduct.variations && Array.isArray(dbProduct.variations)) {
-            dbProduct.variations = dbProduct.variations.map((v: any) => {
-              if (
-                v.sku === body.variationSku ||
-                v.id === body.variationSku ||
-                v.titleEn === body.variationSku ||
-                v.titleBn === body.variationSku
-              ) {
+          const updateVariantList = (list: any[]) => {
+            if (!Array.isArray(list)) return list;
+            return list.map((v: any) => {
+              const isMatch =
+                (body.variantId && (String(v._id) === String(body.variantId) || String(v.id) === String(body.variantId))) ||
+                (body.variationSku && (
+                  v.sku === body.variationSku ||
+                  String(v._id) === body.variationSku ||
+                  v.id === body.variationSku ||
+                  v.titleEn === body.variationSku ||
+                  v.titleBn === body.variationSku ||
+                  v.optionValue === body.variationSku
+                ));
+
+              if (isMatch) {
+                matchedVariant = v;
+                previousStock = Number(v.stock ?? v.stockQuantity ?? 0);
                 return {
                   ...v,
                   stock: finalStock,
@@ -96,25 +125,54 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
               }
               return v;
             });
+          };
 
-            // Recalculate parent stock as sum of variation stocks
-            const totalStock = dbProduct.variations.reduce(
-              (sum: number, v: any) =>
-                sum + (Number(v.stock !== undefined ? v.stock : v.stockQuantity) || 0),
-              0
-            );
-            dbProduct.stock = totalStock;
-            dbProduct.markModified('variations');
-            await dbProduct.save();
-            updatedDoc = dbProduct.toObject ? dbProduct.toObject() : dbProduct;
+          if (dbProduct.variants && Array.isArray(dbProduct.variants)) {
+            dbProduct.variants = updateVariantList(dbProduct.variants);
+          }
+          if (dbProduct.variations && Array.isArray(dbProduct.variations)) {
+            dbProduct.variations = updateVariantList(dbProduct.variations);
+          }
+
+          // Recalculate parent stock as sum of active variation stocks
+          const activeList = (dbProduct.variants && dbProduct.variants.length > 0)
+            ? dbProduct.variants
+            : dbProduct.variations || [];
+
+          const totalStock = activeList
+            .filter((v: any) => v.isActive !== false)
+            .reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0);
+
+          dbProduct.stock = totalStock;
+          dbProduct.markModified('variants');
+          dbProduct.markModified('variations');
+          await dbProduct.save();
+          updatedDoc = dbProduct.toObject ? dbProduct.toObject() : dbProduct;
+
+          // Write StockLog entry with reason 'manual_edit'
+          if (matchedVariant) {
+            const change = finalStock - previousStock;
+            try {
+              await StockLog.create({
+                productId: dbProduct._id || dbProduct.id,
+                variantId: matchedVariant._id || matchedVariant.id || null,
+                change,
+                stockBefore: previousStock,
+                stockAfter: finalStock,
+                reason: (body.reason as any) || 'manual_edit',
+                adminId: (auth as any).user?.email || (auth as any).user?.id || 'admin',
+                note: body.note || `Manual inline stock edit for "${matchedVariant.optionValue || matchedVariant.sku}"`,
+              });
+            } catch (logErr: any) {
+              console.error('Failed to write StockLog for variation manual_edit:', logErr.message);
+            }
           }
         }
       } catch (dbErr: any) {
         console.error(`MongoDB error updating variation stock for product ${id}:`, dbErr.message);
       }
 
-      // 2. Sync in memory store
-      const memUpdated = updateMemoryProduct(id, { stock: finalStock }, body.variationSku);
+      const memUpdated = updateMemoryProduct(id, { stock: finalStock }, body.variationSku || body.variantId);
 
       if (!updatedDoc && !memUpdated) {
         return NextResponse.json(
@@ -126,125 +184,155 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
       return NextResponse.json({
         success: true,
         message: 'ভেরিয়েশন স্টক সফলভাবে আপডেট হয়েছে',
-        product: updatedDoc || memUpdated,
+        product: computeProductStockAndStatus(updatedDoc || memUpdated),
       });
     }
 
-    const updateFields: any = {};
-    if (body.titleBn !== undefined) updateFields.titleBn = body.titleBn;
-    if (body.titleEn !== undefined) {
-      updateFields.titleEn = body.titleEn;
-      updateFields.title = body.titleEn;
-    }
-    if (body.basePrice !== undefined) {
-      const p = Math.round(Number(body.basePrice));
-      updateFields.basePrice = p;
-      updateFields.price = p;
-    }
-    if (body.baseSalePrice !== undefined) {
-      const sp = Math.round(Number(body.baseSalePrice));
-      updateFields.baseSalePrice = sp;
-      updateFields.salePrice = sp;
-    }
-    if (body.stock !== undefined) updateFields.stock = Math.max(0, Number(body.stock));
-    if (body.categorySlug !== undefined) {
-      updateFields.categorySlug = body.categorySlug;
-      updateFields.category = body.category || body.categorySlug;
-      updateFields.primaryCategorySlug = body.categorySlug;
-    }
-    if (body.imageUrl !== undefined) {
-      updateFields.imageUrl = body.imageUrl;
-      updateFields.image = body.imageUrl;
-    }
-    if (body.galleryImages !== undefined) updateFields.galleryImages = body.galleryImages;
-    if (body.description !== undefined) {
-      updateFields.description = body.description;
-      updateFields.descriptionBn = body.descriptionBn || body.description;
-      updateFields.descriptionEn = body.descriptionEn || body.description;
-    }
-    if (body.shortDescriptionBn !== undefined) {
-      updateFields.shortDescriptionBn = typeof body.shortDescriptionBn === 'string' ? body.shortDescriptionBn.trim() : '';
-    }
-    if (body.shortDescriptionEn !== undefined) {
-      updateFields.shortDescriptionEn = typeof body.shortDescriptionEn === 'string' ? body.shortDescriptionEn.trim() : '';
-    }
-    if (body.pieces !== undefined) updateFields.pieces = body.pieces;
-    if (body.boxItems !== undefined) {
-      updateFields.boxItems = Array.isArray(body.boxItems)
-        ? body.boxItems
-        : typeof body.boxItems === 'string'
-        ? body.boxItems.split('\n').map((s: string) => s.trim()).filter(Boolean)
-        : [];
-    }
-    if (body.materials !== undefined) updateFields.materials = body.materials;
-    if (body.safetyStandards !== undefined) updateFields.safetyStandards = body.safetyStandards;
-    if (body.ageAppropriate !== undefined) updateFields.ageAppropriate = body.ageAppropriate;
-    if (body.badge !== undefined) updateFields.badge = body.badge;
-    if (body.isNewArrival !== undefined) updateFields.isNewArrival = Boolean(body.isNewArrival);
-    if (body.isBestSeller !== undefined) updateFields.isBestSeller = Boolean(body.isBestSeller);
-    if (body.costPerItem !== undefined) updateFields.costPerItem = Number(body.costPerItem);
-    if (body.sku !== undefined) updateFields.sku = body.sku;
-    if (body.lowStockAlert !== undefined) updateFields.lowStockAlert = Number(body.lowStockAlert);
-    if (body.subCategory !== undefined) updateFields.subCategory = body.subCategory;
-    if (body.tags !== undefined) updateFields.tags = body.tags;
-    if (body.brand !== undefined) updateFields.brand = body.brand;
-    if (body.safetyBadges !== undefined) updateFields.safetyBadges = body.safetyBadges;
-    if (body.targetAge !== undefined) updateFields.targetAge = body.targetAge;
-    if (body.targetAgeMin !== undefined) updateFields.targetAgeMin = body.targetAgeMin;
-    if (body.videoUrl !== undefined) {
-      updateFields.videoUrl = typeof body.videoUrl === 'string' ? body.videoUrl.trim() : '';
-    }
-    if (body.videoUrl2 !== undefined) {
-      updateFields.videoUrl2 = typeof body.videoUrl2 === 'string' ? body.videoUrl2.trim() : '';
-    }
-    if (body.videos !== undefined) {
-      updateFields.videos = Array.isArray(body.videos) ? body.videos : [];
-    }
-    if (body.faqs !== undefined) {
-      updateFields.faqs = Array.isArray(body.faqs) ? body.faqs : [];
-    }
-    if (body.weight !== undefined) updateFields.weight = body.weight;
-    if (body.packageSize !== undefined) updateFields.packageSize = body.packageSize;
-    if (body.handlingTime !== undefined) updateFields.handlingTime = body.handlingTime;
-    if (body.seoTitle !== undefined) updateFields.seoTitle = body.seoTitle;
-    if (body.seoDescription !== undefined) updateFields.seoDescription = body.seoDescription;
-    if (body.slug !== undefined) {
-      const cleanSlug = body.slug.trim().toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
-      if (cleanSlug) {
-        try {
-          await connectToDatabase();
-          const collision = await Product.findOne({ slug: cleanSlug, id: { $ne: id } });
-          if (!collision) {
-            updateFields.slug = cleanSlug;
+    // 2b. Handle single/simple product inline stock update
+    if (
+      !body.variantId &&
+      !body.variationSku &&
+      body.stock !== undefined &&
+      (body.isStockOnly || body.reason === 'manual_edit' || Object.keys(body).length <= 4)
+    ) {
+      if (
+        isNaN(Number(body.stock)) ||
+        !Number.isInteger(Number(body.stock)) ||
+        Number(body.stock) < 0
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'স্টক অবশ্যই ০ বা তার বেশি পূর্ণসংখ্যা হতে হবে (Stock must be an integer >= 0).',
+          },
+          { status: 400 }
+        );
+      }
+
+      const finalStock = Math.floor(Number(body.stock));
+      let updatedDoc: any = null;
+      let previousStock = 0;
+
+      try {
+        await connectToDatabase();
+        await StockLog.createCollection().catch(() => {});
+        const dbProduct = await Product.findOne(getProductMongoQuery(id));
+        if (dbProduct) {
+          previousStock = Number(dbProduct.stock ?? 0);
+          dbProduct.stock = finalStock;
+          await dbProduct.save();
+          updatedDoc = dbProduct.toObject ? dbProduct.toObject() : dbProduct;
+
+          const change = finalStock - previousStock;
+          try {
+            await StockLog.create({
+              productId: dbProduct._id || dbProduct.id,
+              variantId: null,
+              change,
+              stockBefore: previousStock,
+              stockAfter: finalStock,
+              reason: (body.reason as any) || 'manual_edit',
+              adminId: (auth as any).user?.email || (auth as any).user?.id || 'admin',
+              note: body.note || `Manual inline stock edit: stock updated from ${previousStock} to ${finalStock}`,
+            });
+          } catch (logErr: any) {
+            console.error('Failed to write StockLog for product manual_edit:', logErr.message);
           }
-        } catch {}
+        }
+      } catch (dbErr: any) {
+        console.error(`MongoDB error updating product stock for ${id}:`, dbErr.message);
+      }
+
+      const memUpdated = updateMemoryProduct(id, { stock: finalStock });
+
+      if (!updatedDoc && !memUpdated) {
+        return NextResponse.json(
+          { success: false, message: 'পণ্যটি পাওয়া যায়নি' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'পণ্যের স্টক সফলভাবে আপডেট হয়েছে',
+        product: computeProductStockAndStatus(updatedDoc || memUpdated),
+      });
+    }
+
+    // 2c. Full product update with Section 2 validation
+    await connectToDatabase();
+    const existing = await Product.findOne(getProductMongoQuery(id)).lean();
+    if (!existing) {
+      const mem = getProductBySlug(id);
+      if (!mem) {
+        return NextResponse.json(
+          { success: false, message: 'আপডেট করার জন্য পণ্যটি পাওয়া যায়নি' },
+          { status: 404 }
+        );
       }
     }
-    if (body.allowCashOnDelivery !== undefined) updateFields.allowCashOnDelivery = Boolean(body.allowCashOnDelivery);
-    if (body.showStockLeft !== undefined) updateFields.showStockLeft = Boolean(body.showStockLeft);
-    if (body.requiresGiftWrap !== undefined) updateFields.requiresGiftWrap = Boolean(body.requiresGiftWrap);
-    if (body.isActive !== undefined) updateFields.isActive = Boolean(body.isActive);
-    if (body.variations !== undefined) {
-      updateFields.variations = body.variations;
-      updateFields.isVariable = body.variations.length > 0;
+
+    const merged = { ...(existing || {}), ...body };
+    const productIdForCheck = String(existing?._id || existing?.id || id);
+
+    const validation = await validateAndSanitizeProduct(merged, productIdForCheck);
+    if (!validation.valid || !validation.sanitized) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: validation.errors[0] || 'পণ্যের তথ্য সঠিক নয়',
+          errors: validation.errors,
+        },
+        { status: 400 }
+      );
+    }
+
+    const sanitized = validation.sanitized;
+
+    // Build update operation with clean unset for variable products
+    const updateOp: any = {
+      $set: {
+        ...sanitized,
+      },
+    };
+
+    if (sanitized.hasVariations) {
+      // Core rule: If product has variations, stock, SKU and price live ONLY on each variation
+      updateOp.$unset = {
+        sku: 1,
+        regularPrice: 1,
+        salePrice: 1,
+        price: 1,
+        basePrice: 1,
+        baseSalePrice: 1,
+      };
+    } else {
+      updateOp.$unset = {
+        optionName: 1,
+      };
     }
 
     let updatedDoc: any = null;
 
-    // 1. Update in MongoDB Atlas
     try {
-      await connectToDatabase();
       updatedDoc = await Product.findOneAndUpdate(
         getProductMongoQuery(id),
-        { $set: updateFields },
+        updateOp,
         { returnDocument: 'after', runValidators: false }
       ).lean();
     } catch (dbErr: any) {
       console.error(`MongoDB error updating product ${id}:`, dbErr.message);
+      return NextResponse.json(
+        {
+          success: false,
+          message: `ডাটাবেজে পণ্য আপডেট ত্রুটি: ${dbErr.message || 'Update failed'}`,
+        },
+        { status: 400 }
+      );
     }
 
-    // 2. Sync in memory store
-    const memUpdated = updateMemoryProduct(id, updateFields);
+    // Sync in memory store
+    const memUpdated = updateMemoryProduct(id, sanitized);
 
     if (!updatedDoc && !memUpdated) {
       return NextResponse.json(
@@ -256,11 +344,12 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
     return NextResponse.json({
       success: true,
       message: 'পণ্য সফলভাবে আপডেট হয়েছে',
-      product: updatedDoc || memUpdated,
+      product: computeProductStockAndStatus(updatedDoc || memUpdated || sanitized),
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Error in PATCH /api/products/[id]:', error);
     return NextResponse.json(
-      { success: false, message: 'পণ্য আপডেট করতে ব্যর্থ হয়েছে' },
+      { success: false, message: `পণ্য আপডেট করতে ব্যর্থ হয়েছে: ${error?.message || ''}` },
       { status: 500 }
     );
   }

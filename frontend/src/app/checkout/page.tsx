@@ -24,6 +24,13 @@ import { createOrder } from '@/lib/store';
 
 import { calculateDelivery, defaultDeliverySettings, DeliverySettings } from '@/lib/delivery-store';
 import { getDistrictOptions, getThanasByDistrict } from '@/lib/bd-locations';
+import {
+  trackInitiateCheckout,
+  trackPurchase,
+  generateEventId,
+  getFbp,
+  getFbc,
+} from '@/lib/analytics';
 
 const districtOptions = getDistrictOptions();
 
@@ -103,6 +110,15 @@ export default function CheckoutPage() {
       })
       .catch(() => {});
   }, []);
+
+  // Track InitiateCheckout on checkout page mount (once per cart state)
+  const hasTrackedCheckoutRef = React.useRef(false);
+  React.useEffect(() => {
+    if (items.length > 0 && !hasTrackedCheckoutRef.current) {
+      hasTrackedCheckoutRef.current = true;
+      trackInitiateCheckout(items, subtotal);
+    }
+  }, [items, subtotal]);
 
   // Automatic delivery charge calculation based on selected district and subtotal
   const deliveryCalc = useMemo(() => {
@@ -190,9 +206,44 @@ export default function CheckoutPage() {
     }
 
     setIsSubmitting(true);
+    setErrorMessage(null);
 
     try {
+      // 1. Pre-flight real-time stock re-check
+      try {
+        const stockRes = await fetch('/api/products/check-stock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: items.map((i) => ({
+              productId: i.productId,
+              variationSku: i.variationSku || '',
+              variationTitle: i.variationTitle || i.variationTitleBn || '',
+              title: i.titleBn || i.title,
+              quantity: i.quantity,
+            })),
+          }),
+        });
+        if (stockRes.ok) {
+          const stockData = await stockRes.json();
+          if (stockData.hasShortage && Array.isArray(stockData.shortages) && stockData.shortages.length > 0) {
+            const shortageMessages = stockData.shortages.map(
+              (s: any) => s.message || `"${s.title}" এর পর্যাপ্ত স্টক নেই (অনুরোধ: ${s.requestedQuantity}, উপলব্ধ: ${s.availableStock})`
+            );
+            setErrorMessage(shortageMessages.join(' | '));
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      } catch (checkErr) {
+        console.warn('Pre-flight stock check warning:', checkErr);
+      }
+
       const combinedAddress = `${fullAddress.trim()}, থানা/উপজেলা: ${finalThana}, জেলা: ${district}`;
+      const purchaseEventId = generateEventId('purch');
+      const fbp = getFbp();
+      const fbc = getFbc();
+
       const payload = {
         customerName: customerName.trim(),
         customerPhone: normalizedPhone,
@@ -204,6 +255,9 @@ export default function CheckoutPage() {
         couponCode: couponCode || undefined,
         deliveryCharge,
         totalAmount: grandTotal,
+        eventId: purchaseEventId,
+        fbp,
+        fbc,
         items: items.map((i) => ({
           productId: i.productId,
           title: i.titleBn || i.title,
@@ -225,13 +279,29 @@ export default function CheckoutPage() {
       const resData = await res.json();
 
       if (res.ok && resData.success && resData.order) {
+        // Dual-fire Browser Meta Pixel Purchase with matching eventID for deduplication
+        trackPurchase({
+          orderNumber: resData.order.orderNumber,
+          totalAmount: resData.order.totalAmount,
+          items: resData.order.items,
+          customerPhone: normalizedPhone,
+          customerName: customerName.trim(),
+          district: isInsideDhaka ? 'Dhaka' : district,
+          eventId: purchaseEventId,
+        });
+
         clearCart();
         router.push(`/order/confirmation/${resData.order.orderNumber}`);
         return;
       }
 
       if (!res.ok) {
-        setErrorMessage(resData.message || 'অর্ডার সম্পন্ন করতে সমস্যা হয়েছে।');
+        if (res.status === 409 && resData.shortages && Array.isArray(resData.shortages)) {
+          const msgs = resData.shortages.map((s: any) => s.message);
+          setErrorMessage(msgs.join(' | ') || resData.message || 'পর্যাপ্ত স্টক নেই।');
+        } else {
+          setErrorMessage(resData.message || 'অর্ডার সম্পন্ন করতে সমস্যা হয়েছে।');
+        }
         setIsSubmitting(false);
         return;
       }

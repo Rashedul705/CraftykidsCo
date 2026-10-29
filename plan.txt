@@ -151,34 +151,44 @@ PHASE 1: LIVE PAYMENT GATEWAY INTEGRATION (High Priority)
   [ ] Nagad / SSLCommerz / Aamarpay integration as alternative options.
   [ ] Automated COD fraud/risk check (e.g. invalid phone number detection, past cancellation history).
 
-PHASE 3: AUTOMATED COURIER INTEGRATION (Medium Priority)
-  [ ] Steadfast Courier Live API integration:
+PHASE 3: AUTOMATED COURIER INTEGRATION (Completed)
+  [x] Steadfast Courier Live API integration:
       - Automatically create consignment when order status changes to "CONFIRMED".
       - Generate tracking code and Steadfast consignment ID.
-      - Periodic webhook or polling to sync delivery status ("SHIPPED" -> "DELIVERED").
+      - Periodic status sync ("SHIPPED" -> "DELIVERED").
+      - Live account balance querying (verified connected to Packzy gateway: ৳322 BDT).
+      - Phone fraud & customer delivery success rate score check.
+      - 1-click dispatch in Admin and printable barcode shipping stickers.
 
 PHASE 4: SMS NOTIFICATION GATEWAY (Medium Priority)
-  [ ] Integrate Bangladeshi SMS gateway (Greenweb / ElitBuzz / Reve SMS):
+  [ ] Integrate Bangladeshi SMS gateway (Greenweb / ElitBuzz / Reve SMS / BulkSMSBD):
       - OTP verification for new customer orders (preventing fake spam orders).
       - Order Confirmation SMS with Order ID and tracking link.
       - Dispatch SMS alert with courier tracking code.
 
-PHASE 5: MARKETING, PIXEL & ANALYTICS (Medium Priority)
-  [ ] Meta Pixel & Facebook Conversion API (CAPI):
-      - Add live Pixel ID and server-side event tracking for:
-        * ViewContent (Product page view)
-        * AddToCart (Cart addition)
-        * InitiateCheckout (Checkout page visit)
-        * Purchase (Completed order with BDT revenue)
+PHASE 5: MARKETING, PIXEL & ANALYTICS (Completed)
+  [x] Meta Pixel & Facebook Conversion API (CAPI) (Graph API v21.0):
+      - Browser Pixel (fbq) + Server CAPI dual-dispatch with automatic event_id deduplication.
+      - SHA-256 client user data hashing (phone, email, name, city, country, IP, user-agent).
+      - Cookie tracking for _fbp (Browser ID) and _fbc (Click ID / fbclid).
+      - Automated event tracking across the entire funnel:
+        * PageView (Global with noscript fallback)
+        * ViewContent (Product detail page with variations & BDT pricing)
+        * AddToCart (Product card quick add, detail page, and combo add)
+        * InitiateCheckout (Cart page proceed & checkout page mount)
+        * Purchase (dual-fired: server-side on POST /api/orders & browser confirmation)
+      - Admin UI integration in `/admin?tab=settings` (Meta Pixel tab):
+        * Live CAPI verification button ("🧪 টেস্ট ইভেন্ট পাঠান")
+        * Pixel ID, CAPI Access Token, and Test Event Code support.
   [ ] Google Tag Manager (GTM) & Google Analytics 4 (GA4).
   [ ] TikTok Pixel for promotional ads.
 
-PHASE 6: ADMIN PANEL UPGRADES & INVENTORY MANAGEMENT (Medium Priority)
-  [ ] Dynamic product management in `/admin`:
-      - Upload new products directly via UI (image upload, price, specs, stock).
+PHASE 6: ADMIN PANEL UPGRADES & INVENTORY MANAGEMENT (Completed)
+  [x] Dynamic product management in `/admin`:
+      - Upload new products directly via UI (image upload, price, specs, stock, variations).
       - Edit existing products without touching source code.
-  [ ] Inventory tracking with low-stock alerts.
-  [ ] CSV/Excel export for accountant & shipping label printing.
+  [x] Inventory tracking with low-stock alerts & stock history audit logs.
+  [x] CSV/Excel export for accountant & shipping label printing.
 
 PHASE 7: PRODUCTION DEPLOYMENT & DEVOPS (Launch Phase)
   [ ] Deploy Frontend to Vercel (zero-config Next.js hosting with global CDN).

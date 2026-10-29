@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+export type VariantStockStatus = 'in_stock' | 'low' | 'out';
+
 export interface ISafetyBadge {
   code: string;
   nameBn: string;
@@ -8,23 +10,29 @@ export interface ISafetyBadge {
   description?: string;
 }
 
-export interface IProductVariation {
+export interface IVariant {
+  _id?: string | mongoose.Types.ObjectId;
   id?: string;
-  sku: string;
-  name?: string;
-  detail?: string;
-  whatsInIt?: string;
-  descriptionBn?: string;
+  optionValue: string; // e.g. "12 Piece Set"
+  detail?: string; // e.g. "12 shapes + 6 colors + 1 brush" (Bangla allowed)
+  sku: string; // unique across the whole store
+  regularPrice: number; // required
+  salePrice?: number | null; // null means no discount
+  stock: number; // integer, min 0
+  lowStockAlert: number; // default 5
+  image?: string; // variant image url
+  isActive: boolean; // default true
+  stockStatus?: VariantStockStatus; // virtual / computed on read
+  // Backward compatibility:
+  imageUrl?: string;
   titleBn?: string;
   titleEn?: string;
-  attributes?: Record<string, string>; // e.g. { colorSet: '24', detail: '...' }
-  price: number; // Integer BDT
-  salePrice?: number | null; // Integer BDT
-  stock?: number;
-  stockQuantity: number;
-  imageUrl?: string;
-  isActive: boolean;
+  price?: number;
+  badge?: string;
 }
+
+// Keep legacy alias for existing components
+export type IProductVariation = IVariant;
 
 export interface IProductImage {
   url: string;
@@ -39,14 +47,21 @@ export interface IProduct extends Document {
   titleBn: string;
   titleEn: string;
   slug: string;
+  hasVariations: boolean;
+  regularPrice?: number;
+  salePrice?: number | null;
+  basePrice: number; // Legacy alias for regularPrice
+  baseSalePrice?: number | null; // Legacy alias for salePrice
   price?: number;
-  basePrice: number; // Integer BDT
-  salePrice?: number | null; // Integer BDT
-  baseSalePrice?: number | null; // Integer BDT
   costPerItem?: number;
   sku?: string;
   stock?: number;
   lowStockAlert?: number;
+  optionName?: string;
+  variants?: IVariant[];
+  variations?: any[]; // Legacy alias for variants
+  totalStock?: number; // Virtual / computed
+  stockStatus?: VariantStockStatus; // Virtual / computed
   category?: string;
   categorySlug?: string;
   primaryCategorySlug?: string;
@@ -84,7 +99,6 @@ export interface IProduct extends Document {
   careInstructions?: string;
   faqs?: any[];
   reviews?: any[];
-  variations?: any[];
   videoUrl?: string;
   weight?: number;
   packageSize?: string;
@@ -99,6 +113,33 @@ export interface IProduct extends Document {
   updatedAt: Date;
 }
 
+export const VariantSchema = new Schema<IVariant>(
+  {
+    optionValue: { type: String, required: true },
+    detail: { type: String, default: '' },
+    sku: { type: String, required: true, trim: true },
+    regularPrice: { type: Number, required: true },
+    salePrice: { type: Number, default: null },
+    stock: { type: Number, default: 0, min: 0 },
+    lowStockAlert: { type: Number, default: 5 },
+    image: { type: String, default: '' },
+    isActive: { type: Boolean, default: true },
+  },
+  {
+    _id: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
+
+VariantSchema.virtual('stockStatus').get(function (this: any) {
+  const stock = typeof this.stock === 'number' ? this.stock : 0;
+  const alert = typeof this.lowStockAlert === 'number' ? this.lowStockAlert : 5;
+  if (stock === 0) return 'out';
+  if (stock <= alert) return 'low';
+  return 'in_stock';
+});
+
 const ProductSchema = new Schema<IProduct>(
   {
     id: { type: String, unique: true, sparse: true, index: true },
@@ -106,14 +147,18 @@ const ProductSchema = new Schema<IProduct>(
     titleBn: { type: String, required: true },
     titleEn: { type: String, required: true },
     slug: { type: String, required: true, unique: true, index: true },
+    hasVariations: { type: Boolean, default: false, index: true },
+    regularPrice: { type: Number },
     price: { type: Number },
-    basePrice: { type: Number, required: true },
-    salePrice: { type: Number },
-    baseSalePrice: { type: Number },
+    basePrice: { type: Number },
+    salePrice: { type: Number, default: null },
+    baseSalePrice: { type: Number, default: null },
     costPerItem: { type: Number },
     sku: { type: String },
     stock: { type: Number, default: 100 },
     lowStockAlert: { type: Number, default: 5 },
+    optionName: { type: String, default: 'Set Options' },
+    variants: [VariantSchema],
     category: { type: String },
     categorySlug: { type: String, index: true },
     primaryCategorySlug: { type: String, index: true },
@@ -163,12 +208,44 @@ const ProductSchema = new Schema<IProduct>(
     requiresGiftWrap: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true, index: true },
   },
-  { timestamps: true, strict: false }
+  {
+    timestamps: true,
+    strict: false,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
+
+// Virtual: totalStock = sum of stock of active variants
+ProductSchema.virtual('totalStock').get(function (this: any) {
+  if (this.hasVariations && Array.isArray(this.variants) && this.variants.length > 0) {
+    return this.variants
+      .filter((v: any) => v.isActive !== false)
+      .reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0);
+  }
+  return typeof this.stock === 'number' ? this.stock : 0;
+});
+
+// Virtual: stockStatus per product
+ProductSchema.virtual('stockStatus').get(function (this: any) {
+  const total =
+    this.hasVariations && Array.isArray(this.variants) && this.variants.length > 0
+      ? this.variants
+          .filter((v: any) => v.isActive !== false)
+          .reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0)
+      : typeof this.stock === 'number'
+      ? this.stock
+      : 0;
+  const alert = typeof this.lowStockAlert === 'number' ? this.lowStockAlert : 5;
+  if (total === 0) return 'out';
+  if (total <= alert) return 'low';
+  return 'in_stock';
+});
 
 // Indexes
 ProductSchema.index({ categorySlug: 1, isActive: 1 });
 ProductSchema.index({ isBestSeller: 1, isNewArrival: 1 });
+ProductSchema.index({ 'variants.sku': 1 });
 
 if (process.env.NODE_ENV !== 'production' && mongoose.models && mongoose.models.Product) {
   delete (mongoose.models as any).Product;

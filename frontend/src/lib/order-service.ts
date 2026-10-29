@@ -214,112 +214,44 @@ export function restoreInventoryStock(order: OrderRecord): void {
   }
 }
 
+export { deductOrderStockAtomic, restoreOrderStockAtomic, OutOfStockError } from './order-stock';
+
 /**
- * Deduct stock directly from MongoDB Atlas documents
+ * Deduct stock atomically with MongoDB transaction and StockLog logging
  */
-export async function deductDatabaseStock(items: any[]): Promise<void> {
+export async function deductDatabaseStock(
+  items: any[],
+  orderNumber: string = `ORDER-${Date.now()}`
+): Promise<void> {
+  const { connectToDatabase } = await import('./mongodb');
+  const mongoose = (await import('mongoose')).default;
+  await connectToDatabase();
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
-    const { connectToDatabase } = await import('./mongodb');
-    const { Product } = await import('@/models/Product');
-    await connectToDatabase();
-
-    for (const item of items) {
-      const productId = item.productId;
-      if (!productId) continue;
-
-      const isObjectId = productId.match(/^[0-9a-fA-F]{24}$/);
-      const product = await Product.findOne({
-        $or: [
-          { id: productId },
-          { slug: productId },
-          ...(isObjectId ? [{ _id: productId }] : []),
-        ],
-      });
-
-      if (!product) continue;
-
-      if (product.variations && product.variations.length > 0 && item.variationSku) {
-        product.variations = product.variations.map((v: any) => {
-          if (v.sku === item.variationSku || v.id === item.variationSku) {
-            const currentStock = v.stock !== undefined ? v.stock : (v.stockQuantity ?? 25);
-            const nextStock = Math.max(0, currentStock - item.quantity);
-            return {
-              ...v,
-              stock: nextStock,
-              stockQuantity: nextStock,
-            };
-          }
-          return v;
-        });
-        product.stock = product.variations.reduce(
-          (sum: number, v: any) => sum + (Number(v.stock ?? v.stockQuantity) || 0),
-          0
-        );
-        product.markModified('variations');
-        await product.save();
-      } else {
-        const currentStock = product.stock ?? 25;
-        product.stock = Math.max(0, currentStock - item.quantity);
-        await product.save();
-      }
-    }
+    const { deductOrderStockAtomic } = await import('./order-stock');
+    await deductOrderStockAtomic(items, orderNumber, session);
+    await session.commitTransaction();
   } catch (err: any) {
-    console.error('Failed to deduct stock from database:', err?.message || err);
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
   }
 }
 
 /**
- * Restore stock directly to MongoDB Atlas documents
+ * Restore stock atomically with MongoDB transaction and StockLog logging
  */
-export async function restoreDatabaseStock(items: any[]): Promise<void> {
-  try {
-    const { connectToDatabase } = await import('./mongodb');
-    const { Product } = await import('@/models/Product');
-    await connectToDatabase();
-
-    for (const item of items) {
-      const productId = item.productId;
-      if (!productId) continue;
-
-      const isObjectId = productId.match(/^[0-9a-fA-F]{24}$/);
-      const product = await Product.findOne({
-        $or: [
-          { id: productId },
-          { slug: productId },
-          ...(isObjectId ? [{ _id: productId }] : []),
-        ],
-      });
-
-      if (!product) continue;
-
-      if (product.variations && product.variations.length > 0) {
-        product.variations = product.variations.map((v: any) => {
-          const matchSku = item.variationSku && (v.sku === item.variationSku || v.id === item.variationSku);
-          const matchTitle = item.variationTitle && (v.titleBn === item.variationTitle || v.titleEn === item.variationTitle);
-          if (matchSku || matchTitle) {
-            const currentStock = v.stock !== undefined ? v.stock : (v.stockQuantity ?? 25);
-            const nextStock = currentStock + item.quantity;
-            return {
-              ...v,
-              stock: nextStock,
-              stockQuantity: nextStock,
-            };
-          }
-          return v;
-        });
-        product.stock = product.variations.reduce(
-          (sum: number, v: any) => sum + (Number(v.stock ?? v.stockQuantity) || 0),
-          0
-        );
-        product.markModified('variations');
-        await product.save();
-      } else {
-        const currentStock = product.stock ?? 25;
-        product.stock = currentStock + item.quantity;
-        await product.save();
-      }
-    }
-  } catch (err: any) {
-    console.error('Failed to restore stock to database:', err?.message || err);
-  }
+export async function restoreDatabaseStock(
+  itemsOrOrder: any,
+  reason: 'cancel' | 'return' = 'cancel',
+  orderNumber?: string
+): Promise<void> {
+  const { restoreOrderStockAtomic } = await import('./order-stock');
+  const orderObj = Array.isArray(itemsOrOrder)
+    ? { orderNumber: orderNumber || `ORDER-${Date.now()}`, items: itemsOrOrder }
+    : itemsOrOrder;
+  await restoreOrderStockAtomic(orderObj, reason);
 }
+

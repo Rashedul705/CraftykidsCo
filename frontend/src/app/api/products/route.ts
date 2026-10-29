@@ -6,6 +6,8 @@ import { Product } from '@/models/Product';
 import { verifyAdminRequest } from '@/lib/auth';
 
 import { sortProductsByStockAndRecency } from '@/lib/product-utils';
+import { computeProductStockAndStatus } from '@/lib/product-stock';
+import { validateAndSanitizeProduct } from '@/lib/product-validation';
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,7 +39,8 @@ export async function GET(req: NextRequest) {
 
       const dbProducts = await Product.find(mongoQuery).sort({ createdAt: -1 }).lean();
       if (dbProducts && dbProducts.length > 0) {
-        const sorted = sortProductsByStockAndRecency(dbProducts);
+        const computed = dbProducts.map((p) => computeProductStockAndStatus(p));
+        const sorted = sortProductsByStockAndRecency(computed);
         return NextResponse.json({
           success: true,
           count: sorted.length,
@@ -67,7 +70,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const sortedMemory = sortProductsByStockAndRecency(products);
+    const computedMemory = products.map((p) => computeProductStockAndStatus(p));
+    const sortedMemory = sortProductsByStockAndRecency(computedMemory);
     return NextResponse.json({ success: true, count: sortedMemory.length, products: sortedMemory, source: 'memory' });
   } catch (error) {
     return NextResponse.json(
@@ -86,27 +90,25 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    if (!body.titleBn || !body.titleEn || !body.basePrice) {
+    await connectToDatabase();
+
+    // Section 2: Full validation & sanitization
+    const validation = await validateAndSanitizeProduct(body);
+    if (!validation.valid || !validation.sanitized) {
       return NextResponse.json(
-        { success: false, message: 'পণ্যের নাম ও দাম আবশ্যক' },
+        {
+          success: false,
+          message: validation.errors[0] || 'পণ্যের তথ্য সঠিক নয়',
+          errors: validation.errors,
+        },
         { status: 400 }
       );
     }
 
-    await connectToDatabase();
+    const sanitized = validation.sanitized;
 
     // 1. Ensure collision-free unique slug
-    let baseSlug = (body.slug || body.titleEn || '')
-      .trim()
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-');
-
-    if (!baseSlug) {
-      baseSlug = `prod-${Date.now()}`;
-    }
-
+    let baseSlug = sanitized.slug;
     let slug = baseSlug;
     let slugCounter = 1;
     try {
@@ -117,6 +119,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.warn('Slug collision check warning:', err);
     }
+    sanitized.slug = slug;
 
     // 2. Ensure collision-free unique id
     let prodId = body.id || `prod-${Date.now()}`;
@@ -129,78 +132,59 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.warn('ID collision check warning:', err);
     }
+    sanitized.id = prodId;
 
-    const price = Math.round(Number(body.basePrice));
-    const salePrice = body.baseSalePrice ? Math.round(Number(body.baseSalePrice)) : price;
     const imageUrl = body.imageUrl || body.image || 'https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg';
-
-    const newProductData = {
-      id: prodId,
-      slug,
-      title: body.titleEn,
-      titleBn: body.titleBn,
-      titleEn: body.titleEn,
-      category: body.category || body.categorySlug || 'Art Kits',
-      categorySlug: body.categorySlug || 'art-kits',
-      primaryCategorySlug: body.categorySlug || 'art-kits',
-      subCategory: body.subCategory || '',
-      price,
-      basePrice: price,
-      salePrice,
-      baseSalePrice: salePrice,
-      costPerItem: body.costPerItem !== undefined && body.costPerItem !== '' ? Number(body.costPerItem) : undefined,
-      sku: body.sku || `CKC-${slug.substring(0, 8).toUpperCase()}-001`,
-      stock: body.stock !== undefined && body.stock !== '' ? Math.max(0, Number(body.stock)) : 100,
-      lowStockAlert: body.lowStockAlert !== undefined && body.lowStockAlert !== '' ? Number(body.lowStockAlert) : 5,
-      brand: body.brand || 'CraftyKidsCo',
-      tags: Array.isArray(body.tags) ? body.tags : [],
-      description: body.description || body.descriptionBn || '',
-      descriptionBn: body.descriptionBn || body.description || '',
-      descriptionEn: body.descriptionEn || '',
-      shortDescriptionBn: body.shortDescriptionBn || '',
-      shortDescriptionEn: body.shortDescriptionEn || '',
-      pieces: body.pieces || '',
-      boxItems: Array.isArray(body.boxItems)
-        ? body.boxItems
-        : typeof body.boxItems === 'string'
-        ? body.boxItems.split('\n').map((s: string) => s.trim()).filter(Boolean)
-        : [],
-      materials: body.materials || 'প্রাকৃতিক মৌমাছির মোম ও ফুড কালার',
-      safetyStandards: body.safetyStandards || '১০০% নন-টক্সিক সার্টিফাইড',
-      ageAppropriate: body.ageAppropriate || '',
-      badge: body.badge || 'New',
-      image: imageUrl,
-      imageUrl,
-      galleryImages: body.galleryImages && body.galleryImages.length > 0 ? body.galleryImages : [imageUrl],
-      isVariable: Boolean(body.variations && body.variations.length > 0),
-      isBestSeller: Boolean(body.isBestSeller),
-      isNewArrival: Boolean(body.isNewArrival ?? true),
-      isFeatured: Boolean(body.isFeatured),
-      targetAge: body.targetAge || '2+',
-      targetAgeMin: body.targetAgeMin || 2,
-      targetAgeMax: body.targetAgeMax || 8,
-      safetyBadges: body.safetyBadges || ['১০০% নিরাপদ ও নন-টক্সিক'],
-      variations: body.variations || [],
-      videoUrl: body.videoUrl || undefined,
-      videoUrl2: body.videoUrl2 || undefined,
-      videos: Array.isArray(body.videos) ? body.videos : [],
-      faqs: Array.isArray(body.faqs) ? body.faqs : [],
-      weight: body.weight !== undefined && body.weight !== '' ? Number(body.weight) : 350,
-      packageSize: body.packageSize || '20 x 15 x 5 cm',
-      handlingTime: body.handlingTime || '1-2 Days',
-      seoTitle: body.seoTitle || body.titleEn,
-      seoDescription: body.seoDescription || body.shortDescriptionEn || '',
-      allowCashOnDelivery: body.allowCashOnDelivery !== undefined ? Boolean(body.allowCashOnDelivery) : true,
-      showStockLeft: body.showStockLeft !== undefined ? Boolean(body.showStockLeft) : true,
-      requiresGiftWrap: body.requiresGiftWrap !== undefined ? Boolean(body.requiresGiftWrap) : false,
-      isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
-    };
+    sanitized.image = imageUrl;
+    sanitized.imageUrl = imageUrl;
+    sanitized.galleryImages = body.galleryImages && body.galleryImages.length > 0 ? body.galleryImages : [imageUrl];
+    sanitized.category = body.category || body.categorySlug || 'Art Kits';
+    sanitized.categorySlug = body.categorySlug || 'art-kits';
+    sanitized.primaryCategorySlug = body.categorySlug || 'art-kits';
+    sanitized.subCategory = body.subCategory || '';
+    sanitized.brand = body.brand || 'CraftyKidsCo';
+    sanitized.tags = Array.isArray(body.tags) ? body.tags : [];
+    sanitized.description = body.description || body.descriptionBn || '';
+    sanitized.descriptionBn = body.descriptionBn || body.description || '';
+    sanitized.descriptionEn = body.descriptionEn || '';
+    sanitized.shortDescriptionBn = body.shortDescriptionBn || '';
+    sanitized.shortDescriptionEn = body.shortDescriptionEn || '';
+    sanitized.pieces = body.pieces || '';
+    sanitized.boxItems = Array.isArray(body.boxItems)
+      ? body.boxItems
+      : typeof body.boxItems === 'string'
+      ? body.boxItems.split('\n').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+    sanitized.materials = body.materials || 'প্রাকৃতিক মৌমাছির মোম ও ফুড কালার';
+    sanitized.safetyStandards = body.safetyStandards || '১০০% নন-টক্সিক সার্টিফাইড';
+    sanitized.ageAppropriate = body.ageAppropriate || '';
+    sanitized.badge = body.badge || 'New';
+    sanitized.isBestSeller = Boolean(body.isBestSeller);
+    sanitized.isNewArrival = Boolean(body.isNewArrival ?? true);
+    sanitized.isFeatured = Boolean(body.isFeatured);
+    sanitized.targetAge = body.targetAge || '2+';
+    sanitized.targetAgeMin = body.targetAgeMin || 2;
+    sanitized.targetAgeMax = body.targetAgeMax || 8;
+    sanitized.safetyBadges = body.safetyBadges || ['১০০% নিরাপদ ও নন-টক্সিক'];
+    sanitized.videoUrl = body.videoUrl || undefined;
+    sanitized.videoUrl2 = body.videoUrl2 || undefined;
+    sanitized.videos = Array.isArray(body.videos) ? body.videos : [];
+    sanitized.faqs = Array.isArray(body.faqs) ? body.faqs : [];
+    sanitized.weight = body.weight !== undefined && body.weight !== '' ? Number(body.weight) : 350;
+    sanitized.packageSize = body.packageSize || '20 x 15 x 5 cm';
+    sanitized.handlingTime = body.handlingTime || '1-2 Days';
+    sanitized.seoTitle = body.seoTitle || sanitized.titleEn;
+    sanitized.seoDescription = body.seoDescription || body.shortDescriptionEn || '';
+    sanitized.allowCashOnDelivery = body.allowCashOnDelivery !== undefined ? Boolean(body.allowCashOnDelivery) : true;
+    sanitized.showStockLeft = body.showStockLeft !== undefined ? Boolean(body.showStockLeft) : true;
+    sanitized.requiresGiftWrap = body.requiresGiftWrap !== undefined ? Boolean(body.requiresGiftWrap) : false;
+    sanitized.isActive = body.isActive !== undefined ? Boolean(body.isActive) : true;
 
     let createdProduct: any = null;
 
     // 3. Persist to MongoDB Atlas
     try {
-      const dbDoc = await Product.create(newProductData);
+      const dbDoc = await Product.create(sanitized);
       createdProduct = dbDoc.toObject ? dbDoc.toObject() : dbDoc;
       console.log(`✅ Product ${slug} saved to MongoDB Atlas!`);
     } catch (dbErr: any) {
@@ -215,39 +199,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Sync to memory store
-    const sampleProd: SampleProduct = {
-      id: prodId,
-      slug,
-      titleBn: body.titleBn,
-      titleEn: body.titleEn,
-      categorySlug: newProductData.categorySlug,
-      basePrice: price,
-      baseSalePrice: salePrice,
-      imageUrl,
-      galleryImages: newProductData.galleryImages,
-      isVariable: newProductData.isVariable,
-      isBestSeller: newProductData.isBestSeller,
-      isNewArrival: newProductData.isNewArrival,
-      targetAgeMin: newProductData.targetAgeMin,
-      targetAgeMax: newProductData.targetAgeMax,
-      pieces: newProductData.pieces,
-      boxItems: newProductData.boxItems,
-      materials: newProductData.materials,
-      safetyStandards: newProductData.safetyStandards,
-      ageAppropriate: newProductData.ageAppropriate,
-      variations: newProductData.variations,
-      videoUrl: newProductData.videoUrl,
-      videoUrl2: newProductData.videoUrl2,
-      videos: newProductData.videos,
-      faqs: newProductData.faqs,
-    };
-    addMemoryProduct(sampleProd);
+    addMemoryProduct(sanitized);
 
     return NextResponse.json(
       {
         success: true,
         message: 'পণ্য সফলভাবে যুক্ত হয়েছে',
-        product: createdProduct || sampleProd,
+        product: computeProductStockAndStatus(createdProduct || sanitized),
       },
       { status: 201 }
     );

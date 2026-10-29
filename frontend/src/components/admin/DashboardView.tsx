@@ -98,19 +98,6 @@ export function DashboardView({
     const totalFinished = deliveredOrders.length + returnedOrders.length;
     const returnRatePercent = totalFinished > 0 ? ((returnedOrders.length / totalFinished) * 100).toFixed(1) : '3.8';
 
-    // Low stock count (variations or products with stock <= 10)
-    let lowStockCount = 0;
-    products.forEach((p) => {
-      if (p.variations && p.variations.length > 0) {
-        p.variations.forEach((v) => {
-          if (v.stock <= 10) lowStockCount++;
-        });
-      } else {
-        // Assume default stock 15 if not variable
-      }
-    });
-    if (lowStockCount === 0) lowStockCount = 6;
-
     return {
       todaySales: 42380,
       todayOrdersCount: Math.max(38, orders.length),
@@ -119,12 +106,81 @@ export function DashboardView({
       shippedCount: shippedOrders.length,
       codToCollect: codInTransit > 0 ? codInTransit : 186200,
       returnRate: `${returnRatePercent}%`,
-      lowStockCount,
       incompleteOrdersCount: 11,
       highRiskCustomersCount: 3,
       courierErrorsCount: 0,
     };
-  }, [orders, products]);
+  }, [orders]);
+
+  // Low Stock Items Warning Calculation (Section 5 Requirement)
+  const lowStockItems = useMemo(() => {
+    const list: Array<{
+      id: string;
+      productId: string;
+      productName: string;
+      productNameEn: string;
+      variationName: string;
+      remainingStock: number;
+      lowStockAlert: number;
+      isOutOfStock: boolean;
+      slug: string;
+    }> = [];
+
+    products.forEach((p) => {
+      const pId = p.id || (p as any)._id?.toString() || p.slug;
+      const hasVars = Boolean(
+        p.hasVariations ||
+        (p.variants && p.variants.length > 0) ||
+        (p.variations && p.variations.length > 0)
+      );
+      const varList =
+        p.variants && p.variants.length > 0
+          ? p.variants
+          : p.variations && p.variations.length > 0
+          ? p.variations
+          : [];
+
+      if (hasVars && varList.length > 0) {
+        varList.forEach((v: any) => {
+          if (v.isActive !== false) {
+            const stock = Number(v.stock ?? v.stockQuantity ?? 0);
+            const alert = Number(v.lowStockAlert ?? 5);
+            if (stock <= alert) {
+              list.push({
+                id: `${pId}_${v.sku || v.id || v._id}`,
+                productId: pId,
+                productName: p.titleBn || p.titleEn || 'Product',
+                productNameEn: p.titleEn || '',
+                variationName: v.optionValue || v.name || v.titleBn || v.titleEn || 'Option',
+                remainingStock: stock,
+                lowStockAlert: alert,
+                isOutOfStock: stock === 0,
+                slug: p.slug,
+              });
+            }
+          }
+        });
+      } else {
+        const stock = Number(p.stock ?? 0);
+        const alert = Number(p.lowStockAlert ?? 5);
+        if (stock <= alert) {
+          list.push({
+            id: pId,
+            productId: pId,
+            productName: p.titleBn || p.titleEn || 'Product',
+            productNameEn: p.titleEn || '',
+            variationName: 'Standard item',
+            remainingStock: stock,
+            lowStockAlert: alert,
+            isOutOfStock: stock === 0,
+            slug: p.slug,
+          });
+        }
+      }
+    });
+
+    return list;
+  }, [products]);
 
   // Relative time helper
   const getRelativeTime = (index: number) => {
@@ -160,6 +216,87 @@ export function DashboardView({
             <span>Review Pending Orders</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
+        </div>
+      )}
+
+      {/* =====================================================================
+          LOW STOCK & OUT OF STOCK WARNING BANNER (SECTION 5 REQUIREMENT)
+         ===================================================================== */}
+      {lowStockItems.length > 0 && (
+        <div className="bg-white rounded-2xl border border-amber-200 p-4 sm:p-5 shadow-xs bg-gradient-to-r from-amber-50/80 via-white to-white space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 shadow-2xs">
+                <AlertTriangle className="w-5 h-5 text-amber-700 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-heading font-black text-sm text-[#2B2B2B]">
+                    Low Stock Warning ({lowStockItems.length} {lowStockItems.length > 1 ? 'items' : 'item'} require attention)
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                    Needs Restock
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B6B6B]">
+                  The following products and variations have fallen below their minimum stock threshold:
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onNavigateTab('products', 'LOW_STOCK')}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto"
+            >
+              <span>Manage Product Stock</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+            {lowStockItems.slice(0, 6).map((item) => (
+              <div
+                key={item.id}
+                onClick={() => onNavigateTab('products', 'LOW_STOCK')}
+                className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF7F2] hover:bg-amber-100/50 border border-[#EFE9E0] hover:border-amber-200 transition-all cursor-pointer group"
+              >
+                <div className="min-w-0 pr-2">
+                  <span className="text-xs font-bold text-[#1A1A1A] truncate block group-hover:text-amber-800 transition-colors">
+                    {item.productName}
+                  </span>
+                  <span className="text-[11px] text-[#6B6B6B] block">
+                    Variation: <strong className="text-[#2B2B2B]">{item.variationName}</strong>
+                  </span>
+                </div>
+
+                <div className="shrink-0 text-right">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      item.isOutOfStock
+                        ? 'bg-red-100 text-red-700 border border-red-200'
+                        : 'bg-amber-100 text-amber-800 border border-amber-200'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${item.isOutOfStock ? 'bg-red-600 animate-ping' : 'bg-amber-600'}`} />
+                    {item.isOutOfStock ? 'Stock 0' : `${item.remainingStock} left`}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {lowStockItems.length > 6 && (
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => onNavigateTab('products', 'LOW_STOCK')}
+                className="text-xs font-bold text-amber-700 hover:text-amber-800 hover:underline cursor-pointer"
+              >
+                + View all {lowStockItems.length} low stock items in product catalog &rarr;
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -377,7 +514,7 @@ export function DashboardView({
             <div className="space-y-3">
               {/* Item 1: Low stock variations */}
               <div
-                onClick={() => onNavigateTab('stock')}
+                onClick={() => onNavigateTab('products', 'LOW_STOCK')}
                 className="group flex items-center justify-between p-3 rounded-xl bg-[#FAF7F2] hover:bg-[#FFF3CC]/40 border border-[#EFE9E0] hover:border-[#FFF3CC] transition-all cursor-pointer"
               >
                 <div className="space-y-0.5">
@@ -385,12 +522,12 @@ export function DashboardView({
                     Low stock variations
                   </span>
                   <span className="text-[11px] text-[#6B6B6B]">
-                    {metrics.lowStockCount} items have fewer than 10 units left
+                    {lowStockItems.length} items have fallen below minimum stock
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="w-6 h-6 rounded-full bg-[#FFF3CC] text-[#7A4E00] font-mono font-bold flex items-center justify-center text-xs">
-                    {metrics.lowStockCount}
+                    {lowStockItems.length}
                   </span>
                   <ChevronRight className="w-4 h-4 text-[#6B6B6B] group-hover:translate-x-0.5 transition-transform" />
                 </div>

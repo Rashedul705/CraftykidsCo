@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IOrderItemSnapshot {
   productId: any;
   id?: string;
+  variantId?: any;
   variationSku?: string;
   bundleId?: any;
   title?: string;
@@ -71,6 +72,7 @@ const OrderItemSnapshotSchema = new Schema<IOrderItemSnapshot>(
   {
     productId: { type: Schema.Types.Mixed, required: true },
     id: { type: String },
+    variantId: { type: Schema.Types.Mixed },
     variationSku: { type: String },
     bundleId: { type: Schema.Types.Mixed },
     title: { type: String },

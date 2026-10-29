@@ -13,6 +13,7 @@ import {
   Tag,
   ShieldCheck,
   CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -21,6 +22,7 @@ import { FreeDeliveryBar } from '@/components/storefront/FreeDeliveryBar';
 import { Button } from '@/components/ui/Button';
 import { formatBDT } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
+import { trackInitiateCheckout } from '@/lib/analytics';
 
 export default function CartPage() {
   const {
@@ -43,6 +45,37 @@ export default function CartPage() {
     freeDeliveryThreshold?: number;
     freeShippingEnabled?: boolean;
   }>({ freeDeliveryThreshold: 1000, freeShippingEnabled: true });
+  const [stockShortages, setStockShortages] = useState<string[]>([]);
+
+  // Real-time stock verification
+  React.useEffect(() => {
+    if (items.length === 0) {
+      setStockShortages([]);
+      return;
+    }
+    fetch('/api/products/check-stock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: items.map((i) => ({
+          productId: i.productId,
+          variationSku: i.variationSku || '',
+          variationTitle: i.variationTitle || i.variationTitleBn || '',
+          title: i.titleBn || i.title,
+          quantity: i.quantity,
+        })),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.hasShortage && Array.isArray(data.shortages) && data.shortages.length > 0) {
+          setStockShortages(data.shortages.map((s: any) => s.message));
+        } else {
+          setStockShortages([]);
+        }
+      })
+      .catch(() => {});
+  }, [items]);
 
   React.useEffect(() => {
     fetch('/api/delivery-charges')
@@ -271,9 +304,37 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <Link href="/checkout" className="block pt-2">
-                  <Button variant="primary" size="lg" fullWidth>
-                    Proceed to Checkout
+                {stockShortages.length > 0 && (
+                  <div className="bg-[#FFF0F0] border border-[#FFD6D6] rounded-2xl p-4 text-xs font-bold text-[#FF6B6B] space-y-1.5 shadow-sm">
+                    <div className="flex items-center gap-2 text-sm font-black">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span>স্টক সংক্রান্ত সতর্কতা:</span>
+                    </div>
+                    {stockShortages.map((msg, i) => (
+                      <p key={i} className="pl-6">• {msg}</p>
+                    ))}
+                  </div>
+                )}
+
+                <Link
+                  href={stockShortages.length > 0 ? '#' : '/checkout'}
+                  className="block pt-2"
+                  onClick={(e) => {
+                    if (stockShortages.length > 0) {
+                      e.preventDefault();
+                    } else {
+                      trackInitiateCheckout(items, grandTotal);
+                    }
+                  }}
+                >
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    fullWidth
+                    disabled={stockShortages.length > 0}
+                    className={stockShortages.length > 0 ? 'opacity-50 cursor-not-allowed' : ''}
+                  >
+                    {stockShortages.length > 0 ? 'পর্যাপ্ত স্টক নেই' : 'Proceed to Checkout'}
                   </Button>
                 </Link>
 

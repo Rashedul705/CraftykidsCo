@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "cleanup:variations": "tsx --env-file=.env scripts/cleanup-variations.ts",
+    "cleanup:variations:commit": "tsx --env-file=.env scripts/cleanup-variations.ts --commit --disambiguate-skus"
   },
   "dependencies": {
     "@emnapi/core": "^1.11.3",

@@ -4,7 +4,8 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { Order } from '@/models/Order';
 import { getNotificationProvider } from '@/core/notification';
 import { verifyAdminRequest } from '@/lib/auth';
-import { restoreInventoryStock, restoreDatabaseStock } from '@/lib/order-service';
+import { restoreInventoryStock } from '@/lib/order-service';
+import { restoreOrderStockAtomic } from '@/lib/order-stock';
 
 export async function GET(
   req: NextRequest,
@@ -125,8 +126,9 @@ export async function PATCH(
             currentOrder.status !== 'RETURNED' &&
             currentOrder.items
           ) {
+            const reason = status === 'CANCELLED' ? 'cancel' : 'return';
+            await restoreOrderStockAtomic(currentOrder as any, reason, note);
             restoreInventoryStock(currentOrder as any);
-            await restoreDatabaseStock(currentOrder.items);
           }
         } catch (restoreErr) {
           console.error('Error during automatic stock restoration:', restoreErr);
