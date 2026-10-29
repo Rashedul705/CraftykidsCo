@@ -215,15 +215,21 @@ export function ProductCard({
         href={`/product/${slug}`}
         className="block relative w-full aspect-square rounded-xl bg-[#FAF7F2] overflow-hidden mb-2.5"
       >
-        <Image
-          src={imageUrl}
-          alt={title}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className={`object-cover transition-transform duration-500 group-hover:scale-105 ${
-            outOfStock ? 'grayscale-[25%]' : ''
-          }`}
-        />
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={title}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className={`object-cover transition-transform duration-500 group-hover:scale-105 ${
+              outOfStock ? 'grayscale-[25%]' : ''
+            }`}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-4xl text-[#BDB5A8]">
+            🎨
+          </div>
+        )}
         {outOfStock && (
           <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
             <span className="bg-black/75 text-white font-bold text-xs px-3 py-1 rounded-full shadow-sm tracking-wide">

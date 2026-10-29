@@ -146,13 +146,17 @@ export default function CartPage() {
                   <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3.5 min-w-0 flex-1">
                       {/* Item Image */}
-                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shrink-0">
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.titleBn}
-                          fill
-                          className="object-cover"
-                        />
+                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shrink-0 flex items-center justify-center">
+                        {item.imageUrl && item.imageUrl.trim() ? (
+                          <Image
+                            src={item.imageUrl.trim()}
+                            alt={item.titleBn}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <span className="text-2xl">🎨</span>
+                        )}
                       </div>
 
                       {/* Item Info */}

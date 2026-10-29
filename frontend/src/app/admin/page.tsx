@@ -1097,8 +1097,12 @@ export default function AdminDashboardPage() {
                       <React.Fragment key={p.id}>
                         <tr className="hover:bg-[#FAF7F2]/50 transition-colors">
                           <td className="py-3">
-                            <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shrink-0">
-                              <Image src={p.imageUrl} alt={p.titleBn} fill className="object-cover" />
+                            <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shrink-0 flex items-center justify-center">
+                              {p.imageUrl && p.imageUrl.trim() ? (
+                                <Image src={p.imageUrl.trim()} alt={p.titleBn || 'Product'} fill className="object-cover" />
+                              ) : (
+                                <span className="text-xl">🎨</span>
+                              )}
                             </div>
                           </td>
                           <td className="py-3 font-bold text-[#1A1A1A]">
@@ -1350,12 +1354,16 @@ export default function AdminDashboardPage() {
                                         >
                                           <td className="py-2 w-10">
                                             <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2]">
-                                              <Image
-                                                src={v.imageUrl || v.image || p.imageUrl || '/placeholder.png'}
-                                                alt={v.optionValue || 'Variation'}
-                                                fill
-                                                className="object-cover"
-                                              />
+                                              {(v.imageUrl?.trim() || (v as any).image?.trim() || p.imageUrl?.trim()) ? (
+                                                <Image
+                                                  src={(v.imageUrl?.trim() || (v as any).image?.trim() || p.imageUrl?.trim()) as string}
+                                                  alt={v.optionValue || 'Variation'}
+                                                  fill
+                                                  className="object-cover"
+                                                />
+                                              ) : (
+                                                <span className="text-xs flex items-center justify-center w-full h-full">🎨</span>
+                                              )}
                                             </div>
                                           </td>
                                           <td className="py-2 font-bold text-[#1A1A1A]">

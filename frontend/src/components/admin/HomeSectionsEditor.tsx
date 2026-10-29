@@ -467,8 +467,12 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
                 } flex flex-col justify-between space-y-3`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 border border-white shadow-xs bg-white">
-                    <Image src={slide.imageUrl} alt={slide.titleBn} fill className="object-cover" />
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 border border-white shadow-xs bg-white flex items-center justify-center">
+                    {slide.imageUrl && slide.imageUrl.trim() ? (
+                      <Image src={slide.imageUrl.trim()} alt={slide.titleBn} fill className="object-cover" />
+                    ) : (
+                      <span className="text-2xl">🖼️</span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -1423,8 +1427,12 @@ export function HomeSectionsEditor({ onSaved }: HomeSectionsEditorProps) {
               <div>
                 <label className="font-bold block mb-1.5 text-[#2B2B2B]">Slide Photo (ImgBB CDN):</label>
                 <div className="flex items-center gap-4 p-3 rounded-2xl bg-[#FAF7F2] border border-[#EFEAE2]">
-                  <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-white shadow-xs shrink-0 bg-white">
-                    <Image src={editingSlide.imageUrl} alt="Slide Preview" fill className="object-cover" />
+                  <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-white shadow-xs shrink-0 bg-white flex items-center justify-center">
+                    {editingSlide.imageUrl && editingSlide.imageUrl.trim() ? (
+                      <Image src={editingSlide.imageUrl.trim()} alt="Slide Preview" fill className="object-cover" />
+                    ) : (
+                      <span className="text-3xl">🖼️</span>
+                    )}
                   </div>
                   <div className="space-y-1.5 flex-1">
                     <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#D32F2F] text-white font-bold cursor-pointer hover:bg-[#B71C1C] transition-colors shadow-xs">

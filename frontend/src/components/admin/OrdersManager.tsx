@@ -1031,6 +1031,17 @@ export default function OrdersManager({
     });
   };
 
+  // Copy consignment ID
+  const handleCopyConsignment = (code: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!code) return;
+    navigator.clipboard.writeText(code).then(() => {
+      success(`কুরিয়ার কনসাইনমেন্ট আইডি কপি করা হয়েছে: ${code}`);
+    }).catch(() => {
+      success(`কুরিয়ার কনসাইনমেন্ট আইডি: ${code}`);
+    });
+  };
+
   // Render Row Action Button based on status (shown only when relevant)
   const renderRowMainAction = (ord: OrderRecord) => {
     if (ord.status === 'PENDING') {
@@ -1053,21 +1064,30 @@ export default function OrdersManager({
     if (ord.status === 'CONFIRMED') {
       if (ord.consignmentId || ord.trackingCode) {
         return (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="px-3 py-1.5 text-xs whitespace-nowrap"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(
-                `https://steadfast.com.bd/t/${ord.trackingCode || ord.consignmentId}`,
-                '_blank'
-              );
-            }}
+          <div
+            className="inline-flex items-center p-0.5 rounded-[10px] bg-[#FAF7F2] border border-[#EFE9E0] shadow-2xs gap-0.5"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Truck className="w-3 h-3 mr-1 text-[#0B5F85]" />
-            Track
-          </Button>
+            <button
+              type="button"
+              onClick={() => handlePrintInvoices([ord])}
+              title="ইনভয়েস প্রিন্ট করুন (Print Invoice)"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-xs font-semibold text-[#2B2B2B] hover:text-[#0B5F85] hover:bg-white hover:shadow-xs transition-all cursor-pointer active:scale-95"
+            >
+              <Printer className="w-3.5 h-3.5 text-[#0B5F85]" />
+              <span>Invoice</span>
+            </button>
+            <span className="w-px h-3.5 bg-[#EFE9E0]" />
+            <button
+              type="button"
+              onClick={() => openStickerPrintModal([ord])}
+              title="পার্সেল স্টিকার প্রিন্ট করুন (Print Sticker)"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-xs font-semibold text-[#2B2B2B] hover:text-[#D6403B] hover:bg-white hover:shadow-xs transition-all cursor-pointer active:scale-95"
+            >
+              <Tag className="w-3.5 h-3.5 text-[#D6403B]" />
+              <span>Sticker</span>
+            </button>
+          </div>
         );
       }
       return (
@@ -1089,35 +1109,59 @@ export default function OrdersManager({
 
     if (ord.status === 'SHIPPED') {
       return (
-        <Button
-          size="sm"
-          variant="secondary"
-          className="px-3 py-1.5 text-xs whitespace-nowrap text-[#1F6B43] border-[#BDE7CC] hover:bg-[#DDF3E6]"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleMarkDelivered(ord);
-          }}
+        <div
+          className="inline-flex items-center p-0.5 rounded-[10px] bg-[#FAF7F2] border border-[#EFE9E0] shadow-2xs gap-0.5"
+          onClick={(e) => e.stopPropagation()}
         >
-          <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-          Delivered
-        </Button>
+          <button
+            type="button"
+            onClick={() => handlePrintInvoices([ord])}
+            title="ইনভয়েস প্রিন্ট করুন (Print Invoice)"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-xs font-semibold text-[#2B2B2B] hover:text-[#0B5F85] hover:bg-white hover:shadow-xs transition-all cursor-pointer active:scale-95"
+          >
+            <Printer className="w-3.5 h-3.5 text-[#0B5F85]" />
+            <span>Invoice</span>
+          </button>
+          <span className="w-px h-3.5 bg-[#EFE9E0]" />
+          <button
+            type="button"
+            onClick={() => openStickerPrintModal([ord])}
+            title="পার্সেল স্টিকার প্রিন্ট করুন (Print Sticker)"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-xs font-semibold text-[#2B2B2B] hover:text-[#D6403B] hover:bg-white hover:shadow-xs transition-all cursor-pointer active:scale-95"
+          >
+            <Tag className="w-3.5 h-3.5 text-[#D6403B]" />
+            <span>Sticker</span>
+          </button>
+        </div>
       );
     }
 
     if (ord.status === 'DELIVERED') {
       return (
-        <Button
-          size="sm"
-          variant="secondary"
-          className="px-3 py-1.5 text-xs whitespace-nowrap"
-          onClick={(e) => {
-            e.stopPropagation();
-            handlePrintInvoices([ord]);
-          }}
+        <div
+          className="inline-flex items-center p-0.5 rounded-[10px] bg-[#FAF7F2] border border-[#EFE9E0] shadow-2xs gap-0.5"
+          onClick={(e) => e.stopPropagation()}
         >
-          <Printer className="w-3.5 h-3.5 mr-1" />
-          Print
-        </Button>
+          <button
+            type="button"
+            onClick={() => handlePrintInvoices([ord])}
+            title="ইনভয়েস প্রিন্ট করুন (Print Invoice)"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-xs font-semibold text-[#2B2B2B] hover:text-[#0B5F85] hover:bg-white hover:shadow-xs transition-all cursor-pointer active:scale-95"
+          >
+            <Printer className="w-3.5 h-3.5 text-[#0B5F85]" />
+            <span>Invoice</span>
+          </button>
+          <span className="w-px h-3.5 bg-[#EFE9E0]" />
+          <button
+            type="button"
+            onClick={() => openStickerPrintModal([ord])}
+            title="পার্সেল স্টিকার প্রিন্ট করুন (Print Sticker)"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-xs font-semibold text-[#2B2B2B] hover:text-[#D6403B] hover:bg-white hover:shadow-xs transition-all cursor-pointer active:scale-95"
+          >
+            <Tag className="w-3.5 h-3.5 text-[#D6403B]" />
+            <span>Sticker</span>
+          </button>
+        </div>
       );
     }
 
@@ -1657,33 +1701,33 @@ export default function OrdersManager({
                                 </button>
                               </div>
 
-                              {/* 2. Courier tracking ID (with a copy button) */}
+                              {/* 2. Courier Consignment ID (with a copy button) */}
                               <div className="p-2 bg-[#FAF7F2]/60">
                                 <span className="text-[10px] text-[#6B6B6B] uppercase font-bold block mb-1">
-                                  Courier Tracking ID
+                                  Courier Consignment ID
                                 </span>
-                                {ord.trackingCode || ord.consignmentId ? (
+                                {ord.consignmentId || ord.trackingCode ? (
                                   <div className="flex items-center justify-between gap-1.5 bg-white px-2 py-1.5 rounded-[8px] border border-[#EFE9E0]">
                                     <span className="font-mono font-bold text-xs text-[#0B5F85] truncate">
-                                      #{ord.trackingCode || ord.consignmentId}
+                                      #{ord.consignmentId || ord.trackingCode}
                                     </span>
                                     <button
                                       type="button"
                                       onClick={(e) =>
-                                        handleCopyTracking(
-                                          ord.trackingCode || ord.consignmentId || '',
+                                        handleCopyConsignment(
+                                          ord.consignmentId || ord.trackingCode || '',
                                           e
                                         )
                                       }
                                       className="p-1 rounded hover:bg-black/5 text-[#6B6B6B] hover:text-[#2B2B2B] transition-colors shrink-0"
-                                      title="Copy tracking ID"
+                                      title="Copy consignment ID"
                                     >
                                       <Copy className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
                                 ) : (
                                   <span className="text-[11px] text-[#888] italic">
-                                    No tracking ID yet
+                                    No consignment ID yet
                                   </span>
                                 )}
                               </div>
@@ -1730,7 +1774,7 @@ export default function OrdersManager({
                                 )}
                               </div>
 
-                              {/* 5. Edit address & 6. Print invoice */}
+                              {/* 5. Edit address, Print invoice & sticker */}
                               <div className="py-1">
                                 <button
                                   type="button"
@@ -1756,10 +1800,57 @@ export default function OrdersManager({
                                   }}
                                   className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer"
                                 >
-                                  <Printer className="w-3.5 h-3.5 text-[#6B6B6B]" />
+                                  <Printer className="w-3.5 h-3.5 text-[#0B5F85]" />
                                   <span>Print invoice</span>
                                 </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveDropdownRowId(null);
+                                    setDropdownPos(null);
+                                    openStickerPrintModal([ord]);
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#2B2B2B] flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Tag className="w-3.5 h-3.5 text-[#D6403B]" />
+                                  <span>Print sticker</span>
+                                </button>
+
+                                {(ord.trackingCode || ord.consignmentId) && (
+                                  <a
+                                    href={`https://steadfast.com.bd/t/${ord.trackingCode || ord.consignmentId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => {
+                                      setActiveDropdownRowId(null);
+                                      setDropdownPos(null);
+                                    }}
+                                    className="w-full px-3 py-2 text-left hover:bg-[#FAF7F2] text-[#0B5F85] flex items-center gap-2 cursor-pointer font-medium"
+                                  >
+                                    <Truck className="w-3.5 h-3.5 text-[#0B5F85]" />
+                                    <span>Track parcel</span>
+                                  </a>
+                                )}
                               </div>
+
+                              {/* Mark as delivered if SHIPPED */}
+                              {ord.status === 'SHIPPED' && (
+                                <div className="py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveDropdownRowId(null);
+                                      setDropdownPos(null);
+                                      handleMarkDelivered(ord);
+                                    }}
+                                    className="w-full px-3 py-2 text-left hover:bg-[#DDF3E6] text-[#1F6B43] flex items-center gap-2 cursor-pointer font-semibold"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-[#1F6B43]" />
+                                    <span>Mark as delivered</span>
+                                  </button>
+                                </div>
+                              )}
 
                               {/* 7. Cancel order (styled in red, with confirmation step) */}
                               {ord.status !== 'CANCELLED' && (

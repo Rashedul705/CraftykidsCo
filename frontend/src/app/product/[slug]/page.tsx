@@ -284,6 +284,7 @@ function ProductContent() {
   }, [variations]);
 
   const [selectedVariationIndex, setSelectedVariationIndex] = useState<number>(firstAvailableIndex);
+  const [variationQuantities, setVariationQuantities] = useState<Record<string, number>>({});
   const [quantity, setQuantity] = useState<number>(1);
   const [addedToast, setAddedToast] = useState<boolean>(false);
 
@@ -291,11 +292,45 @@ function ProductContent() {
     setSelectedVariationIndex(firstAvailableIndex);
     setOverrideHeroImage(null);
     setQuantity(1);
-  }, [firstAvailableIndex, slug]);
+    if (variations.length > 0) {
+      const activeV = variations[firstAvailableIndex];
+      const key = activeV?.sku || activeV?.id || (activeV as any)?._id || `var-${firstAvailableIndex}`;
+      setVariationQuantities({ [key]: 1 });
+    } else {
+      setVariationQuantities({});
+    }
+  }, [firstAvailableIndex, slug, variations]);
+
+  // Selected variations list (all variations with qty > 0)
+  const selectedVariationsList = useMemo(() => {
+    if (variations.length === 0) return [];
+    return variations
+      .map((v, idx) => {
+        const key = v.sku || v.id || (v as any)._id || `var-${idx}`;
+        const qty = variationQuantities[key] || 0;
+        const vRegular = Number(v.regularPrice || v.price || 0);
+        const vSale = Number(v.salePrice && v.salePrice > 0 ? v.salePrice : vRegular);
+        const vPrice = vSale > 0 ? vSale : vRegular;
+        return {
+          key,
+          variation: v,
+          quantity: qty,
+          index: idx,
+          price: vPrice,
+        };
+      })
+      .filter((item) => item.quantity > 0);
+  }, [variations, variationQuantities]);
 
   const currentVariation = isVariable
-    ? (variations[selectedVariationIndex] || variations[0])
+    ? (selectedVariationsList[0]?.variation || variations[selectedVariationIndex] || variations[0])
     : null;
+
+  // Total selected count
+  const totalSelectedCount = useMemo(() => {
+    if (!isVariable) return quantity;
+    return selectedVariationsList.reduce((acc, item) => acc + item.quantity, 0);
+  }, [isVariable, quantity, selectedVariationsList]);
 
   // Stock status (Section 7 Requirement)
   const currentStock = isVariable
@@ -314,8 +349,19 @@ function ProductContent() {
     ? (currentVariation ? (currentVariation.isActive === false || currentStock <= 0) : true)
     : currentStock <= 0;
 
-  const isOutOfStock = isAllOutOfStock || isCurrentOutOfStock;
+  const isOutOfStock = isAllOutOfStock || (!isVariable && currentStock <= 0);
   const isLowStock = !isOutOfStock && currentStock > 0 && currentStock <= lowStockAlert;
+
+  // Starting price for variable products
+  const minPrice = useMemo(() => {
+    if (!isVariable || variations.length === 0) return 0;
+    const prices = variations.map((v) => {
+      const vRegular = Number(v.regularPrice || v.price || 0);
+      const vSale = Number(v.salePrice && v.salePrice > 0 ? v.salePrice : vRegular);
+      return vSale > 0 ? vSale : vRegular;
+    });
+    return Math.min(...prices);
+  }, [isVariable, variations]);
 
   // Price calculations
   const regularPrice = isVariable
@@ -330,24 +376,72 @@ function ProductContent() {
   const currentPrice = activePrice;
   const currentOriginalPrice = regularPrice;
 
+  // Total selected price
+  const totalSelectedPrice = useMemo(() => {
+    if (!isVariable) return activePrice * quantity;
+    return selectedVariationsList.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  }, [isVariable, activePrice, quantity, selectedVariationsList]);
+
   const discountPercent =
     (salePrice && regularPrice > salePrice)
       ? Math.round(((regularPrice - salePrice) / regularPrice) * 100)
       : 0;
 
-  // Variation chip click handler (Section 7 Requirement: "Show variation options as selectable buttons (chips)")
-  const handleSelectVariation = (idx: number) => {
-    const v = variations[idx];
-    if (v.isActive === false || Number(v.stock ?? (v as any).stockQuantity ?? 0) <= 0) return;
+  // Multi-set variation checkbox toggle handler
+  const handleToggleVariation = (idx: number) => {
+    const chosen = variations[idx];
+    const vStock = Number(chosen.stock ?? (chosen as any).stockQuantity ?? 0);
+    if (chosen.isActive === false || vStock <= 0) return;
+
     setSelectedVariationIndex(idx);
-    const varStock = Number(v.stock ?? (v as any).stockQuantity ?? 0);
-    // Quantity selector max = current variation stock
-    if (quantity > varStock) {
-      setQuantity(Math.max(1, varStock));
+    const key = chosen.sku || chosen.id || (chosen as any)._id || `var-${idx}`;
+    const isCurrentlyChecked = (variationQuantities[key] || 0) > 0;
+
+    if (!isCurrentlyChecked && (chosen.imageUrl || (chosen as any).image)) {
+      setOverrideHeroImage(chosen.imageUrl || (chosen as any).image);
     }
-    if (v.imageUrl || (v as any).image) {
-      setOverrideHeroImage(v.imageUrl || (v as any).image);
-    }
+
+    setVariationQuantities((prev) => {
+      const current = prev[key] || 0;
+      const next = { ...prev };
+      if (current > 0) {
+        delete next[key];
+      } else {
+        next[key] = 1;
+      }
+      return next;
+    });
+  };
+
+  // Multi-set variation quantity updater
+  const handleUpdateVariationQty = (idx: number, delta: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const chosen = variations[idx];
+    const vStock = Number(chosen.stock ?? (chosen as any).stockQuantity ?? 0);
+    if (chosen.isActive === false || vStock <= 0) return;
+
+    const key = chosen.sku || chosen.id || (chosen as any)._id || `var-${idx}`;
+
+    setVariationQuantities((prev) => {
+      const current = prev[key] || 0;
+      const nextQty = current + delta;
+
+      if (nextQty <= 0) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+
+      if (nextQty > vStock) {
+        toast.info(`সর্বোচ্চ স্টক ${toBanglaDigits(vStock)}টি`);
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [key]: nextQty,
+      };
+    });
   };
 
   // Short description computation
@@ -414,44 +508,49 @@ function ProductContent() {
     if (!product || isOutOfStock) return;
 
     if (isVariable) {
-      if (!currentVariation || isCurrentOutOfStock) {
-        toast.error('নির্বাচিত ভ্যারিয়েন্টটি বর্তমানে স্টকে নেই');
+      if (selectedVariationsList.length === 0) {
+        toast.error('অনুগ্রহ করে কমপক্ষে একটি ভ্যারিয়েন্ট সিলেক্ট করুন');
         return;
       }
-      const v = currentVariation;
-      const vPrice = activePrice;
-      const vSku = v.sku || '';
-      const vTitle = v.optionValue || v.titleEn || '';
-      const vTitleBn = v.optionValue || v.titleBn || v.titleEn || '';
-      const vImg = v.imageUrl || (v as any).image || galleryImages[0] || product.imageUrl;
 
-      addItem({
-        id: `${product.id}-${v.id || v.sku || selectedVariationIndex}`,
-        productId: product.id,
-        productSlug: product.slug,
-        title: product.titleEn,
-        titleBn: product.titleBn,
-        imageUrl: vImg,
-        price: vPrice,
-        quantity,
-        variationSku: vSku,
-        variationTitle: vTitle,
-        variationTitleBn: vTitleBn,
-      });
+      selectedVariationsList.forEach(({ variation: v, quantity: qty, price: vPrice }) => {
+        const vSku = v.sku || '';
+        const vTitle = v.optionValue || v.titleEn || '';
+        const vTitleBn = v.optionValue || v.titleBn || v.titleEn || '';
+        const vImg = v.imageUrl || (v as any).image || galleryImages[0] || product.imageUrl;
 
-      // Track AddToCart with CAPI
-      trackAddToCart({
-        id: product.id,
-        title: product.titleEn || product.titleBn,
-        category: product.categorySlug,
-        price: vPrice,
-        quantity,
-        variantTitle: vTitleBn || vTitle,
-        sku: vSku,
+        addItem({
+          id: `${product.id}-${v.id || (v as any)._id || v.sku}`,
+          productId: product.id,
+          productSlug: product.slug,
+          title: product.titleEn,
+          titleBn: product.titleBn,
+          imageUrl: vImg,
+          price: vPrice,
+          quantity: qty,
+          variationSku: vSku,
+          variationTitle: vTitle,
+          variationTitleBn: vTitleBn,
+        });
+
+        // Track AddToCart with CAPI
+        trackAddToCart({
+          id: product.id,
+          title: product.titleEn || product.titleBn,
+          category: product.categorySlug,
+          price: vPrice,
+          quantity: qty,
+          variantTitle: vTitleBn || vTitle,
+          sku: vSku,
+        });
       });
 
       setAddedToast(true);
-      toast.success(`'${vTitleBn || product.titleBn}' কার্টে যোগ করা হয়েছে!`);
+      if (selectedVariationsList.length > 1) {
+        toast.success(`${toBanglaDigits(selectedVariationsList.length)}টি ভ্যারিয়েন্ট কার্টে যোগ করা হয়েছে!`);
+      } else {
+        toast.success(`'${selectedVariationsList[0].variation.optionValue || selectedVariationsList[0].variation.titleBn || product.titleBn}' কার্টে যোগ করা হয়েছে!`);
+      }
       setTimeout(() => setAddedToast(false), 2500);
       return;
     }
@@ -487,54 +586,53 @@ function ProductContent() {
     if (!product || isOutOfStock) return;
 
     if (isVariable) {
-      if (!currentVariation || isCurrentOutOfStock) {
-        toast.error('নির্বাচিত ভ্যারিয়েন্টটি বর্তমানে স্টকে নেই');
+      if (selectedVariationsList.length === 0) {
+        toast.error('অনুগ্রহ করে কমপক্ষে একটি ভ্যারিয়েন্ট সিলেক্ট করুন');
         return;
       }
-      const v = currentVariation;
-      const vPrice = activePrice;
-      const vSku = v.sku || '';
-      const vTitle = v.optionValue || v.titleEn || '';
-      const vTitleBn = v.optionValue || v.titleBn || v.titleEn || '';
-      const vImg = v.imageUrl || (v as any).image || galleryImages[0] || product.imageUrl;
 
-      addItem({
-        id: `${product.id}-${v.id || v.sku || selectedVariationIndex}`,
-        productId: product.id,
-        productSlug: product.slug,
-        title: product.titleEn,
-        titleBn: product.titleBn,
-        imageUrl: vImg,
-        price: vPrice,
-        quantity,
-        variationSku: vSku,
-        variationTitle: vTitle,
-        variationTitleBn: vTitleBn,
+      const checkoutItems: any[] = [];
+      selectedVariationsList.forEach(({ variation: v, quantity: qty, price: vPrice }) => {
+        const vSku = v.sku || '';
+        const vTitle = v.optionValue || v.titleEn || '';
+        const vTitleBn = v.optionValue || v.titleBn || v.titleEn || '';
+        const vImg = v.imageUrl || (v as any).image || galleryImages[0] || product.imageUrl;
+
+        addItem({
+          id: `${product.id}-${v.id || (v as any)._id || v.sku}`,
+          productId: product.id,
+          productSlug: product.slug,
+          title: product.titleEn,
+          titleBn: product.titleBn,
+          imageUrl: vImg,
+          price: vPrice,
+          quantity: qty,
+          variationSku: vSku,
+          variationTitle: vTitle,
+          variationTitleBn: vTitleBn,
+        });
+
+        // Track AddToCart with CAPI
+        trackAddToCart({
+          id: product.id,
+          title: product.titleEn || product.titleBn,
+          category: product.categorySlug,
+          price: vPrice,
+          quantity: qty,
+          variantTitle: vTitleBn || vTitle,
+          sku: vSku,
+        });
+
+        checkoutItems.push({
+          id: `${product.id}-${v.id || (v as any)._id || v.sku}`,
+          title: `${product.titleBn} (${vTitleBn || vTitle})`,
+          price: vPrice,
+          quantity: qty,
+          sku: vSku,
+        });
       });
 
-      // Track AddToCart & InitiateCheckout with CAPI
-      trackAddToCart({
-        id: product.id,
-        title: product.titleEn || product.titleBn,
-        category: product.categorySlug,
-        price: vPrice,
-        quantity,
-        variantTitle: vTitleBn || vTitle,
-        sku: vSku,
-      });
-      trackInitiateCheckout(
-        [
-          {
-            id: `${product.id}-${v.id || v.sku || selectedVariationIndex}`,
-            title: `${product.titleBn} (${vTitleBn || vTitle})`,
-            price: vPrice,
-            quantity,
-            sku: vSku,
-          },
-        ],
-        vPrice * quantity
-      );
-
+      trackInitiateCheckout(checkoutItems, totalSelectedPrice);
       router.push('/checkout');
       return;
     }
@@ -734,14 +832,20 @@ function ProductContent() {
 
             {/* Main Stage Image (Never empty black box, never autoplay) */}
             <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shadow-inner group flex items-center justify-center">
-              <Image
-                src={overrideHeroImage || galleryImages[activeImageIndex] || product.imageUrl}
-                alt={product.titleBn}
-                fill
-                priority
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-              />
+              {Boolean(overrideHeroImage?.trim() || galleryImages[activeImageIndex]?.trim() || product.imageUrl?.trim()) ? (
+                <Image
+                  src={(overrideHeroImage?.trim() || galleryImages[activeImageIndex]?.trim() || product.imageUrl?.trim()) as string}
+                  alt={product.titleBn}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-6xl text-[#BDB5A8]">
+                  🎨
+                </div>
+              )}
 
               {/* Discount Badge */}
               {discountPercent > 0 && (
@@ -798,14 +902,11 @@ function ProductContent() {
               )}
             </div>
 
-            {/* ================================================================
-                SINGLE ROW OF THUMBNAILS (PHOTOS + VIDEOS IN THE SAME ROW)
-                Rule: "Do NOT add separate 'All media / Photos / Videos' tabs.
-                Videos appear as thumbnails in the same row with a play icon and length."
-               ================================================================ */}
+            {/* Single row of thumbnails (Photos + Videos) */}
             <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-none">
               {/* Photo Thumbnails */}
               {galleryImages.map((img, idx) => {
+                if (!img || !img.trim()) return null;
                 const isActive = activeImageIndex === idx;
                 return (
                   <button
@@ -821,44 +922,51 @@ function ProductContent() {
                         : 'border-[#EFE9E0] hover:border-[#D6403B]/60 opacity-80 hover:opacity-100'
                     }`}
                   >
-                    <Image src={img} alt={`থাম্বনেইল ${idx + 1}`} fill className="object-cover" />
+                    <Image src={img.trim()} alt={`থাম্বনেইল ${idx + 1}`} fill className="object-cover" />
                   </button>
                 );
               })}
 
               {/* Video Thumbnails in the same row */}
-              {productVideos.map((vid, vIdx) => (
-                <button
-                  key={vid.id || `vid-${vIdx}`}
-                  type="button"
-                  onClick={() => setActiveVideoModal(vid)}
-                  className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-black border-2 border-[#FFC93C] hover:border-[#D6403B] transition-all cursor-pointer flex-shrink-0 group shadow-2xs"
-                  title={`${vid.titleBn} (ভিডিও দেখতে ক্লিক করুন)`}
-                >
-                  {/* Poster Thumbnail */}
-                  <Image
-                    src={vid.thumbnailUrl || galleryImages[vIdx] || product.imageUrl}
-                    alt={vid.titleBn}
-                    fill
-                    unoptimized
-                    className="object-cover opacity-60 group-hover:opacity-40 transition-opacity"
-                  />
+              {productVideos.map((vid, vIdx) => {
+                const vidThumb = vid.thumbnailUrl?.trim() || galleryImages[vIdx]?.trim() || product.imageUrl?.trim();
+                return (
+                  <button
+                    key={vid.id || `vid-${vIdx}`}
+                    type="button"
+                    onClick={() => setActiveVideoModal(vid)}
+                    className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-black border-2 border-[#FFC93C] hover:border-[#D6403B] transition-all cursor-pointer flex-shrink-0 group shadow-2xs"
+                    title={`${vid.titleBn} (ভিডিও দেখতে ক্লিক করুন)`}
+                  >
+                    {/* Poster Thumbnail */}
+                    {vidThumb ? (
+                      <Image
+                        src={vidThumb}
+                        alt={vid.titleBn}
+                        fill
+                        unoptimized
+                        className="object-cover opacity-60 group-hover:opacity-40 transition-opacity"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-stone-900" />
+                    )}
 
-                  {/* Play Center Icon */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 z-10">
-                    <div className="w-6 h-6 rounded-full bg-[#D6403B] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
-                      <Play className="w-3 h-3 fill-current ml-0.5" />
+                    {/* Play Center Icon */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 z-10">
+                      <div className="w-6 h-6 rounded-full bg-[#D6403B] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                        <Play className="w-3 h-3 fill-current ml-0.5" />
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Duration badge */}
-                  {vid.duration && (
-                    <span className="absolute bottom-0.5 right-0.5 bg-black/85 text-white text-[8px] font-mono px-1 rounded">
-                      {vid.duration}
-                    </span>
-                  )}
-                </button>
-              ))}
+                    {/* Duration badge */}
+                    {vid.duration && (
+                      <span className="absolute bottom-0.5 right-0.5 bg-black/85 text-white text-[8px] font-mono px-1 rounded">
+                        {vid.duration}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Quick Demo Video Strip */}
@@ -895,16 +1003,20 @@ function ProductContent() {
             {/* 1. Stock badge and SKU */}
             <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
               {isOutOfStock ? (
-                <StatusPill variant="red">
-                  <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
-                  Stock out (স্টক শেষ)
-                </StatusPill>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#FDE2E1] text-[#D6403B]">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  স্টক শেষ
+                </span>
               ) : isLowStock ? (
-                <StatusPill variant="yellow">
-                  <Clock className="w-3.5 h-3.5 inline mr-1" />
-                  Only {currentStock} left (মাত্র {toBanglaDigits(currentStock)}টি অবশিষ্ট)
-                </StatusPill>
-              ) : null}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#FEF3C7] text-[#D97706]">
+                  <Clock className="w-3.5 h-3.5" />
+                  মাত্র {toBanglaDigits(currentStock)}টি বাকি
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#E6F4EA] text-[#137333]">
+                  স্টকে আছে, এখনই অর্ডার করুন
+                </span>
+              )}
 
               <span className="text-xs font-mono text-[#6B6B6B]">
                 SKU: {currentVariation?.sku || product.slug.slice(0, 10).toUpperCase()}
@@ -913,11 +1025,11 @@ function ProductContent() {
 
             {/* 2. Title in Bangla (large, easy to read), English title below in grey */}
             <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#2B2B2B] leading-tight">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#1A1A1A] leading-tight">
                 {product.titleBn}
               </h1>
               {product.titleEn && (
-                <p className="text-sm sm:text-base text-[#6B6B6B] mt-1.5 font-medium">
+                <p className="text-sm sm:text-base text-[#6B6B6B] mt-1 font-medium">
                   {product.titleEn}
                 </p>
               )}
@@ -943,136 +1055,296 @@ function ProductContent() {
               </div>
             )}
 
-            {/* 4. Compact price: large sale price in red, old price struck through */}
-            <div className="flex items-baseline gap-3 pt-1 flex-wrap">
-              <span className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#C23631]">
-                {formatBDT(activePrice, { locale: 'bn' })}
-              </span>
-              {salePrice && regularPrice > salePrice && (
-                <span className="text-lg sm:text-xl text-[#757575] line-through font-medium">
-                  {formatBDT(regularPrice, { locale: 'bn' })}
+            {/* 4. Price Display */}
+            {isVariable ? (
+              <div className="flex items-baseline gap-2 pt-1 flex-wrap">
+                <span className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#B93834] font-siliguri">
+                  {formatBDT(minPrice, { locale: 'bn' })}
                 </span>
-              )}
-              {discountPercent > 0 && (
-                <StatusPill variant="red">
-                  {toBanglaDigits(discountPercent)}% ছাড়
-                </StatusPill>
-              )}
-            </div>
-
-            {/* 5. Variation selector: Button Chips */}
-            {isVariable && (
-              <div className="space-y-3 pt-3 border-t border-[#EFE9E0]">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm sm:text-base font-bold text-[#2B2B2B]">
-                    {product.optionName || 'অপশন নির্বাচন করুন'}:
+                <span className="text-sm sm:text-base font-semibold text-[#6B6B6B]">
+                  থেকে শুরু
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-baseline gap-3 pt-1 flex-wrap">
+                <span className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#B93834]">
+                  {formatBDT(activePrice, { locale: 'bn' })}
+                </span>
+                {salePrice && regularPrice > salePrice && (
+                  <span className="text-lg sm:text-xl text-[#757575] line-through font-medium">
+                    {formatBDT(regularPrice, { locale: 'bn' })}
                   </span>
-                  <span className="text-xs text-[#6B6B6B] font-medium bg-[#FAF7F2] px-2.5 py-0.5 rounded-full border border-[#EFE9E0]">
-                    {variations.length} {variations.length === 1 ? 'টি অপশন' : 'টি অপশন'}
+                )}
+                {discountPercent > 0 && (
+                  <StatusPill variant="red">
+                    {toBanglaDigits(discountPercent)}% ছাড়
+                  </StatusPill>
+                )}
+              </div>
+            )}
+
+            {/* 5. Variation Cards Selector (Matching User Mockup) */}
+            {isVariable && (
+              <div className="space-y-3 pt-3 border-t border-[#EFEAE2]">
+                {/* Header */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-bold text-[#1A1A1A]">
+                      {product.optionName || 'Select Set'}
+                    </span>
+                    <span className="text-xs font-medium text-[#555] bg-[#EFEAE2] px-2.5 py-0.5 rounded-full">
+                      {variations.length} options
+                    </span>
+                  </div>
+                  <span className="text-xs font-medium text-[#9B2C2C] bg-[#FDE8E8] px-3 py-1 rounded-full">
+                    Tick more than one set and set a quantity for each
                   </span>
                 </div>
 
-                {/* Variation Chips */}
-                <div className="flex flex-wrap gap-2.5">
+                {/* Variation Cards */}
+                <div className="space-y-3">
                   {variations.map((v, idx) => {
-                    const varStock = Number(v.stock ?? (v as any).stockQuantity ?? 0);
-                    const isOutOfStockVar = v.isActive === false || varStock <= 0;
-                    const isSelected = selectedVariationIndex === idx;
-                    const optLabel = v.optionValue || v.titleBn || v.titleEn || `Option ${idx + 1}`;
+                    const key = v.sku || v.id || (v as any)._id || `var-${idx}`;
+                    const varQty = variationQuantities[key] || 0;
+                    const isSelected = varQty > 0;
+                    const vStock = Number(v.stock ?? (v as any).stockQuantity ?? 0);
+                    const isOutOfStockVar = v.isActive === false || vStock <= 0;
+                    const isLowStockVar = !isOutOfStockVar && vStock > 0 && vStock <= (v.lowStockAlert || 10);
+                    const vRegularPrice = Number(v.regularPrice || v.price || 0);
+                    const vSalePrice = Number(v.salePrice && v.salePrice > 0 ? v.salePrice : vRegularPrice);
+                    const vPrice = vSalePrice > 0 ? vSalePrice : vRegularPrice;
+
+                    // Number badge (e.g. 12, 24, 48)
+                    const pieceMatch = (v.optionValue || v.titleEn || v.titleBn || '').match(/\d+/);
+                    const pieceNum = pieceMatch ? pieceMatch[0] : (idx + 1);
+
+                    // Badge background color palette matching mockup:
+                    // 1st: navy #1E295B, 2nd: purple #522766, 3rd: slate #71717A
+                    const badgeBgColors = [
+                      'bg-[#1E295B]',
+                      'bg-[#522766]',
+                      'bg-[#71717A]',
+                      'bg-[#0B5F85]',
+                      'bg-[#83284F]',
+                    ];
+                    const badgeBg = isOutOfStockVar ? 'bg-[#71717A]' : badgeBgColors[idx % badgeBgColors.length];
+
+                    const optTitle = v.optionValue || v.titleEn || v.titleBn || `Option ${idx + 1}`;
+                    const optDetail = v.detail || (v as any).whatsInIt || (v as any).descriptionBn || (v as any).attributes?.detail;
 
                     return (
-                      <button
-                        key={v.id || v.sku || idx}
-                        type="button"
-                        disabled={isOutOfStockVar}
-                        onClick={() => handleSelectVariation(idx)}
-                        className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 border ${
+                      <div
+                        key={key}
+                        onClick={() => {
+                          if (isOutOfStockVar) return;
+                          handleToggleVariation(idx);
+                        }}
+                        className={`rounded-2xl transition-all border p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                           isOutOfStockVar
-                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60 line-through'
+                            ? 'bg-[#FAF7F2]/80 border-[#EFEAE2] opacity-75 cursor-not-allowed'
                             : isSelected
-                            ? 'border-2 border-[#D6403B] bg-[#FDE3E1]/40 text-[#D6403B] ring-2 ring-[#D6403B]/10 shadow-xs scale-[1.02]'
-                            : 'border-[#EFE9E0] bg-white text-[#2B2B2B] hover:border-[#D6403B]/60 hover:bg-[#FAF7F2] cursor-pointer shadow-2xs'
+                            ? 'bg-white border-2 border-[#B93834] shadow-xs cursor-pointer'
+                            : 'bg-white border border-[#EFEAE2] hover:border-[#B93834]/50 cursor-pointer shadow-2xs'
                         }`}
                       >
-                        <span>{optLabel}</span>
-                        {isOutOfStockVar ? (
-                          <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded ml-1 no-underline">
-                            Stock out
-                          </span>
-                        ) : v.salePrice && v.salePrice < v.price ? (
-                          <span className="text-xs opacity-80">
-                            ৳{v.salePrice}
-                          </span>
-                        ) : null}
-                      </button>
+                        {/* Left: Checkbox + Piece Badge + Title & Bengali details */}
+                        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                          {/* Checkbox */}
+                          <div className="shrink-0">
+                            {isSelected ? (
+                              <div className="w-5 h-5 rounded-md bg-[#B93834] text-white flex items-center justify-center shadow-xs">
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              </div>
+                            ) : (
+                              <div className={`w-5 h-5 rounded-md border-2 ${isOutOfStockVar ? 'border-gray-300 bg-gray-100' : 'border-gray-300 bg-white hover:border-[#B93834]'}`} />
+                            )}
+                          </div>
+
+                          {/* Dark Square Number Badge */}
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl text-white shrink-0 ${badgeBg} shadow-2xs select-none`}>
+                            {pieceNum}
+                          </div>
+
+                          {/* Title, Details & Stock Status */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-bold text-base text-[#1A1A1A] leading-snug">
+                                {optTitle}
+                              </h3>
+                              {v.badge && (
+                                <span className="text-[10px] font-bold text-[#D6403B] bg-[#FDE2E1] px-2 py-0.5 rounded-full">
+                                  {v.badge}
+                                </span>
+                              )}
+                            </div>
+
+                            {optDetail && (
+                              <p className="text-xs text-[#555] font-siliguri mt-0.5 leading-relaxed">
+                                {optDetail}
+                              </p>
+                            )}
+
+                            {/* Stock Indicator */}
+                            <div className="mt-1">
+                              {isOutOfStockVar ? (
+                                <span className="inline-block text-xs font-bold text-[#D6403B] bg-[#FDE2E1] px-2 py-0.5 rounded-md">
+                                  স্টক শেষ
+                                </span>
+                              ) : isLowStockVar ? (
+                                <span className="text-xs font-bold text-[#DC2626]">
+                                  মাত্র {toBanglaDigits(vStock)}টি বাকি
+                                </span>
+                              ) : (
+                                <span className="text-xs font-semibold text-[#16A34A]">
+                                  স্টকে আছে
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Prices + Quantity Stepper (if selected) or Stock Out Badge */}
+                        <div className="flex items-center justify-between sm:justify-end gap-3.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#EFEAE2] shrink-0">
+                          {/* Prices */}
+                          <div className="text-left sm:text-right">
+                            <div className="flex items-baseline gap-1.5 sm:justify-end">
+                              <span className={`text-lg sm:text-xl font-black ${isOutOfStockVar ? 'text-[#71717A] line-through' : 'text-[#B93834]'}`}>
+                                {formatBDT(vPrice, { locale: 'bn' })}
+                              </span>
+                              {!isOutOfStockVar && vRegularPrice > vPrice && (
+                                <span className="text-xs text-[#71717A] line-through block">
+                                  {formatBDT(vRegularPrice, { locale: 'bn' })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quantity Stepper (if selected and in stock) */}
+                          {isSelected && !isOutOfStockVar && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center border border-[#EFEAE2] rounded-lg bg-white overflow-hidden shadow-2xs"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => handleUpdateVariationQty(idx, -1, e)}
+                                disabled={varQty <= 1 && totalSelectedCount <= 1}
+                                className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#2B2B2B] hover:bg-[#FAF7F2] active:bg-[#FDE8E8] transition-colors cursor-pointer disabled:opacity-40"
+                                title="কমান"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="w-8 text-center text-sm font-bold text-[#1A1A1A] select-none">
+                                {varQty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => handleUpdateVariationQty(idx, 1, e)}
+                                disabled={varQty >= vStock}
+                                className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#2B2B2B] hover:bg-[#FAF7F2] active:bg-[#FDE8E8] transition-colors cursor-pointer disabled:opacity-40"
+                                title="বাড়ান"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Out of stock badge on right */}
+                          {isOutOfStockVar && (
+                            <span className="text-xs font-bold text-[#D6403B] bg-[#FDE2E1] px-2.5 py-1 rounded-md">
+                              স্টক শেষ
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
 
-                {/* Selected Variation Detail if available */}
-                {currentVariation && (currentVariation.detail || (currentVariation as any).whatsInIt || (currentVariation as any).descriptionBn) && (
-                  <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] text-xs sm:text-sm text-[#444] font-siliguri leading-relaxed mt-2">
-                    <strong className="text-[#2B2B2B] font-bold">প্যাকেজে অন্তর্ভুক্ত: </strong>
-                    {currentVariation.detail || (currentVariation as any).whatsInIt || (currentVariation as any).descriptionBn}
+                {/* Selection Summary Box ("Your selection (X sets)") */}
+                {selectedVariationsList.length > 0 && (
+                  <div className="bg-[#FAF8F5] border border-[#EFEAE2] rounded-2xl p-4 sm:p-5 mt-4 space-y-3">
+                    <h4 className="font-bold text-sm sm:text-base text-[#1A1A1A]">
+                      Your selection ({totalSelectedCount} {totalSelectedCount === 1 ? 'set' : 'sets'})
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedVariationsList.map((item) => (
+                        <div key={item.key} className="flex items-center justify-between text-sm">
+                          <span className="text-[#333]">
+                            {item.variation.optionValue || item.variation.titleEn || item.variation.titleBn} × {item.quantity}
+                          </span>
+                          <span className="font-semibold text-[#1A1A1A]">
+                            ৳{(item.price * item.quantity).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-[#EFEAE2] pt-2" />
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-base text-[#1A1A1A]">Total</span>
+                      <span className="text-xl sm:text-2xl font-black text-[#B93834]">
+                        ৳{totalSelectedPrice.toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* 6. Quantity stepper and live total line */}
-            <div className="space-y-2.5 pt-3 border-t border-[#EFE9E0]">
-              <div className="flex items-center justify-between">
-                <span className="text-sm sm:text-base font-bold text-[#2B2B2B]">অর্ডারের পরিমাণ:</span>
-                <div className="flex items-center bg-[#FAF7F2] border border-[#EFE9E0] rounded-full p-1.5 shadow-inner">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    disabled={quantity <= 1 || isOutOfStock}
-                    className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
-                    title="কমান"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-12 text-center font-extrabold text-lg sm:text-xl font-siliguri tracking-wider">
-                    {toBanglaDigits(quantity)}
+            {/* 6. Quantity stepper for non-variable products only */}
+            {!isVariable && (
+              <div className="space-y-2.5 pt-3 border-t border-[#EFEAE2]">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm sm:text-base font-bold text-[#2B2B2B]">অর্ডারের পরিমাণ:</span>
+                  <div className="flex items-center bg-[#FAF7F2] border border-[#EFE9E0] rounded-full p-1.5 shadow-inner">
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      disabled={quantity <= 1 || isOutOfStock}
+                      className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
+                      title="কমান"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-12 text-center font-extrabold text-lg sm:text-xl font-siliguri tracking-wider">
+                      {toBanglaDigits(quantity)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.min(currentStock, q + 1))}
+                      disabled={quantity >= currentStock || isOutOfStock}
+                      className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
+                      title="বাড়ান"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Live Total Line for non-variable product */}
+                <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 border border-[#EFE9E0] text-sm sm:text-base font-medium text-[#2B2B2B] flex items-center justify-between gap-2 flex-wrap">
+                  <span className="truncate max-w-md flex items-center gap-1.5">
+                    <span className="text-[#555]">
+                      {product.titleBn || product.titleEn}{' '}
+                      × <strong className="font-bold text-base sm:text-lg text-[#2B2B2B]">{quantity}</strong>
+                    </span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.min(currentStock, q + 1))}
-                    disabled={quantity >= currentStock || isOutOfStock}
-                    className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2B2B] hover:text-[#D6403B] shadow-2xs cursor-pointer disabled:opacity-40 transition-colors"
-                    title="বাড়ান"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+                  <span className="font-black text-base sm:text-xl text-[#C23631] shrink-0">
+                    Total ৳{(activePrice * quantity).toLocaleString()}
+                  </span>
                 </div>
               </div>
+            )}
 
-              {/* Live Total Line */}
-              <div className="bg-[#FAF7F2] rounded-xl px-4 py-3 border border-[#EFE9E0] text-sm sm:text-base font-medium text-[#2B2B2B] flex items-center justify-between gap-2 flex-wrap">
-                <span className="truncate max-w-md flex items-center gap-1.5">
-                  <span className="text-[#555]">
-                    {isVariable
-                      ? (currentVariation?.optionValue || currentVariation?.titleBn || product.titleBn)
-                      : (product.titleBn || product.titleEn)}{' '}
-                    × <strong className="font-bold text-base sm:text-lg text-[#2B2B2B]">{quantity}</strong>
-                  </span>
-                </span>
-                <span className="font-black text-base sm:text-xl text-[#C23631] shrink-0">
-                  Total ৳{(activePrice * quantity).toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            {/* 7. Action Buttons: "Order Now" vs "Add to Cart" */}
+            {/* 7. Action Buttons */}
             <div className="space-y-3 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {/* 1. Primary Action: Order Now */}
                 <button
                   type="button"
                   onClick={handleBuyNow}
-                  disabled={isOutOfStock}
-                  className="py-4 px-6 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] active:scale-[0.98] text-white font-black text-base sm:text-lg flex items-center justify-center shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isOutOfStock || (isVariable && totalSelectedCount === 0)}
+                  className="py-3.5 px-6 rounded-xl bg-[#B93834] hover:bg-[#A32F2C] active:scale-[0.98] text-white font-bold text-base flex items-center justify-center shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>{isOutOfStock ? 'Stock Out' : 'Order Now'}</span>
                 </button>
@@ -1081,18 +1353,24 @@ function ProductContent() {
                 <button
                   type="button"
                   onClick={handleAddToCart}
-                  disabled={isOutOfStock}
-                  className="py-4 px-6 rounded-xl font-black text-base sm:text-lg flex items-center justify-center gap-2.5 transition-all cursor-pointer border-2 border-[#D6403B] text-[#D6403B] bg-transparent hover:bg-[#FDE3E1]/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isOutOfStock || (isVariable && totalSelectedCount === 0)}
+                  className="py-3.5 px-6 rounded-xl font-bold text-base flex items-center justify-center gap-2.5 transition-all cursor-pointer border-2 border-[#B93834] text-[#B93834] hover:bg-[#B93834]/5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {addedToast ? (
                     <>
                       <Check className="w-5 h-5 text-[#1F6B43]" />
-                      <span className="text-[#1F6B43]">Added to Cart!</span>
+                      <span className="text-[#1F6B43]">কার্টে যোগ হয়েছে!</span>
                     </>
                   ) : (
                     <>
                       <ShoppingBag className="w-5 h-5" />
-                      <span>{isOutOfStock ? 'Stock Out' : 'Add to Cart'}</span>
+                      <span>
+                        {isOutOfStock
+                          ? 'Stock Out'
+                          : isVariable
+                          ? `Add ${totalSelectedCount > 0 ? `${totalSelectedCount} set${totalSelectedCount > 1 ? 's' : ''}` : ''} to Cart`
+                          : 'Add to Cart'}
+                      </span>
                     </>
                   )}
                 </button>
@@ -1331,13 +1609,17 @@ function ProductContent() {
                     className="rounded-2xl border border-[#EFE9E0] overflow-hidden bg-[#FAF7F2] p-3 space-y-2.5 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
                   >
                     <div className="relative aspect-video rounded-xl overflow-hidden bg-black flex items-center justify-center">
-                      <Image
-                        src={vid.thumbnailUrl || galleryImages[idx] || product.imageUrl}
-                        alt={vid.titleBn}
-                        fill
-                        unoptimized
-                        className="object-cover opacity-75 group-hover:opacity-50 transition-opacity"
-                      />
+                      {(vid.thumbnailUrl?.trim() || galleryImages[idx]?.trim() || product.imageUrl?.trim()) ? (
+                        <Image
+                          src={(vid.thumbnailUrl?.trim() || galleryImages[idx]?.trim() || product.imageUrl?.trim()) as string}
+                          alt={vid.titleBn}
+                          fill
+                          unoptimized
+                          className="object-cover opacity-75 group-hover:opacity-50 transition-opacity"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-stone-900" />
+                      )}
                       <div className="w-10 h-10 rounded-full bg-[#D6403B] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform z-10">
                         <Play className="w-4 h-4 fill-current ml-0.5" />
                       </div>
@@ -1464,28 +1746,35 @@ function ProductContent() {
             >
               <X className="w-7 h-7" />
             </button>
-            <div className="relative w-full aspect-square max-h-[80vh] rounded-2xl overflow-hidden bg-white shadow-2xl">
-              <Image
-                src={galleryImages[activeImageIndex] || product.imageUrl}
-                alt={product.titleBn}
-                fill
-                className="object-contain"
-              />
+            <div className="relative w-full aspect-square max-h-[80vh] rounded-2xl overflow-hidden bg-white shadow-2xl flex items-center justify-center">
+              {(galleryImages[activeImageIndex]?.trim() || product.imageUrl?.trim()) ? (
+                <Image
+                  src={(galleryImages[activeImageIndex]?.trim() || product.imageUrl?.trim()) as string}
+                  alt={product.titleBn}
+                  fill
+                  className="object-contain"
+                />
+              ) : (
+                <span className="text-6xl">🎨</span>
+              )}
             </div>
             <div className="mt-3 flex items-center gap-2 overflow-x-auto max-w-full pb-1">
-              {galleryImages.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImageIndex(i)}
-                  className={`w-12 h-12 rounded-xl overflow-hidden border-2 relative transition-all ${
-                    activeImageIndex === i
-                      ? 'border-[#D6403B] scale-105'
-                      : 'border-white/40 opacity-70'
-                  }`}
-                >
-                  <Image src={img} alt="Thumbnail" fill className="object-cover" />
-                </button>
-              ))}
+              {galleryImages.map((img, i) => {
+                if (!img || !img.trim()) return null;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setActiveImageIndex(i)}
+                    className={`w-12 h-12 rounded-xl overflow-hidden border-2 relative transition-all ${
+                      activeImageIndex === i
+                        ? 'border-[#D6403B] scale-105'
+                        : 'border-white/40 opacity-70'
+                    }`}
+                  >
+                    <Image src={img.trim()} alt="Thumbnail" fill className="object-cover" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1536,23 +1825,28 @@ function ProductContent() {
       <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-md border-t border-[#EFE9E0] py-2 px-3 flex items-center justify-between gap-2 shadow-[0_-8px_25px_rgba(0,0,0,0.08)] pb-safe">
         {/* Quick Product Thumb & Live Total Price */}
         <div className="flex items-center gap-2 min-w-0">
-          <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shrink-0">
-            <Image
-              src={overrideHeroImage || currentVariation?.imageUrl || galleryImages[0] || product.imageUrl}
-              alt={product.titleBn}
-              fill
-              className="object-cover"
-            />
+          <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shrink-0 flex items-center justify-center">
+            {(overrideHeroImage?.trim() || currentVariation?.imageUrl?.trim() || galleryImages[0]?.trim() || product.imageUrl?.trim()) ? (
+              <Image
+                src={(overrideHeroImage?.trim() || currentVariation?.imageUrl?.trim() || galleryImages[0]?.trim() || product.imageUrl?.trim()) as string}
+                alt={product.titleBn}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <span className="text-sm">🎨</span>
+            )}
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] font-bold text-[#2B2B2B] truncate leading-tight">
               {isVariable
-                ? (currentVariation?.optionValue || currentVariation?.titleBn || currentVariation?.titleEn || product.titleBn)
+                ? selectedVariationsList.length > 1
+                  ? `${toBanglaDigits(totalSelectedCount)}টি সেট নির্বাচিত`
+                  : (selectedVariationsList[0]?.variation.optionValue || selectedVariationsList[0]?.variation.titleBn || currentVariation?.optionValue || product.titleBn)
                 : product?.titleBn || product?.titleEn}
-              {quantity > 1 && ` × ${quantity}`}
             </span>
             <span className="text-xs font-extrabold text-[#C23631]">
-              Total ৳{(activePrice * quantity).toLocaleString()}
+              Total ৳{totalSelectedPrice.toLocaleString()}
             </span>
           </div>
         </div>
@@ -1562,7 +1856,7 @@ function ProductContent() {
           <button
             type="button"
             onClick={handleAddToCart}
-            disabled={isOutOfStock}
+            disabled={isOutOfStock || (isVariable && totalSelectedCount === 0)}
             className="p-2.5 rounded-xl bg-[#FAF7F2] text-[#D6403B] border border-[#EFE9E0] font-bold text-xs flex items-center justify-center active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             title="Add to Cart"
           >
@@ -1572,8 +1866,8 @@ function ProductContent() {
           <button
             type="button"
             onClick={handleBuyNow}
-            disabled={isOutOfStock}
-            className="py-2.5 px-3.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white font-bold text-xs flex items-center justify-center shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            disabled={isOutOfStock || (isVariable && totalSelectedCount === 0)}
+            className="py-2.5 px-3.5 rounded-xl bg-[#B93834] hover:bg-[#A32F2C] text-white font-bold text-xs flex items-center justify-center shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
             <span className="whitespace-nowrap">{isOutOfStock ? 'Stock Out' : 'Order Now'}</span>
           </button>

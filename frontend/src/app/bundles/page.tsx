@@ -254,13 +254,17 @@ export default function BundlesPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
               {/* Left Photo & Badges (5 cols) */}
               <div className="lg:col-span-5 relative min-h-[300px] sm:min-h-[400px] bg-[#FAF7F2] overflow-hidden">
-                <Image
-                  src={featuredBundle.imageUrl}
-                  alt={featuredBundle.titleBn}
-                  fill
-                  priority
-                  className="object-cover hover:scale-105 transition-transform duration-500"
-                />
+                {featuredBundle.imageUrl && featuredBundle.imageUrl.trim() ? (
+                  <Image
+                    src={featuredBundle.imageUrl.trim()}
+                    alt={featuredBundle.titleBn}
+                    fill
+                    priority
+                    className="object-cover hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-5xl">🎁</div>
+                )}
                 <div className="absolute top-4 left-4 flex flex-col gap-2">
                   <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-[#D6403B] text-white shadow-sm flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
@@ -533,12 +537,16 @@ export default function BundlesPage() {
                     <div>
                       {/* Photo & Badges */}
                       <div className="relative aspect-4/3 bg-[#FAF7F2] overflow-hidden">
-                        <Image
-                          src={b.imageUrl}
-                          alt={b.titleBn}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                        {b.imageUrl && b.imageUrl.trim() ? (
+                          <Image
+                            src={b.imageUrl.trim()}
+                            alt={b.titleBn}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl">🎁</div>
+                        )}
                         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
                           <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#D6403B] text-white shadow-xs">
                             {b.badge || `${b.discountPercent}% সাশ্রয়`}
@@ -693,12 +701,16 @@ export default function BundlesPage() {
                 >
                   <div className="space-y-2">
                     <div className="relative aspect-square rounded-xl overflow-hidden bg-white border border-[#EFE9E0]">
-                      <Image
-                        src={prod.imageUrl}
-                        alt={prod.titleBn}
-                        fill
-                        className="object-cover"
-                      />
+                      {prod.imageUrl && prod.imageUrl.trim() ? (
+                        <Image
+                          src={prod.imageUrl.trim()}
+                          alt={prod.titleBn}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl">🎨</div>
+                      )}
                       {isSelected && (
                         <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#D6403B] text-white flex items-center justify-center shadow-xs">
                           <Check className="w-3.5 h-3.5" />
@@ -860,12 +872,16 @@ export default function BundlesPage() {
 
             <div className="flex items-start gap-4">
               <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shrink-0">
-                <Image
-                  src={detailModalBundle.imageUrl}
-                  alt={detailModalBundle.titleBn}
-                  fill
-                  className="object-cover"
-                />
+                {detailModalBundle.imageUrl && detailModalBundle.imageUrl.trim() ? (
+                  <Image
+                    src={detailModalBundle.imageUrl.trim()}
+                    alt={detailModalBundle.titleBn}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-2xl">🎁</div>
+                )}
               </div>
               <div className="space-y-1 pr-6">
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D6403B] text-white">
