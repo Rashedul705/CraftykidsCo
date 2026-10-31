@@ -111,7 +111,7 @@ export function SiteSettingsManager() {
           nav: {
             ...defaultSiteSettings.nav!,
             ...(data.settings.nav || {}),
-            menuItems: Array.isArray(data.settings.nav?.menuItems) && data.settings.nav.menuItems.length > 0
+            menuItems: Array.isArray(data.settings.nav?.menuItems)
               ? data.settings.nav.menuItems
               : defaultSiteSettings.nav!.menuItems,
           },
@@ -146,6 +146,19 @@ export function SiteSettingsManager() {
       });
       const data = await res.json();
       if (data?.success) {
+        if (data.settings) {
+          setSettings((prev) => ({
+            ...prev,
+            ...data.settings,
+            nav: {
+              ...(prev.nav || defaultSiteSettings.nav!),
+              ...(data.settings.nav || {}),
+              menuItems: Array.isArray(data.settings.nav?.menuItems)
+                ? data.settings.nav.menuItems
+                : (prev.nav?.menuItems || defaultSiteSettings.nav!.menuItems),
+            },
+          }));
+        }
         showToast('সকল সাইট সেটিংস সফলভাবে সেভ করা হয়েছে!');
       } else {
         alert(data.message || 'সেটিংস সেভ করতে ব্যর্থ হয়েছে।');
@@ -217,12 +230,17 @@ export function SiteSettingsManager() {
     }
   };
 
-  const updateNav = (patch: Partial<NavSettings>) => {
+  const updateNav = (
+    updater: Partial<NavSettings> | ((prevNav: NavSettings) => Partial<NavSettings>)
+  ) => {
     setSettings((prev) => {
-      const nextNav = { ...(prev.nav || defaultSiteSettings.nav!), ...patch };
-      const nextBranding = patch.logoUrl !== undefined
-        ? { ...(prev.branding || defaultSiteSettings.branding!), headerLogoUrl: patch.logoUrl }
-        : prev.branding;
+      const currentNav = prev.nav || defaultSiteSettings.nav!;
+      const patch = typeof updater === 'function' ? updater(currentNav) : updater;
+      const nextNav: NavSettings = { ...currentNav, ...patch };
+      const nextBranding =
+        patch.logoUrl !== undefined
+          ? { ...(prev.branding || defaultSiteSettings.branding!), headerLogoUrl: patch.logoUrl }
+          : prev.branding;
       return {
         ...prev,
         nav: nextNav,
@@ -350,31 +368,51 @@ export function SiteSettingsManager() {
       labelBn: 'নতুন মেনু',
       labelEn: 'New Menu',
       href: '/shop',
+      badge: '',
+      isHighlight: false,
       enabled: true,
     };
-    const current = settings.nav?.menuItems || defaultSiteSettings.nav!.menuItems;
-    updateNav({ menuItems: [...current, newItem] });
+    updateNav((currentNav) => {
+      const current = Array.isArray(currentNav.menuItems)
+        ? currentNav.menuItems
+        : defaultSiteSettings.nav!.menuItems;
+      return { menuItems: [...current, newItem] };
+    });
   };
 
   const handleUpdateMenuItem = (id: string, patch: Partial<NavMenuItem>) => {
-    const current = settings.nav?.menuItems || defaultSiteSettings.nav!.menuItems;
-    updateNav({
-      menuItems: current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    updateNav((currentNav) => {
+      const current = Array.isArray(currentNav.menuItems)
+        ? currentNav.menuItems
+        : defaultSiteSettings.nav!.menuItems;
+      return {
+        menuItems: current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+      };
     });
   };
 
   const handleDeleteMenuItem = (id: string) => {
-    const current = settings.nav?.menuItems || defaultSiteSettings.nav!.menuItems;
-    updateNav({ menuItems: current.filter((item) => item.id !== id) });
+    updateNav((currentNav) => {
+      const current = Array.isArray(currentNav.menuItems)
+        ? currentNav.menuItems
+        : defaultSiteSettings.nav!.menuItems;
+      return { menuItems: current.filter((item) => item.id !== id) };
+    });
   };
 
   const handleMoveMenuItem = (index: number, direction: 'up' | 'down') => {
-    const current = [...(settings.nav?.menuItems || defaultSiteSettings.nav!.menuItems)];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= current.length) return;
-    const [moved] = current.splice(index, 1);
-    current.splice(targetIndex, 0, moved);
-    updateNav({ menuItems: current });
+    updateNav((currentNav) => {
+      const current = [
+        ...(Array.isArray(currentNav.menuItems)
+          ? currentNav.menuItems
+          : defaultSiteSettings.nav!.menuItems),
+      ];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= current.length) return { menuItems: current };
+      const [moved] = current.splice(index, 1);
+      current.splice(targetIndex, 0, moved);
+      return { menuItems: current };
+    });
   };
 
   const handleResetNavToDefault = () => {
@@ -1082,7 +1120,7 @@ export function SiteSettingsManager() {
                         }`}
                       >
                         {item.badge && <span className="text-xs">{item.badge}</span>}
-                        <span>{item.labelBn}</span>
+                        <span>{item.labelBn || item.labelEn || "(নামবিহীন লিঙ্ক)"}</span>
                       </div>
                     ))}
                   {currentNav.menuItems.filter((item) => item.enabled !== false).length === 0 && (
@@ -1108,7 +1146,7 @@ export function SiteSettingsManager() {
                   স্টোরফ্রন্টের মূল ক্যাটাগরি ও পেজ লিঙ্কগুলো সাজান, নতুন লিঙ্ক যুক্ত করুন অথবা ডিফল্ট ৮টি লিঙ্কে রিস্টোর করুন।
                 </p>
               </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
+              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
                 <Button
                   type="button"
                   variant="secondary"
@@ -1130,11 +1168,32 @@ export function SiteSettingsManager() {
                   <Plus className="w-3.5 h-3.5" />
                   <span>নতুন মেনু লিঙ্ক</span>
                 </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex items-center gap-1 text-xs cursor-pointer bg-[#1F6B43] hover:bg-[#185334]"
+                  title="নেভিগেশন মেনুর পরিবর্তন সেভ করুন"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSaving ? 'সংরক্ষণ...' : 'সেভ করুন'}</span>
+                </Button>
               </div>
             </div>
 
-            <div className="space-y-3">
-              {currentNav.menuItems.map((item, index) => (
+            {currentNav.menuItems.length === 0 ? (
+              <div className="p-8 text-center rounded-xl border border-dashed border-[#EFE9E0] bg-[#FAF7F2]/60 text-[#888888] space-y-2">
+                <Compass className="w-8 h-8 mx-auto text-[#D6403B]/60" />
+                <p className="text-xs font-semibold text-[#2B2B2B]">কোনো নেভিগেশন লিঙ্ক যুক্ত করা নেই</p>
+                <p className="text-[11px] text-[#888888]">
+                  নতুন লিঙ্ক যুক্ত করতে উপরের &quot;নতুন মেনু লিঙ্ক&quot; বাটনে ক্লিক করুন অথবা ডিফল্ট ৮টি লিঙ্ক ফিরিয়ে আনুন।
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {currentNav.menuItems.map((item, index) => (
                 <div
                   key={item.id}
                   className={`p-4 rounded-xl border transition-all ${
@@ -1177,7 +1236,7 @@ export function SiteSettingsManager() {
                         </label>
                         <input
                           type="text"
-                          value={item.labelBn}
+                          value={item.labelBn ?? ""}
                           onChange={(e) => handleUpdateMenuItem(item.id, { labelBn: e.target.value })}
                           className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white font-semibold"
                         />
@@ -1189,7 +1248,7 @@ export function SiteSettingsManager() {
                         </label>
                         <input
                           type="text"
-                          value={item.labelEn}
+                          value={item.labelEn ?? ""}
                           onChange={(e) => handleUpdateMenuItem(item.id, { labelEn: e.target.value })}
                           className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white"
                         />
@@ -1201,7 +1260,7 @@ export function SiteSettingsManager() {
                         </label>
                         <input
                           type="text"
-                          value={item.href}
+                          value={item.href ?? ""}
                           onChange={(e) => handleUpdateMenuItem(item.id, { href: e.target.value })}
                           placeholder="/category/..."
                           className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white text-[#0B5F85] font-mono text-[11px]"
@@ -1214,7 +1273,7 @@ export function SiteSettingsManager() {
                         </label>
                         <input
                           type="text"
-                          value={item.badge || ''}
+                          value={item.badge ?? ""}
                           onChange={(e) => handleUpdateMenuItem(item.id, { badge: e.target.value })}
                           placeholder="যেমন: 🎁 অথবা Hot"
                           className="w-full px-3 py-1.5 rounded-lg border border-[#EFE9E0] bg-white"
@@ -1256,6 +1315,25 @@ export function SiteSettingsManager() {
                   </div>
                 </div>
               ))}
+            </div>
+            )}
+
+            {/* Quick Action Footer in Navigation Box */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-[#EFE9E0] text-xs">
+              <span className="text-[#6B6B6B]">
+                মেনু যোগ, এডিট বা ডিলিট করার পর অবশ্যই <strong>&quot;সেভ করুন&quot;</strong> বাটনে ক্লিক করে ডেটাবেজে সংরক্ষণ করুন।
+              </span>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 shrink-0"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSaving ? 'সংরক্ষণ হচ্ছে...' : 'পরিবর্তন সেভ করুন'}</span>
+              </Button>
             </div>
           </div>
 

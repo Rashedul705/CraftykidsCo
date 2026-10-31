@@ -13,16 +13,9 @@ export async function GET() {
       const dbDoc = await Setting.findOne({ key: 'site_settings' }).lean();
       if (dbDoc && dbDoc.value) {
         const parsed = JSON.parse(dbDoc.value);
-        // Detect if stored settings have legacy/stale 6 items or missing 'Home'
-        const hasLegacyNav =
-          !Array.isArray(parsed.nav?.menuItems) ||
-          parsed.nav.menuItems.length === 0 ||
-          parsed.nav.menuItems.some((m: any) => m.id === 'nav-shop' || m.labelBn === 'সকল খেলনা') ||
-          !parsed.nav.menuItems.some((m: any) => m.id === 'nav-home' || m.labelBn === 'হোম');
-
-        const activeMenuItems = hasLegacyNav
-          ? defaultSiteSettings.nav!.menuItems
-          : parsed.nav.menuItems;
+        const activeMenuItems = Array.isArray(parsed.nav?.menuItems)
+          ? parsed.nav.menuItems
+          : defaultSiteSettings.nav!.menuItems;
 
         // Merge with defaults so any newly added fields always have fallback values
         const merged: SiteSettings = {
@@ -72,9 +65,6 @@ export async function GET() {
         };
 
         let updated = false;
-        if (hasLegacyNav) {
-          updated = true;
-        }
         if (merged.footer?.address?.includes('ধানমন্ডি') || merged.footer?.address?.includes('ওপেন ২৪ ঘণ্টা')) {
           merged.footer.address = 'তেরখাদিয়া, রাজপাড়া, রাজশাহী।';
           updated = true;

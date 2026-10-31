@@ -264,7 +264,7 @@ export function Header({
         {/* 3. Secondary Category Menu Bar */}
         <div className="bg-[#FAF7F2] border-t border-[#EFE9E0] overflow-x-auto scrollbar-none">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-6 sm:gap-8 h-10 text-xs sm:text-sm font-bold text-[#2B2B2B] whitespace-nowrap">
-            {((siteSettings?.nav?.menuItems && siteSettings.nav.menuItems.length > 0)
+            {(Array.isArray(siteSettings?.nav?.menuItems)
               ? siteSettings.nav.menuItems
               : defaultSiteSettings.nav!.menuItems
             )
