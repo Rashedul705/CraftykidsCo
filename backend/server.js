@@ -8,6 +8,7 @@ const Product = require('./models/Product');
 const Category = require('./models/Category');
 const Attribute = require('./models/Attribute');
 const Order = require('./models/Order');
+const Blocklist = require('./models/Blocklist');
 const SiteSettings = require('./models/SiteSettings');
 
 const app = express();
@@ -1243,10 +1244,31 @@ app.get('/api/orders', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
   try {
     const orderData = req.body;
+    const customerPhone = orderData.customerPhone || '';
+    const cleanPhone = customerPhone.replace(/[\s\-\(\)\+]/g, '');
+    const phoneSuffix = cleanPhone.slice(-11);
+
+    const dbStatus = getDBStatus();
+    if (dbStatus.connected && customerPhone) {
+      const blocked = await Blocklist.findOne({
+        $or: [
+          { value: cleanPhone },
+          { value: customerPhone },
+          { value: phoneSuffix }
+        ]
+      }).lean();
+      if (blocked) {
+        return res.status(403).json({
+          success: false,
+          code: 'PHONE_BLOCKED',
+          message: 'Phone number is restricted from placing orders.'
+        });
+      }
+    }
+
     if (!orderData.orderNumber) {
       orderData.orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
     }
-    const dbStatus = getDBStatus();
     if (dbStatus.connected) {
       const newOrder = await Order.create(orderData);
       return res.status(201).json({
@@ -1263,6 +1285,90 @@ app.post('/api/orders', async (req, res) => {
     });
   } catch (err) {
     console.error('Order creation error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// --- Blocklist API Endpoints ---
+app.get('/api/blocklist', async (req, res) => {
+  try {
+    const { q } = req.query;
+    const filter = {};
+    if (q) {
+      filter.$or = [
+        { value: { $regex: q, $options: 'i' } },
+        { reason: { $regex: q, $options: 'i' } },
+      ];
+    }
+    const items = await Blocklist.find(filter).sort({ createdAt: -1 }).lean();
+    res.json({
+      success: true,
+      count: items.length,
+      items: items.map(it => ({
+        id: it._id.toString(),
+        type: it.type,
+        value: it.value,
+        phone: it.value,
+        reason: it.reason,
+        date: new Date(it.createdAt).toISOString().split('T')[0],
+        createdAt: it.createdAt
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/blocklist', async (req, res) => {
+  try {
+    const { phone, value, reason, type = 'PHONE' } = req.body;
+    const raw = (phone || value || '').trim();
+    if (!raw) {
+      return res.status(400).json({ success: false, message: 'Phone number required' });
+    }
+    let clean = raw.replace(/[\s\-\(\)\+]/g, '');
+    if (clean.startsWith('88')) clean = clean.slice(2);
+
+    const existing = await Blocklist.findOne({
+      $or: [{ value: clean }, { value: clean.slice(-11) }]
+    });
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'Number is already in block list' });
+    }
+
+    const doc = await Blocklist.create({
+      type,
+      value: clean,
+      reason: reason || 'High return risk / Suspicious activity',
+      createdAt: new Date()
+    });
+    res.json({
+      success: true,
+      message: 'Phone added to block list',
+      item: {
+        id: doc._id.toString(),
+        type: doc.type,
+        value: doc.value,
+        phone: doc.value,
+        reason: doc.reason,
+        date: new Date(doc.createdAt).toISOString().split('T')[0],
+        createdAt: doc.createdAt
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/blocklist/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doc = await Blocklist.findByIdAndDelete(id);
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+    res.json({ success: true, message: 'Number unblocked' });
+  } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });

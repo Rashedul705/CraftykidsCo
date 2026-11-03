@@ -234,7 +234,7 @@ export async function renderHtmlToPdf(
     });
 
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: ['load', 'networkidle0'] });
+    await page.setContent(html, { waitUntil: ['load', 'domcontentloaded'] });
     await page.evaluateHandle('document.fonts.ready');
     await new Promise((resolve) => setTimeout(resolve, 150));
 
@@ -278,8 +278,11 @@ export async function generateInvoiceHtml(
 
   // Generate SVG QR codes for each order
   const orderQrs: Record<string, string> = {};
+  const cleanWebsite = (printConfig.website || 'craftykidsco.com')
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '');
   for (const ord of orders) {
-    const trackingUrl = `https://${printConfig.website || 'craftykidsco.com'}/track?orderId=${encodeURIComponent(ord.orderNumber || ord.id)}`;
+    const trackingUrl = `https://${cleanWebsite}/track?orderId=${encodeURIComponent(ord.orderNumber || ord.id)}`;
     orderQrs[ord.id] = await generateQrCodeSvg(trackingUrl);
   }
 

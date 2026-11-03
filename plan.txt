@@ -1,207 +1,91 @@
+# CraftyKidsCo - E-Commerce Roadmap & Action Plan
+Generated on: 2026-11-04
+Status Tracking: [ ] Pending | [x] Completed | [>] In Progress
+
 ================================================================================
-CRAFTYKIDSCO - PROJECT STATUS REPORT & ROADMAP (PLAN.TXT)
+PHASE 1: Core Fixes, Fraud Prevention & Real Business Reporting (Days 1 - 2)
 ================================================================================
-Last Updated: October 19, 2026
-Brand: Crafty Kids Co. ("Create | Paint | Play")
-Platform: Full-Stack E-Commerce Web Application (Next.js 16 + Express API)
-Repository: https://github.com/Rashedul705/CraftykidsCo
 
---------------------------------------------------------------------------------
-1. PROJECT OVERVIEW & ARCHITECTURE
---------------------------------------------------------------------------------
-Crafty Kids Co. is a specialized e-commerce platform designed for child-safe, 
-non-toxic DIY plaster painting kits, natural wax crayons, and educational 
-Montessori toys for toddlers and young kids in Bangladesh.
+[x] Section 1.1: Invoice QR Code & Order Tracking Alignment
+    - Problem: Printed invoice QR code points to /track?orderId=... but /track only read ?order=...
+    - Problem: Track page only inspected client localStorage on URL param load; scanning from phone showed "Order not found" because phone lacked desktop localStorage.
+    - Solution:
+      * Support `orderId`, `order`, `order_id`, and `id` in /track search params.
+      * Auto-query `/api/orders/:id` and `/api/orders?phone=...` against MongoDB on load.
+      * Add loading state and safe optional chaining for `timeline` array.
+      * Sanitize website domain in `print-templates.ts`.
+    - Status: [x] Completed
 
-The repository is organized as a clean Monorepo:
-├── frontend/             -> Next.js 16 (Turbopack, App Router, React 19, Tailwind CSS)
-│   ├── src/app/          -> Pages & Routes (Storefront, Product, Shop, Cart, Checkout, Admin)
-│   ├── src/components/   -> Reusable UI Components & Layouts (Header, Footer, ProductCard)
-│   ├── src/lib/          -> Data store, sample-data, utilities, state handlers
-│   └── public/images/    -> High-resolution product photos & branding assets
-├── backend/              -> Express.js API Server
-│   ├── server.js         -> REST API endpoints, static asset server & Glassmorphic Dashboard
-│   └── package.json      -> Backend dependencies
-├── .gitignore            -> Strict credential & environment security
-└── README.md             -> Monorepo documentation & setup instructions
+[x] Section 1.2: Database-Backed Block List & Checkout Fraud Interception
+    - Problem: Admin 'block-list' is currently kept only in ephemeral React state; not saved to MongoDB.
+    - Problem: Blocked numbers/IPs do not actually prevent fraudulent users from placing orders.
+    - Solution:
+      * Create `Blacklist` Mongoose model in backend & frontend (`phone`, `reason`, `riskLevel`, `createdAt`).
+      * Add CRUD API endpoints `/api/blocklist` (GET, POST, DELETE).
+      * Connect `SystemSettingsManager.tsx` (block-list tab) to real MongoDB API.
+      * Add checkout validation interceptor in `/api/orders` to immediately block or flag blacklisted phone numbers.
+    - Status: [x] Completed
 
---------------------------------------------------------------------------------
-2. WHAT HAS BEEN COMPLETED SO FAR (ACCOMPLISHMENTS)
---------------------------------------------------------------------------------
+[x] Section 1.3: Product Cost (COGS) & Real Profit Analytics in Reports Tab
+    - Problem: Admin 'reports' tab displays static hardcoded numbers (e.g. ৳142,650).
+    - Problem: Products lack `costPrice` (buying/manufacturing cost), making it impossible to see actual net profit.
+    - Solution:
+      * Add `costPrice` field to Product schema and admin Product modal/form.
+      * Create `/api/reports/analytics` endpoint to dynamically calculate:
+        - Gross Revenue
+        - Total COGS (Cost of Goods Sold)
+        - Net Profit (Revenue - COGS - Delivery Cost)
+        - Order Status breakdown (Delivered, In-Transit, Returned)
+        - Date-range filtering (Today, 7 days, 30 days, Custom)
+      * Connect `SystemSettingsManager.tsx` (reports tab) to real MongoDB analytics.
+    - Status: [x] Completed
 
-[A] Monorepo & Infrastructure:
-  [x] Structured project into isolated `frontend/` and `backend/` directories.
-  [x] Configured concurrent local development:
-      - Frontend running on: http://localhost:3000
-      - Backend API running on: http://localhost:5000
-  [x] Protected environment variables and API keys (.env, .env.local, serviceAccountKey.json) in .gitignore.
-  [x] Cleaned repository and verified clean Git workflow on branch `main`.
-
-[B] Backend API & Monitoring Dashboard:
-  [x] Implemented a premium dark-mode, glassmorphism dashboard at `GET /` on port 5000:
-      - Dynamic system uptime tracker (Xh Ym Zs format)
-      - Active endpoints registry with interactive ping badges
-      - Architecture & health stats cards (port, status, version)
-  [x] Implemented mock REST endpoints:
-      - `GET /api/products` (full catalog with rich schema)
-      - `GET /api/categories` (taxonomies & badges)
-      - `GET /api/orders` & `POST /api/orders` (order creation and status changes)
-      - `POST /api/admin/login` (admin authentication stub)
-  [x] Enabled static image asset hosting from `backend/server.js` matching frontend assets.
-
-[C] Real Product Ingestion & Detailed Descriptions:
-  [x] Processed and integrated 8 authentic DIY Plaster Painting Kits from official product photos:
-      1. Sweet Fruit Plaster Painting Kit (৬টি ফল + ৪টি রঙ + ১টি ব্রাশ) - ৳990
-      2. Little Bug Adventure Plaster Painting Kit (৪টি কিউট পোকা + ৪টি রঙ + ব্রাশ + ইজেল) - ৳890
-      3. Car & Transport Plaster Painting Kit (৬টি গাড়ি + ৫টি রঙ + কালার গাইড) - ৳1,050
-      4. Tool Set Plaster Painting Kit - Handy Builder (৮টি মেকানিক টুলস + ৪টি রঙ + ব্রাশ) - ৳999
-      5. Sunny Shores Beach & Ocean Mega Kit (১৬টি বিচ শেপ + ৫টি রঙ + ব্রাশ) - ৳1,100
-      6. Ocean World Sea Life Plaster Painting Kit (৮টি সামুদ্রিক মাছ + ৫টি রঙ + ব্রাশ) - ৳1,050
-      7. Mixed Kit 1 - Sweet Treats & Adventure (৬টি শেপ + ৪টি রঙ + ব্রাশ) - ৳990
-      8. Autumn Woodland & Nature Plaster Kit (৭টি শেপ + কাঠের ট্রেতে ৫টি রঙ + ব্রাশ) - ৳1,080
-  [x] Crafted comprehensive, bilingual (Bengali & English) product details:
-      - Product descriptions focusing on screen-free play & motor skill benefits
-      - Piece breakdowns (plaster shape counts, color pots, brushes, guides)
-      - Safety certifications (100% Non-Toxic Gypsum Plaster, Washable paints)
-      - Technical specifications tables
-      - Frequently Asked Questions (FAQs) for parent concerns
-      - Customer reviews with 5-star ratings & verified customer feedback
-
-[D] Storefront & User Interface Enhancements:
-  [x] Category Circular Navigation: Updated "আর্ট কিট" category icon with authentic product image.
-  [x] Homepage "নতুন পণ্য" (New Arrivals): Displays the 4 newest plaster kits with badges.
-  [x] Homepage "জনপ্রিয় পণ্য" (Best Sellers): Displays the 4 top-selling plaster kits.
-  [x] Dedicated Showcase Section: Added "প্লাস্টার আর্ট ও পেইন্টিং কিট (Create | Paint | Play)" 
-      with a hero collection highlight card and quick add-to-cart buttons.
-  [x] Category & Shop Filter: Updated `/shop` and `/category/[slug]` to seamlessly filter by `art-kits`.
-  [x] Dynamic Product Detail Page (`/product/[slug]`):
-      - Interactive image gallery
-      - Bengali & English toggle support
-      - In-stock indicator & quantity adjuster
-      - Add to Cart with live toast feedback
-      - Direct "অর্ডার করুন" (Buy Now) button straight to checkout
-      - Upsell combo bundles
-
-[E] Cart, Checkout & Order Flow:
-  [x] Global CartContext with persistent cart state in local storage.
-  [x] Slide-out Mini Cart drawer & full cart page (`/cart`).
-  [x] Streamlined single-page checkout (`/checkout`):
-      - Automatic delivery charge calculation (Inside Dhaka ৳60, Outside Dhaka ৳120)
-      - Free delivery bar when cart total >= ৳1,000
-      - Discount coupon code support (e.g. FREE60)
-      - Cash on Delivery (COD), bKash, and Nagad payment options
-  [x] Order confirmation screen (`/order/confirmation/[id]`) with instant order ID.
-  [x] Live order tracking page (`/track`) by phone number or order ID.
-
-[F] Database Persistence & Cloud Image Hosting (MongoDB Atlas + ImgBB CDN):
-  [x] Integrated MongoDB Atlas Cluster (`craftykidsco` on `cluster0.bjsv7px.mongodb.net`) via Mongoose:
-      - Express backend (`backend/db.js`, `backend/models/`) and Next.js frontend (`frontend/src/lib/mongodb.ts`, `frontend/src/models/`) connected to MongoDB Atlas.
-      - Database seeder (`backend/seed.js`) seeded with 6 categories and all 8 authentic plaster painting kits.
-      - Next.js API endpoints (`/api/products`, `/api/categories`, `/api/orders`, `/api/orders/[id]`) reading & persisting directly to MongoDB Atlas.
-      - Frontend `/checkout` persists real customer orders directly to MongoDB Atlas collection `orders`.
-      - Express Dashboard (`http://localhost:5000`) dynamically tracks MongoDB Atlas connection status and real-time document counts.
-  [x] Integrated ImgBB Cloud Storage API (`d110c221cdd13543af463618efa8df04`):
-      - Uploaded all 8 plaster product photos to ImgBB CDN returning permanent `https://i.ibb.co/...` links.
-      - Next.js image optimization configured in `frontend/next.config.ts` for `i.ibb.co`.
-      - Implemented Next.js endpoints (`/api/upload-image`, `/api/upload`) for file & base64 upload to ImgBB CDN.
-      - Integrated ImgBB upload widget with drag-and-drop & live preview in `/admin` "Add New Product" modal.
-  [x] Strict Git & Credential Security:
-      - Root `.gitignore` configured to ignore `.env*`, `backend/.env`, `frontend/.env`, `frontend/.env.local`.
-      - Verified `.env` files are untracked and never committed to GitHub.
-      - Created `.env.example` templates with sanitized placeholders for team onboarding.
-
-[G] Mobile & Tablet Responsiveness Audit & Polishing:
-  [x] Admin Panel Responsive Layout (`frontend/src/app/admin/page.tsx`):
-      - Replaced fixed desktop sidebar with a responsive slide-out drawer on screens < 1024px.
-      - Added sleek Mobile Admin Topbar with hamburger menu toggle, brand badge, and quick action buttons.
-      - Fixed search and header controls to be fully responsive without horizontal page overflow.
-      - Fixed Add Product modal layout to single-column stacking on mobile and constrained vertical height (`max-h-[92vh] overflow-y-auto`).
-      - Added horizontal scroll guarantees (`min-w-[540px]`, `min-w-[700px]`) to admin tables.
-  [x] Single Product Detail Page (`frontend/src/app/product/[slug]/page.tsx`):
-      - Resolved conflicting z-index overlay between `MobileBottomNav` and the sticky buy bar.
-      - Upgraded mobile sticky purchase bar to a high-converting bar featuring Home, Cart with live count badge, Add to Cart ("কার্টে যোগ"), and Buy Now ("অর্ডার করুন").
-  [x] Mobile Header Search Bar (`frontend/src/components/layout/Header.tsx`):
-      - Added a dedicated mobile search bar on screens < 640px so mobile shoppers can instantly search.
-      - Made top announcement bar responsive without text cutoff.
-  [x] Cart Page Responsive Items (`frontend/src/app/cart/page.tsx`):
-      - Polished cart item rows to stack quantity counter and line price cleanly on mobile without truncation.
-  [x] Homepage Banner Copy Cleanup (`frontend/src/app/page.tsx`):
-      - Replaced placeholder headline text with compelling Bengali headline.
-  [x] Dynamic Mobile Bottom Nav (`frontend/src/components/layout/MobileBottomNav.tsx`):
-      - Connected cart badge directly to `useCart()` state.
-
---------------------------------------------------------------------------------
-3. WHAT IS RUNNING CURRENTLY
---------------------------------------------------------------------------------
-- Next.js 16 Frontend: Port 3000 (Development server running with Turbopack)
-- Express.js Backend: Port 5000 (Connected to MongoDB Atlas & ImgBB API)
-- Production Build: Successfully verified (`npm run build` completed with 0 errors across all 24 routes)
-- Responsive Viewports: Verified on Mobile (375x812 iPhone), Tablet (768x1024 iPad), and Desktop
-- Database: MongoDB Atlas Cloud Cluster (Active & Shared between Next.js & Express)
-- Image Hosting: ImgBB Cloud CDN (Active)
-- Git Remote: Synchronized with GitHub repository (`origin/main`)
-
---------------------------------------------------------------------------------
-4. WHAT NEEDS TO BE DONE NEXT (ACTIONABLE ROADMAP)
---------------------------------------------------------------------------------
-
-PHASE 1: LIVE PAYMENT GATEWAY INTEGRATION (High Priority)
-  [ ] bKash Merchant Payment Gateway (PGW / Checkout URL API):
-      - Create payment URL, callback execution, and instant payment status verification.
-  [ ] Nagad / SSLCommerz / Aamarpay integration as alternative options.
-  [ ] Automated COD fraud/risk check (e.g. invalid phone number detection, past cancellation history).
-
-PHASE 3: AUTOMATED COURIER INTEGRATION (Completed)
-  [x] Steadfast Courier Live API integration:
-      - Automatically create consignment when order status changes to "CONFIRMED".
-      - Generate tracking code and Steadfast consignment ID.
-      - Periodic status sync ("SHIPPED" -> "DELIVERED").
-      - Live account balance querying (verified connected to Packzy gateway: ৳322 BDT).
-      - Phone fraud & customer delivery success rate score check.
-      - 1-click dispatch in Admin and printable barcode shipping stickers.
-
-PHASE 4: SMS NOTIFICATION GATEWAY (Medium Priority)
-  [ ] Integrate Bangladeshi SMS gateway (Greenweb / ElitBuzz / Reve SMS / BulkSMSBD):
-      - OTP verification for new customer orders (preventing fake spam orders).
-      - Order Confirmation SMS with Order ID and tracking link.
-      - Dispatch SMS alert with courier tracking code.
-
-PHASE 5: MARKETING, PIXEL & ANALYTICS (Completed)
-  [x] Meta Pixel & Facebook Conversion API (CAPI) (Graph API v21.0):
-      - Browser Pixel (fbq) + Server CAPI dual-dispatch with automatic event_id deduplication.
-      - SHA-256 client user data hashing (phone, email, name, city, country, IP, user-agent).
-      - Cookie tracking for _fbp (Browser ID) and _fbc (Click ID / fbclid).
-      - Automated event tracking across the entire funnel:
-        * PageView (Global with noscript fallback)
-        * ViewContent (Product detail page with variations & BDT pricing)
-        * AddToCart (Product card quick add, detail page, and combo add)
-        * InitiateCheckout (Cart page proceed & checkout page mount)
-        * Purchase (dual-fired: server-side on POST /api/orders & browser confirmation)
-      - Admin UI integration in `/admin?tab=settings` (Meta Pixel tab):
-        * Live CAPI verification button ("🧪 টেস্ট ইভেন্ট পাঠান")
-        * Pixel ID, CAPI Access Token, and Test Event Code support.
-  [ ] Google Tag Manager (GTM) & Google Analytics 4 (GA4).
-  [ ] TikTok Pixel for promotional ads.
-
-PHASE 6: ADMIN PANEL UPGRADES & INVENTORY MANAGEMENT (Completed)
-  [x] Dynamic product management in `/admin`:
-      - Upload new products directly via UI (image upload, price, specs, stock, variations).
-      - Edit existing products without touching source code.
-  [x] Inventory tracking with low-stock alerts & stock history audit logs.
-  [x] CSV/Excel export for accountant & shipping label printing.
-
-PHASE 7: PRODUCTION DEPLOYMENT & DEVOPS (Launch Phase)
-  [ ] Deploy Frontend to Vercel (zero-config Next.js hosting with global CDN).
-  [ ] Deploy Backend to Render / Railway / DigitalOcean VPS.
-  [ ] Setup Custom Domain (e.g. craftykidsco.com or craftykidsco.com.bd).
-  [ ] Setup SSL certificate, robots.txt, dynamic sitemap.xml, and SEO meta tags.
-
---------------------------------------------------------------------------------
-5. RECOMMENDED IMMEDIATE NEXT STEPS
---------------------------------------------------------------------------------
-1. Decide on database choice (MongoDB vs Supabase/PostgreSQL vs Firebase) to 
-   make orders and admin edits permanently persistent.
-2. Integrate real bKash Checkout URL API credentials or refine COD order workflow.
-3. Add Steadfast Courier API keys to enable 1-click consignment creation.
-4. Setup Meta Pixel / TikTok Pixel ID for social media marketing campaigns.
 ================================================================================
+PHASE 2: Sales Conversion, Age Filtering & Logistics Speed (Days 3 - 5)
+================================================================================
+
+[ ] Section 2.1: Kid Age Group Filter & Floating WhatsApp Advisor
+    - Add `ageRange` attribute to products (e.g. "1-3 Years", "3-5 Years", "6-8 Years", "8+ Years").
+    - Add Age Filter pills on Homepage and Catalog.
+    - Add floating WhatsApp advisor button with pre-filled child advisory message.
+    - Status: [ ] Pending Permission
+
+[ ] Section 2.2: Steadfast Bulk Courier Dispatch
+    - Add multi-checkbox selection in Admin Orders table.
+    - Implement "Bulk Send to Steadfast" button to dispatch 10-20 orders in one batch.
+    - Batch print courier stickers for selected orders.
+    - Status: [ ] Pending Permission
+
+[ ] Section 2.3: Order Internal Notes & Tele-Sales Call Log
+    - Add internal notes field to Order schema (call logs, customer requests, verification status).
+    - Enable admin/sales staff to save notes like "Customer confirmed 2 PM delivery" or "Phone not reachable".
+    - Status: [ ] Pending Permission
+
+[ ] Section 2.4: Real Customer Photo Reviews & Moderation
+    - Allow storefront customers to submit ratings, reviews, and upload craft photos.
+    - Create Admin Review Moderation tab to approve/reject reviews before publishing.
+    - Status: [ ] Pending Permission
+
+================================================================================
+PHASE 3: Full Automation, Payment Gateway & Scalability (Week 2)
+================================================================================
+
+[ ] Section 3.1: Automated bKash / Nagad Payment Gateway
+    - Integrate bKash Tokenized Checkout / Nagad PGW for automated advance payments.
+    - Reduce COD return rate by incentivizing online payment.
+    - Status: [ ] Pending Permission
+
+[ ] Section 3.2: Parenting & Kids Crafting SEO Blog Engine
+    - Build MongoDB-backed Blog CMS (`/admin?tab=blog`).
+    - Create public `/blog` and `/blog/[slug]` routes for organic Google SEO traffic.
+    - Status: [ ] Pending Permission
+
+[ ] Section 3.3: Operational Expense Manager (P&L Tracking)
+    - Add `Expense` model (Facebook Ads, packaging boxes, delivery bags, staff salaries).
+    - Admin Expenses tab with monthly Profit & Loss balance sheet.
+    - Status: [ ] Pending Permission
+
+[ ] Section 3.4: Automated Steadfast Courier Status Webhook / Sync Cron
+    - Background worker to poll Steadfast status (`delivered`, `in_transit`, `returned`).
+    - Automatically mark delivered/returned orders without manual admin checking.
+    - Status: [ ] Pending Permission

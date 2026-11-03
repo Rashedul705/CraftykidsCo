@@ -18,6 +18,7 @@ export interface IVariant {
   sku: string; // unique across the whole store
   regularPrice: number; // required
   salePrice?: number | null; // null means no discount
+  costPrice?: number; // wholesale / manufacturing cost
   stock: number; // integer, min 0
   lowStockAlert: number; // default 5
   image?: string; // variant image url
@@ -53,6 +54,7 @@ export interface IProduct extends Document {
   basePrice: number; // Legacy alias for regularPrice
   baseSalePrice?: number | null; // Legacy alias for salePrice
   price?: number;
+  costPrice?: number;
   costPerItem?: number;
   sku?: string;
   stock?: number;
@@ -120,6 +122,7 @@ export const VariantSchema = new Schema<IVariant>(
     sku: { type: String, required: true, trim: true },
     regularPrice: { type: Number, required: true },
     salePrice: { type: Number, default: null },
+    costPrice: { type: Number, default: 0 },
     stock: { type: Number, default: 0, min: 0 },
     lowStockAlert: { type: Number, default: 5 },
     image: { type: String, default: '' },
@@ -153,7 +156,8 @@ const ProductSchema = new Schema<IProduct>(
     basePrice: { type: Number },
     salePrice: { type: Number, default: null },
     baseSalePrice: { type: Number, default: null },
-    costPerItem: { type: Number },
+    costPrice: { type: Number, default: 0 },
+    costPerItem: { type: Number, default: 0 },
     sku: { type: String },
     stock: { type: Number, default: 100 },
     lowStockAlert: { type: Number, default: 5 },

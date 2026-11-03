@@ -15,6 +15,7 @@ import {
 import { connectToDatabase } from '@/lib/mongodb';
 import { Order } from '@/models/Order';
 import { Setting } from '@/models/Setting';
+import { Blocklist } from '@/models/Blocklist';
 import {
   getDeliverySettings,
   updateDeliverySettings,
@@ -165,6 +166,37 @@ export async function POST(req: NextRequest) {
     }
 
     const data = validation.data;
+
+    // 1.5 Fraud Shield: Check if customer phone is in database Blocklist
+    try {
+      await connectToDatabase();
+      const rawPhone = data.customerPhone || '';
+      let cleanPhone = rawPhone.replace(/[\s\-\(\)\+]/g, '');
+      if (cleanPhone.startsWith('88')) cleanPhone = cleanPhone.slice(2);
+      const phoneSuffix = cleanPhone.slice(-11);
+
+      const blockedRecord = await Blocklist.findOne({
+        $or: [
+          { value: cleanPhone },
+          { value: rawPhone },
+          { value: phoneSuffix },
+        ],
+      }).lean();
+
+      if (blockedRecord) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'দুঃখিত, আপনার ফোন নম্বরটি অর্ডার করার জন্য সাময়িকভাবে সীমাবদ্ধ রয়েছে। বিস্তারিত তথ্যের জন্য আমাদের কাস্টমার সার্ভিসে যোগাযোগ করুন।',
+            code: 'PHONE_BLOCKED',
+            reason: blockedRecord.reason || 'Restricted',
+          },
+          { status: 403 }
+        );
+      }
+    } catch (blockErr) {
+      console.warn('Blocklist check failed or bypassed in MongoDB:', blockErr);
+    }
 
     // 2. Compute subtotal from items
     const subtotal = data.items.reduce((sum, it) => sum + it.price * it.quantity, 0);
