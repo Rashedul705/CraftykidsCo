@@ -454,6 +454,37 @@ export default function OrdersManager({
     };
   }, [activeOrder?.customerPhone]);
 
+  // Live Parcel Courier Status
+  const [courierParcelStatus, setCourierParcelStatus] = useState<{
+    status?: string;
+    deliveryStatus?: string;
+    loading: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    const code = activeOrder?.trackingCode || activeOrder?.consignmentId;
+    if (!code) {
+      setCourierParcelStatus(null);
+      return;
+    }
+
+    setCourierParcelStatus({ loading: true });
+    fetch(`/api/courier/status?trackingCode=${encodeURIComponent(code)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setCourierParcelStatus({
+            status: data.status,
+            deliveryStatus: (data.rawResponse as any)?.delivery_status,
+            loading: false,
+          });
+        } else {
+          setCourierParcelStatus(null);
+        }
+      })
+      .catch(() => setCourierParcelStatus(null));
+  }, [activeOrder?.trackingCode, activeOrder?.consignmentId]);
+
   // Sync internal note input when active order changes
   useEffect(() => {
     if (activeOrder) {
@@ -2180,12 +2211,12 @@ export default function OrdersManager({
                           <div className="bg-white p-2.5 rounded-[12px] border border-[#EFE9E0]">
                             <span className="text-[#6B6B6B] block text-[11px]">সফল ডেলিভারি</span>
                             <span className="font-bold text-[#1F6B43] text-lg block">
-                              {customerRisk.totalDeliveries !== undefined
+                              {customerRisk.totalDeliveries != null && customerRisk.totalDeliveries > 0
                                 ? `${customerRisk.totalDeliveries} টি`
                                 : `${customerRisk.pastSuccessRate}%`}
                             </span>
                             <span className="text-[10px] text-[#6B6B6B] block">
-                              {customerRisk.totalDeliveries !== undefined
+                              {customerRisk.totalDeliveries != null && customerRisk.totalDeliveries > 0
                                 ? 'সফল ডেলিভারি সংখ্যা'
                                 : 'ডেলিভারি সাকসেস রেট'}
                             </span>
@@ -2197,12 +2228,12 @@ export default function OrdersManager({
                                 (customerRisk.returnRatio || 0) > 0 ? 'text-[#C23631]' : 'text-[#6B6B6B]'
                               }`}
                             >
-                              {customerRisk.returnCount !== undefined
+                              {customerRisk.returnCount != null && customerRisk.returnCount > 0
                                 ? `${customerRisk.returnCount} টি`
                                 : `${customerRisk.returnRatio || 0}%`}
                             </span>
                             <span className="text-[10px] text-[#6B6B6B] block">
-                              {customerRisk.returnCount !== undefined
+                              {customerRisk.returnCount != null && customerRisk.returnCount > 0
                                 ? 'বাতিল পার্সেল সংখ্যা'
                                 : 'রিটার্ন অনুপাত'}
                             </span>
@@ -2213,9 +2244,11 @@ export default function OrdersManager({
                           <span>
                             পার্সেল ভলিউম:{' '}
                             <strong className="text-[#2B2B2B]">
-                              {customerRisk.totalParcels
+                              {customerRisk.volumeRange
+                                ? customerRisk.volumeRange
+                                : customerRisk.totalParcels
                                 ? `${customerRisk.totalParcels} টি`
-                                : customerRisk.volumeRange || customerRisk.volumeBand || 'সক্রিয়'}
+                                : customerRisk.volumeBand || 'সক্রিয়'}
                             </strong>
                           </span>
                           <span>
@@ -2503,41 +2536,77 @@ export default function OrdersManager({
                   </div>
 
                   {activeOrder.trackingCode || activeOrder.consignmentId ? (
-                    <div className="flex items-center justify-between bg-white p-2.5 rounded-[12px] border border-[#EFE9E0] gap-2">
-                      <div className="min-w-0">
-                        <span className="text-[10px] text-[#6B6B6B] block">
-                          Tracking ID / Consignment:
-                        </span>
-                        <span className="font-mono font-bold text-xs text-[#0B5F85] truncate block">
-                          #{activeOrder.trackingCode || activeOrder.consignmentId}
-                        </span>
+                    <div className="bg-white p-2.5 rounded-[12px] border border-[#EFE9E0] space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="text-[10px] text-[#6B6B6B] block">
+                            Tracking ID / Consignment:
+                          </span>
+                          <span className="font-mono font-bold text-xs text-[#0B5F85] truncate block">
+                            #{activeOrder.trackingCode || activeOrder.consignmentId}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopyTracking(
+                                activeOrder.trackingCode || activeOrder.consignmentId || ''
+                              )
+                            }
+                            className="px-2.5 py-1 rounded-[8px] bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] text-xs font-semibold inline-flex items-center gap-1 border border-[#EFE9E0] transition-colors cursor-pointer"
+                            title="Copy tracking ID"
+                          >
+                            <Copy className="w-3 h-3 text-[#6B6B6B]" />
+                            <span>Copy</span>
+                          </button>
+                          <a
+                            href={`https://steadfast.com.bd/t/${
+                              activeOrder.trackingCode || activeOrder.consignmentId
+                            }`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 rounded-[8px] bg-[#0B5F85] hover:bg-[#084865] text-white text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                          >
+                            <span>Track</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleCopyTracking(
-                              activeOrder.trackingCode || activeOrder.consignmentId || ''
-                            )
-                          }
-                          className="px-2.5 py-1 rounded-[8px] bg-[#FAF7F2] hover:bg-[#EFE9E0] text-[#2B2B2B] text-xs font-semibold inline-flex items-center gap-1 border border-[#EFE9E0] transition-colors cursor-pointer"
-                          title="Copy tracking ID"
-                        >
-                          <Copy className="w-3 h-3 text-[#6B6B6B]" />
-                          <span>Copy</span>
-                        </button>
-                        <a
-                          href={`https://steadfast.com.bd/t/${
-                            activeOrder.trackingCode || activeOrder.consignmentId
-                          }`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-2.5 py-1 rounded-[8px] bg-[#0B5F85] hover:bg-[#084865] text-white text-xs font-semibold inline-flex items-center gap-1 transition-colors"
-                        >
-                          <span>Track</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
+
+                      {courierParcelStatus && (
+                        <div className="pt-2 border-t border-[#F0ECE4] flex items-center justify-between text-[11px]">
+                          <span className="text-[#6B6B6B] flex items-center gap-1">
+                            <Truck className="w-3.5 h-3.5 text-[#0B5F85]" />
+                            স্টিডফাস্ট লাইভ স্ট্যাটাস:
+                          </span>
+                          {courierParcelStatus.loading ? (
+                            <span className="text-[#888] flex items-center gap-1">
+                              <Loader2 className="w-3 h-3 animate-spin text-[#0B5F85]" />
+                              যাচাই করা হচ্ছে...
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-[#0B5F85] flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-[#0B5F85] animate-pulse"></span>
+                              {courierParcelStatus.deliveryStatus === 'in_review'
+                                ? 'ইন-রিভিউ (In Review - বুকিং সম্পন্ন)'
+                                : courierParcelStatus.deliveryStatus === 'in_transit' ||
+                                  courierParcelStatus.deliveryStatus === 'transit'
+                                ? 'ইন-ট্রানজিট (In Transit - ডেলিভারির পথে)'
+                                : courierParcelStatus.deliveryStatus === 'delivered'
+                                ? 'ডেলিভার্ড (Delivered - সফল ডেলিভারি)'
+                                : courierParcelStatus.deliveryStatus === 'cancelled'
+                                ? 'বাতিল (Cancelled)'
+                                : courierParcelStatus.deliveryStatus === 'returned' ||
+                                  courierParcelStatus.deliveryStatus === 'return'
+                                ? 'রিটার্ন (Returned)'
+                                : courierParcelStatus.deliveryStatus
+                                ? `${courierParcelStatus.deliveryStatus}`
+                                : 'লাইভ ট্র্যাকিং সক্রিয়'}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <p className="text-[11px] text-[#6B6B6B]">

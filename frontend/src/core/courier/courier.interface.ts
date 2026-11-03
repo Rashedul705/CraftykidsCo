@@ -36,8 +36,8 @@ export interface ICourierProvider {
   checkCustomerRisk(phone: string): Promise<{
     pastSuccessRate: number;
     isRisky: boolean;
-    totalDeliveries: number;
-    returnCount: number;
+    totalDeliveries?: number;
+    returnCount?: number;
     totalParcels?: number;
     hasHistory?: boolean;
     returnRatio?: number;
@@ -46,6 +46,7 @@ export interface ICourierProvider {
     totalReports?: number;
     volumeRange?: string;
     volumeBand?: string;
+    fraudCategories?: any;
     serviceStatus?: 'available' | 'unavailable' | 'rate_limited' | 'error';
     statusMessage?: string;
     rateLimit?: { limit: number; current: number };

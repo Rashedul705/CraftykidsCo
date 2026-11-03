@@ -135,7 +135,16 @@ export class SteadfastCourierProvider implements ICourierProvider {
   async checkStatus(trackingCodeOrConsignmentId: string): Promise<CourierStatusResult> {
     try {
       const target = encodeURIComponent((trackingCodeOrConsignmentId || '').trim());
-      let response = await fetch(`${this.baseUrl}/status_by_trackingcode/${target}`, {
+      const isNumeric = /^\d+$/.test(target);
+
+      const primaryUrl = isNumeric
+        ? `${this.baseUrl}/status_by_cid/${target}`
+        : `${this.baseUrl}/status_by_trackingcode/${target}`;
+      const fallbackUrl = isNumeric
+        ? `${this.baseUrl}/status_by_trackingcode/${target}`
+        : `${this.baseUrl}/status_by_cid/${target}`;
+
+      let response = await fetch(primaryUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -144,9 +153,8 @@ export class SteadfastCourierProvider implements ICourierProvider {
         },
       });
 
-      // Fallback: If not found and target is purely numeric, try consignment ID endpoint
-      if (!response.ok && /^\d+$/.test(target)) {
-        response = await fetch(`${this.baseUrl}/status_by_cid/${target}`, {
+      if (!response.ok) {
+        response = await fetch(fallbackUrl, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -162,7 +170,7 @@ export class SteadfastCourierProvider implements ICourierProvider {
       const courierStatus = (data?.delivery_status || '').toLowerCase();
       if (courierStatus.includes('delivered')) status = 'DELIVERED';
       else if (courierStatus.includes('cancelled')) status = 'CANCELLED';
-      else if (courierStatus.includes('returned')) status = 'RETURNED';
+      else if (courierStatus.includes('returned') || courierStatus.includes('return')) status = 'RETURNED';
       else if (
         courierStatus.includes('transit') ||
         courierStatus.includes('shipped') ||
@@ -192,8 +200,8 @@ export class SteadfastCourierProvider implements ICourierProvider {
   async checkCustomerRisk(phone: string): Promise<{
     pastSuccessRate: number;
     isRisky: boolean;
-    totalDeliveries: number;
-    returnCount: number;
+    totalDeliveries?: number;
+    returnCount?: number;
     totalParcels?: number;
     hasHistory?: boolean;
     returnRatio?: number;
@@ -201,6 +209,8 @@ export class SteadfastCourierProvider implements ICourierProvider {
     cancellationRatio?: number;
     totalReports?: number;
     volumeRange?: string;
+    volumeBand?: string;
+    fraudCategories?: any;
     serviceStatus?: 'available' | 'unavailable' | 'rate_limited' | 'error';
     statusMessage?: string;
     rateLimit?: { limit: number; current: number };
@@ -211,9 +221,6 @@ export class SteadfastCourierProvider implements ICourierProvider {
         return {
           pastSuccessRate: 0,
           isRisky: false,
-          totalDeliveries: 0,
-          returnCount: 0,
-          totalParcels: 0,
           hasHistory: false,
           serviceStatus: 'error',
           statusMessage: 'Invalid phone number format',
@@ -237,13 +244,14 @@ export class SteadfastCourierProvider implements ICourierProvider {
         'Secret-Key': this.secretKey,
       };
 
-      // 1. Try standard /fraud_check/{phone} endpoint
+      // 1. Query modern Steadfast /fraud_check/score/{phone} endpoint (active API)
       try {
-        const response = await fetch(`${this.baseUrl}/fraud_check/${cleanPhone}`, {
+        const response = await fetch(`${this.baseUrl}/fraud_check/score/${cleanPhone}`, {
           headers,
           cache: 'no-store',
-          signal: AbortSignal.timeout(3000),
+          signal: AbortSignal.timeout(4000),
         });
+
         if (response.status === 429) {
           isRateLimited = true;
           const body = await response.json().catch(() => null);
@@ -254,10 +262,10 @@ export class SteadfastCourierProvider implements ICourierProvider {
           scoreData = await response.json().catch(() => null);
         }
       } catch {
-        // Fall through to next endpoint on timeout or error
+        // Fall through to fallback attempt if needed
       }
 
-      // 2. If rate limited, return specific rate_limited status immediately
+      // 2. If rate limited, return specific rate_limited status
       if (isRateLimited) {
         const rateLimitResult = {
           hasHistory: false,
@@ -268,9 +276,6 @@ export class SteadfastCourierProvider implements ICourierProvider {
           returnRatio: 0,
           isRisky: false,
           totalReports: 0,
-          totalDeliveries: 0,
-          returnCount: 0,
-          totalParcels: 0,
         };
         steadfastScoreCache.set(cleanPhone, {
           data: rateLimitResult,
@@ -279,10 +284,10 @@ export class SteadfastCourierProvider implements ICourierProvider {
         return rateLimitResult;
       }
 
-      // 3. If no valid data, try score-specific endpoint /fraud_check/score/{phone}
-      if (!scoreData || (scoreData.status !== 200 && scoreData.delivery_ratio === undefined && scoreData.total_delivered === undefined)) {
+      // 3. Fallback: If score endpoint did not respond, try legacy endpoint
+      if (!scoreData || (scoreData.status !== 200 && scoreData.delivery_ratio === undefined)) {
         try {
-          const response = await fetch(`${this.baseUrl}/fraud_check/score/${cleanPhone}`, {
+          const response = await fetch(`${this.baseUrl}/fraud_check/${cleanPhone}`, {
             headers,
             cache: 'no-store',
             signal: AbortSignal.timeout(3000),
@@ -298,9 +303,6 @@ export class SteadfastCourierProvider implements ICourierProvider {
               returnRatio: 0,
               isRisky: false,
               totalReports: 0,
-              totalDeliveries: 0,
-              returnCount: 0,
-              totalParcels: 0,
             };
             steadfastScoreCache.set(cleanPhone, {
               data: rateResult,
@@ -308,60 +310,83 @@ export class SteadfastCourierProvider implements ICourierProvider {
             });
             return rateResult;
           } else if (response.ok) {
-            scoreData = await response.json().catch(() => null);
+            const legacyData = await response.json().catch(() => null);
+            // Only use legacy if not the sunset message
+            if (legacyData && !legacyData.notice?.includes('no longer returns parcel counts')) {
+              scoreData = legacyData;
+            }
           }
         } catch {
           // Handled below
         }
       }
 
-      // 3. Process Authentic Live Response from Steadfast (handles all payload variants)
-      if (scoreData && (scoreData.status === 200 || scoreData.delivery_ratio !== undefined || scoreData.total_delivered !== undefined || scoreData.Total_parcels !== undefined)) {
-        const delivered = Number(scoreData.total_delivered ?? scoreData.delivered_count ?? scoreData.total_deliveries ?? 0);
-        const cancelled = Number(scoreData.total_cancelled ?? scoreData.cancelled_count ?? scoreData.total_return ?? scoreData.return_count ?? 0);
-        const parcels = Number(scoreData.Total_parcels ?? scoreData.total_parcels ?? (delivered + cancelled));
-        const totalReports = Array.isArray(scoreData.total_fraud_reports)
-          ? scoreData.total_fraud_reports.length
-          : Number(scoreData.total_reports || 0);
+      // 4. Process Authentic Live Response from Steadfast
+      if (scoreData && (scoreData.status === 200 || scoreData.delivery_ratio !== undefined || scoreData.volume_band !== undefined)) {
+        const deliveryRatio = scoreData.delivery_ratio != null ? Number(scoreData.delivery_ratio) : null;
+        const cancellationRatio = scoreData.cancellation_ratio != null
+          ? Number(scoreData.cancellation_ratio)
+          : (scoreData.return_ratio != null ? Number(scoreData.return_ratio) : null);
+        const volumeBand = scoreData.volume_band && scoreData.volume_band !== 'none' ? scoreData.volume_band : null;
+        const volumeRange = scoreData.volume_range && scoreData.volume_range !== 'none' ? String(scoreData.volume_range) : null;
 
-        let pastSuccessRate = 0;
-        if (scoreData.delivery_ratio !== undefined && scoreData.delivery_ratio !== null) {
-          pastSuccessRate = Math.round(Number(scoreData.delivery_ratio));
-        } else if (parcels > 0) {
-          pastSuccessRate = Math.round((delivered / parcels) * 100);
+        // Calculate total reports (either total_reports or sum of fraud_categories)
+        let totalReports = Number(scoreData.total_reports || 0);
+        if (scoreData.fraud_categories && typeof scoreData.fraud_categories === 'object' && !Array.isArray(scoreData.fraud_categories)) {
+          const sumCat = Object.values(scoreData.fraud_categories).reduce((acc: number, v: any) => acc + (Number(v) || 0), 0);
+          totalReports = Math.max(totalReports, sumCat);
+        } else if (Array.isArray(scoreData.total_fraud_reports)) {
+          totalReports = Math.max(totalReports, scoreData.total_fraud_reports.length);
         }
 
-        let returnRatio = 0;
-        if (scoreData.return_ratio !== undefined && scoreData.return_ratio !== null) {
-          returnRatio = Math.round(Number(scoreData.return_ratio));
-        } else if (scoreData.cancellation_ratio !== undefined && scoreData.cancellation_ratio !== null) {
-          returnRatio = Math.round(Number(scoreData.cancellation_ratio));
-        } else if (parcels > 0) {
-          returnRatio = Math.round((cancelled / parcels) * 100);
-        }
+        const rawDelivered = scoreData.delivered_count != null
+          ? Number(scoreData.delivered_count)
+          : (scoreData.total_delivered != null && !scoreData.notice ? Number(scoreData.total_delivered) : null);
+        const rawCancelled = scoreData.cancelled_count != null
+          ? Number(scoreData.cancelled_count)
+          : (scoreData.total_cancelled != null && !scoreData.notice ? Number(scoreData.total_cancelled) : null);
 
-        const volumeBand = scoreData.volume_band || (parcels > 0 ? (parcels >= 20 ? 'high' : parcels >= 5 ? 'medium' : 'low') : 'none');
-        const volumeRange = scoreData.volume_range || (parcels > 0 ? `${parcels} টি পার্সেল` : null);
-
-        // A customer has history if they have parcels recorded, or delivery ratio provided
-        const hasHistory = parcels > 0 || delivered > 0 || cancelled > 0 || (scoreData.delivery_ratio !== undefined && scoreData.delivery_ratio !== null && volumeBand !== 'none');
+        const hasHistory = deliveryRatio !== null || volumeBand !== null || volumeRange !== null || totalReports > 0 || (rawDelivered !== null && rawDelivered > 0);
 
         if (hasHistory) {
-          const isRisky = returnRatio > 30 || totalReports > 0 || (pastSuccessRate < 70 && pastSuccessRate > 0 && parcels >= 3);
+          let pastSuccessRate = 0;
+          if (deliveryRatio !== null) {
+            pastSuccessRate = Math.round(deliveryRatio);
+          } else if (rawDelivered !== null && (rawDelivered + (rawCancelled || 0)) > 0) {
+            pastSuccessRate = Math.round((rawDelivered / (rawDelivered + (rawCancelled || 0))) * 100);
+          }
+
+          let returnRatio = 0;
+          if (cancellationRatio !== null) {
+            returnRatio = Math.round(cancellationRatio);
+          } else if (deliveryRatio !== null) {
+            returnRatio = Math.max(0, 100 - pastSuccessRate);
+          } else if (rawCancelled !== null && (rawCancelled + (rawDelivered || 0)) > 0) {
+            returnRatio = Math.round((rawCancelled / (rawCancelled + (rawDelivered || 0))) * 100);
+          }
+
+          const formattedVolume = volumeRange
+            ? (volumeRange.includes('টি') ? volumeRange : `${volumeRange} টি পার্সেল`)
+            : (volumeBand ? `সক্রিয় (${volumeBand})` : 'সক্রিয়');
+
+          const isRisky = returnRatio > 30 || totalReports > 0 || (pastSuccessRate < 70 && pastSuccessRate > 0);
+
           const result = {
             hasHistory: true,
             serviceStatus: 'available' as const,
             pastSuccessRate,
             returnRatio,
             deliveryRatio: pastSuccessRate,
-            volumeRange: volumeRange || volumeBand,
-            volumeBand,
+            volumeRange: formattedVolume,
+            volumeBand: volumeBand || 'active',
             totalReports,
             isRisky,
-            totalDeliveries: delivered,
-            returnCount: cancelled,
-            totalParcels: parcels,
+            totalDeliveries: rawDelivered !== null && rawDelivered > 0 ? rawDelivered : undefined,
+            returnCount: rawCancelled !== null && rawCancelled > 0 ? rawCancelled : undefined,
+            totalParcels: rawDelivered !== null && rawDelivered > 0 ? (rawDelivered + (rawCancelled || 0)) : undefined,
+            fraudCategories: scoreData.fraud_categories || undefined,
           };
+
           steadfastScoreCache.set(cleanPhone, {
             data: result,
             expiry: Date.now() + 10 * 60 * 1000, // 10 minutes cache
@@ -378,11 +403,8 @@ export class SteadfastCourierProvider implements ICourierProvider {
           deliveryRatio: 0,
           volumeRange: 'none',
           volumeBand: 'none',
-          totalReports,
-          isRisky: totalReports > 0,
-          totalDeliveries: 0,
-          returnCount: 0,
-          totalParcels: 0,
+          totalReports: 0,
+          isRisky: false,
         };
         steadfastScoreCache.set(cleanPhone, {
           data: result,
@@ -400,9 +422,6 @@ export class SteadfastCourierProvider implements ICourierProvider {
         returnRatio: 0,
         isRisky: false,
         totalReports: 0,
-        totalDeliveries: 0,
-        returnCount: 0,
-        totalParcels: 0,
       };
       // Short cache (15 seconds) so retry button re-attempts immediately
       steadfastScoreCache.set(cleanPhone, {
@@ -413,13 +432,12 @@ export class SteadfastCourierProvider implements ICourierProvider {
     } catch {
       return {
         hasHistory: false,
-        serviceStatus: 'unavailable',
+        serviceStatus: 'unavailable' as const,
         statusMessage: 'কুরিয়ার নেটওয়ার্ক সংযোগ বিঘ্নিত হয়েছে',
-        totalParcels: 0,
-        totalDeliveries: 0,
-        returnCount: 0,
         pastSuccessRate: 0,
+        returnRatio: 0,
         isRisky: false,
+        totalReports: 0,
       };
     }
   }

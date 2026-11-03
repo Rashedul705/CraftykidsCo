@@ -14,8 +14,31 @@ export function getEmbeddedFontsCss(): string {
   if (embeddedFontsCssCache) return embeddedFontsCssCache;
 
   try {
-    const fontsDir = path.join(process.cwd(), 'public', 'fonts');
+    const candidateDirs = [
+      path.join(process.cwd(), 'frontend', 'public', 'fonts'),
+      path.join(process.cwd(), 'public', 'fonts'),
+      path.resolve(__dirname, '..', '..', '..', 'public', 'fonts'),
+      path.resolve(__dirname, '..', '..', 'public', 'fonts'),
+    ];
+
+    let fontsDir = '';
+    for (const dir of candidateDirs) {
+      if (fs.existsSync(path.join(dir, 'HindSiliguri-Regular.ttf'))) {
+        fontsDir = dir;
+        break;
+      }
+    }
+
+    if (!fontsDir) {
+      console.warn('Could not locate fonts directory in candidate paths:', candidateDirs);
+      return `
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;600;700&display=swap');
+`;
+    }
+
     const hindRegPath = path.join(fontsDir, 'HindSiliguri-Regular.ttf');
+    const hindMedPath = path.join(fontsDir, 'HindSiliguri-Medium.ttf');
+    const hindSemiPath = path.join(fontsDir, 'HindSiliguri-SemiBold.ttf');
     const hindBoldPath = path.join(fontsDir, 'HindSiliguri-Bold.ttf');
     const fredokaSemiPath = path.join(fontsDir, 'Fredoka-SemiBold.ttf');
     const fredokaBoldPath = path.join(fontsDir, 'Fredoka-Bold.ttf');
@@ -30,7 +53,33 @@ export function getEmbeddedFontsCss(): string {
   src: url('data:font/truetype;charset=utf-8;base64,${b64}') format('truetype');
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
+}
+`;
+    }
+
+    if (fs.existsSync(hindMedPath)) {
+      const b64 = fs.readFileSync(hindMedPath).toString('base64');
+      css += `
+@font-face {
+  font-family: 'Hind Siliguri';
+  src: url('data:font/truetype;charset=utf-8;base64,${b64}') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+}
+`;
+    }
+
+    if (fs.existsSync(hindSemiPath)) {
+      const b64 = fs.readFileSync(hindSemiPath).toString('base64');
+      css += `
+@font-face {
+  font-family: 'Hind Siliguri';
+  src: url('data:font/truetype;charset=utf-8;base64,${b64}') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
 }
 `;
     }
@@ -43,7 +92,7 @@ export function getEmbeddedFontsCss(): string {
   src: url('data:font/truetype;charset=utf-8;base64,${b64}') format('truetype');
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 `;
     }
@@ -56,7 +105,7 @@ export function getEmbeddedFontsCss(): string {
   src: url('data:font/truetype;charset=utf-8;base64,${b64}') format('truetype');
   font-weight: 600;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 `;
     }
@@ -69,7 +118,7 @@ export function getEmbeddedFontsCss(): string {
   src: url('data:font/truetype;charset=utf-8;base64,${b64}') format('truetype');
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 `;
     }
@@ -79,7 +128,7 @@ export function getEmbeddedFontsCss(): string {
   } catch (err) {
     console.warn('Failed to embed fonts from disk, falling back to Google Fonts link:', err);
     return `
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+Bengali:wght@400;600;700&family=Hind+Siliguri:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;600;700&display=swap');
 `;
   }
 }
@@ -185,7 +234,9 @@ export async function renderHtmlToPdf(
     });
 
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'load' });
+    await page.setContent(html, { waitUntil: ['load', 'networkidle0'] });
+    await page.evaluateHandle('document.fonts.ready');
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     const pdfOptions: PDFOptions = {
       preferCSSPageSize: true,
@@ -334,8 +385,8 @@ export async function generateInvoiceHtml(
                         }
                       </td>
                       <td style="text-align: center; font-weight: bold;">${it.quantity}</td>
-                      <td style="text-align: right; font-family: 'Fredoka', sans-serif;">${formatTaka(it.price)}</td>
-                      <td style="text-align: right; font-family: 'Fredoka', sans-serif; font-weight: bold;">${formatTaka(lineTotal)}</td>
+                      <td style="text-align: right; font-family: 'Hind Siliguri', 'Fredoka', sans-serif;">${formatTaka(it.price)}</td>
+                      <td style="text-align: right; font-family: 'Hind Siliguri', 'Fredoka', sans-serif; font-weight: bold;">${formatTaka(lineTotal)}</td>
                     </tr>
                     `;
                   })
@@ -438,7 +489,7 @@ export async function generateInvoiceHtml(
       margin: 0;
       padding: 0;
       background: #FFFFFF;
-      font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+      font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
       color: #2B2B2B;
       font-size: 12.5px;
       line-height: 1.45;
@@ -519,14 +570,14 @@ export async function generateInvoiceHtml(
       text-align: right;
     }
     .invoice-title {
-      font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+      font-family: 'Hind Siliguri', sans-serif;
       font-size: 26px;
       font-weight: 700;
       color: #2B2B2B;
       line-height: 1;
     }
     .order-number {
-      font-family: 'Fredoka', sans-serif;
+      font-family: 'Hind Siliguri', 'Fredoka', sans-serif;
       font-size: 15px;
       font-weight: 700;
       color: #C23631;
@@ -698,7 +749,7 @@ export async function generateInvoiceHtml(
       color: #666;
     }
     .calc-value {
-      font-family: 'Fredoka', sans-serif;
+      font-family: 'Hind Siliguri', 'Fredoka', sans-serif;
       font-weight: 600;
       color: #2B2B2B;
     }
@@ -728,7 +779,7 @@ export async function generateInvoiceHtml(
       letter-spacing: 0.5px;
     }
     .collect-box-amount {
-      font-family: 'Fredoka', sans-serif;
+      font-family: 'Hind Siliguri', 'Fredoka', sans-serif;
       font-size: 26px;
       font-weight: 700;
       color: #D6403B;
@@ -994,7 +1045,7 @@ export async function generateStickerHtml(
       margin: 0;
       padding: 0;
       background: #FFFFFF;
-      font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+      font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
     }
 
     @page sticker {
@@ -1162,7 +1213,7 @@ export async function generateStickerHtml(
       letter-spacing: 0.5px;
     }
     .collect-amount {
-      font-family: 'Fredoka', 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+      font-family: 'Hind Siliguri', 'Fredoka', sans-serif;
       font-size: 24pt;
       font-weight: 700;
       line-height: 1;
@@ -1195,19 +1246,131 @@ export async function generateStickerHtml(
     .sticker-container.compact {
       width: 100%;
       height: 100%;
-      border: 0.5mm solid #000000;
+      border: 0.4mm solid #000000;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
-    .compact .company-name { font-size: 11pt; }
-    .compact .company-tagline { display: none; }
-    .compact .company-phone { font-size: 9pt; }
-    .compact .consignment-id { font-size: 18pt; margin: 0.5mm 0; }
-    .compact .barcode-wrapper { height: 9mm; }
-    .compact .barcode-wrapper svg { height: 9mm; }
-    .compact .customer-name { font-size: 11pt; }
-    .compact .customer-phone { font-size: 11pt; margin: 0.5mm 0; }
-    .compact .customer-address { font-size: 8pt; line-height: 1.2; }
-    .compact .collect-amount { font-size: 17pt; }
-    .compact .collect-bangla-label { font-size: 10pt; }
+    .compact .section {
+      padding: 1mm 2mm;
+      border-bottom: 0.3mm solid #000000;
+    }
+    .compact .sender-row {
+      min-height: unset;
+      padding: 0.8mm 2mm;
+    }
+    .compact .company-name {
+      font-size: 9pt;
+      font-weight: 700;
+    }
+    .compact .company-tagline {
+      display: none;
+    }
+    .compact .company-phone {
+      font-size: 8pt;
+      font-weight: 700;
+    }
+    .compact .consignment-block {
+      padding: 0.8mm 2mm;
+      text-align: center;
+    }
+    .compact .consignment-label {
+      font-size: 6.5pt;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+    }
+    .compact .consignment-id {
+      font-size: 13pt;
+      font-weight: 700;
+      margin: 0.5mm 0;
+      line-height: 1;
+    }
+    .compact .barcode-wrapper {
+      height: 7mm;
+    }
+    .compact .barcode-wrapper svg {
+      height: 7mm;
+      max-width: 75mm;
+    }
+    .compact .receiver-block {
+      flex: 1;
+      min-height: 0;
+      padding: 1mm 2mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    .compact .receiver-header {
+      margin-bottom: 0.5mm;
+    }
+    .compact .receiver-tag {
+      font-size: 7pt;
+      padding: 0.5px 3px;
+      border: 0.3mm solid #000000;
+      font-weight: 700;
+    }
+    .compact .receiver-district-badge {
+      font-size: 8pt;
+      font-weight: 700;
+    }
+    .compact .customer-name {
+      font-size: 9pt;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+    .compact .customer-phone {
+      font-size: 8.5pt;
+      font-weight: 700;
+      line-height: 1.15;
+      margin: 0.5mm 0;
+    }
+    .compact .customer-address {
+      font-size: 7pt;
+      line-height: 1.15;
+      font-weight: 600;
+    }
+    .compact .collect-bar {
+      padding: 0.8mm 2mm;
+      background-color: #000000 !important;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .compact .collect-bar * {
+      color: #FFFFFF !important;
+    }
+    .compact .collect-left {
+      display: flex;
+      flex-direction: column;
+    }
+    .compact .collect-bangla-label {
+      font-size: 8pt;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .compact .collect-subtext {
+      font-size: 5.5pt;
+      letter-spacing: 0.2px;
+    }
+    .compact .collect-amount {
+      font-family: 'Hind Siliguri', 'Fredoka', sans-serif;
+      font-size: 13pt;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .compact .footer-row {
+      min-height: unset;
+      padding: 0.6mm 2mm;
+      font-size: 6.5pt;
+    }
+    .compact .order-ref {
+      font-size: 7pt;
+      font-weight: 700;
+    }
+    .compact .fragile-badge, .compact .standard-badge {
+      font-size: 6.5pt;
+      padding: 0.5px 3px;
+    }
 
     /* SHEET LAYOUTS (FOR NORMAL LASER/INKJET PRINTERS) */
     .sheet-a4-page {
@@ -1228,9 +1391,18 @@ export async function generateStickerHtml(
       grid-template-columns: 105mm 105mm;
       grid-template-rows: repeat(4, 74.25mm);
     }
-    .sheet4-cell, .sheet8-cell {
+    .sheet4-cell {
       border: 1px dashed #777; /* Thin dashed cut lines between cells */
       padding: 3mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .sheet8-cell {
+      border: 1px dashed #777; /* Thin dashed cut lines between cells */
+      padding: 1.5mm;
       display: flex;
       align-items: center;
       justify-content: center;
