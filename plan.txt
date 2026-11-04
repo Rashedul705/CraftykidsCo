@@ -56,15 +56,15 @@ PHASE 2: Sales Conversion, Age Filtering & Logistics Speed (Days 3 - 5)
     - Batch print courier stickers for selected orders.
     - Status: [x] Completed
 
-[>] Section 2.3: Order Internal Notes & Tele-Sales Call Log
+[x] Section 2.3: Order Internal Notes & Tele-Sales Call Log
     - Add internal notes field to Order schema (call logs, customer requests, verification status).
     - Enable admin/sales staff to save notes like "Customer confirmed 2 PM delivery" or "Phone not reachable".
-    - Status: [>] In Progress
+    - Status: [x] Completed
 
-[ ] Section 2.4: Real Customer Photo Reviews & Moderation
+[x] Section 2.4: Real Customer Photo Reviews & Moderation
     - Allow storefront customers to submit ratings, reviews, and upload craft photos.
     - Create Admin Review Moderation tab to approve/reject reviews before publishing.
-    - Status: [ ] Pending Permission
+    - Status: [x] Completed
 
 ================================================================================
 PHASE 3: Full Automation, Payment Gateway & Scalability (Week 2)

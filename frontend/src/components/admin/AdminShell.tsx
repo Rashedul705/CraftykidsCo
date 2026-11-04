@@ -71,6 +71,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   {
     title: 'CONTENT',
     items: [
+      { id: 'reviews', label: 'Photo reviews', allowedRoles: ['admin', 'order_handler'] },
       { id: 'messages', label: 'Messages', allowedRoles: ['admin', 'order_handler'] },
       { id: 'page-editor', label: 'Page editor', allowedRoles: ['admin'] },
       { id: 'home-sections', label: 'Home sections', allowedRoles: ['admin'] },
@@ -155,6 +156,10 @@ export const TAB_METADATA: Record<string, { title: string; helper: string; mainA
   'block-list': {
     title: 'Block list',
     helper: 'Prevent repeat COD returns and fake orders by blocking phone numbers',
+  },
+  reviews: {
+    title: 'Customer Photo Reviews & Moderation',
+    helper: 'Moderate submitted customer ratings, review comments, and craft photos before storefront publication',
   },
   messages: {
     title: 'Messages',

@@ -47,6 +47,7 @@ import { SampleProduct, getProductMedia, ProductVideo, getVideoEmbedInfo } from 
 import { formatBDT, toBanglaDigits } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { trackViewContent, trackAddToCart, trackInitiateCheckout } from '@/lib/analytics';
+import ProductReviewsSection from '@/components/product/ProductReviewsSection';
 
 // Helper to extract clean short name and included description from variation titles
 // Rule from Part A1: "Do not repeat the product name inside each option. Show only what is different (for example '১২ পিস সেট')"
@@ -455,7 +456,7 @@ function ProductContent() {
   }, [product]);
 
   // Below fold tabs
-  const [activeTab, setActiveTab] = useState<'desc' | 'box' | 'videos' | 'faq'>('desc');
+  const [activeTab, setActiveTab] = useState<'desc' | 'box' | 'videos' | 'reviews' | 'faq'>('desc');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   // Recently Viewed state
@@ -1044,6 +1045,7 @@ function ProductContent() {
               </div>
               <span className="font-bold text-[#2B2B2B]">{product.rating || 4.9}</span>
               <span className="text-[#6B6B6B] text-xs font-medium">/ ৫.০</span>
+              <button type="button" onClick={() => { setActiveTab("reviews"); document.getElementById("reviews-section")?.scrollIntoView({ behavior: "smooth" }); }} className="text-[#0B5F85] hover:underline text-xs font-bold cursor-pointer ml-1">(রিভিউ ও আসল ছবি দেখুন)</button>
             </div>
 
             {/* Short Description */}
@@ -1544,6 +1546,7 @@ function ProductContent() {
               { id: 'desc', label: 'বিবরণ' },
               { id: 'box', label: 'বাক্সে কী আছে' },
               ...(productVideos.length > 0 ? [{ id: 'videos', label: `ডেমো ভিডিও (${toBanglaDigits(productVideos.length)})` }] : []),
+              { id: 'reviews', label: 'রিভিউ ও ক্রাফট ছবি' },
               { id: 'faq', label: `প্রশ্নোত্তর (${toBanglaDigits(faqsList.length)})` },
             ].map((tab) => (
               <button
@@ -1640,6 +1643,16 @@ function ProductContent() {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* TAB: রিভিউ ও ক্রাফট ছবি (Customer Photo Reviews) */}
+          {activeTab === 'reviews' && (
+            <ProductReviewsSection
+              productId={product.id || product.slug}
+              productSlug={product.slug}
+              productTitle={product.titleBn || (product as any).title || ''}
+              productImage={product.imageUrl}
+            />
           )}
 
           {/* TAB: প্রশ্নোত্তর (FAQ) */}

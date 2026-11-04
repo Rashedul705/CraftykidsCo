@@ -62,6 +62,7 @@ import { SiteSettingsManager } from '@/components/admin/SiteSettingsManager';
 import { PrintSettingsManager } from '@/components/admin/PrintSettingsManager';
 import { MessagesManager } from '@/components/admin/MessagesManager';
 import { PagesContentEditor } from '@/components/admin/PagesContentEditor';
+import ReviewsModerationManager from '@/components/admin/ReviewsModerationManager';
 import { AdminShell, AdminRole } from '@/components/admin/AdminShell';
 import { StatusPill } from '@/components/ui/Pill';
 
@@ -81,6 +82,7 @@ const VALID_ADMIN_TABS = [
   'delivery-charges',
   'print-settings',
   'block-list',
+  'reviews',
   'blog',
   'faq-policies',
   'home-sections',
@@ -1634,6 +1636,11 @@ export default function AdminDashboardPage() {
         {/* VIEW 12.5: SITE SETTINGS (NAV, FOOTER, CONTACT, SOCIAL, SEO, GA4, PIXEL) */}
         {activeNav === 'site-settings' && (
           <SiteSettingsManager />
+        )}
+
+        {/* VIEW 12.8: CUSTOMER PHOTO REVIEWS MODERATION */}
+        {activeNav === 'reviews' && (
+          <ReviewsModerationManager />
         )}
 
         {/* VIEW 13: SYSTEM SETTINGS (PAYMENTS, SMS, BLOCKLIST, BLOG, FAQ, REPORTS) */}
