@@ -80,6 +80,10 @@ export function SystemSettingsManager({ activeTab, onNavigateTab }: SystemSettin
   const [codEnabled, setCodEnabled] = useState(true);
   const [bkashNumber, setBkashNumber] = useState('01712345678');
   const [nagadNumber, setNagadNumber] = useState('01812345678');
+  const [isPaymentSandbox, setIsPaymentSandbox] = useState(true);
+  const [bkashAppKey, setBkashAppKey] = useState('bks_app_key_sandbox_ckc');
+  const [bkashAppSecret, setBkashAppSecret] = useState('••••••••••••••••');
+  const [nagadMerchantId, setNagadMerchantId] = useState('6829100234');
   const [storeBrandName, setStoreBrandName] = useState('CraftyKidsCo');
   const [supportPhone, setSupportPhone] = useState('+880 1712-345678');
   const [supportEmail, setSupportEmail] = useState('support@craftykidsco.com');
@@ -283,9 +287,25 @@ export function SystemSettingsManager({ activeTab, onNavigateTab }: SystemSettin
 
           {/* Payment Gateways */}
           <div className="bg-white rounded-2xl border border-[#EFE9E0] p-6 shadow-xs space-y-4">
-            <h3 className="font-heading font-black text-base text-[#2B2B2B] flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-[#D6403B]" /> Payment Methods Configuration
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#EFE9E0]">
+              <h3 className="font-heading font-black text-base text-[#2B2B2B] flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-[#D6403B]" /> Automated Payment Gateways (bKash &amp; Nagad)
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-[#6B6B6B]">Environment:</span>
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentSandbox(!isPaymentSandbox)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-colors ${
+                    isPaymentSandbox
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                      : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                  }`}
+                >
+                  {isPaymentSandbox ? 'Sandbox / Simulator Active' : 'Live Gateway Active'}
+                </button>
+              </div>
+            </div>
 
             <div className="space-y-4 text-xs">
               <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-between">
@@ -302,32 +322,78 @@ export function SystemSettingsManager({ activeTab, onNavigateTab }: SystemSettin
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl border border-[#EFE9E0] space-y-2">
+                {/* bKash Configuration */}
+                <div className="p-4 rounded-xl border border-[#EFE9E0] space-y-3 bg-[#FAF7F2]/50">
                   <div className="flex items-center justify-between">
-                    <strong className="text-xs text-[#2B2B2B]">bKash Payment Gateway</strong>
-                    <StatusPill variant="green" dot>Active</StatusPill>
+                    <strong className="text-xs text-[#2B2B2B] font-bold">bKash Tokenized Checkout</strong>
+                    <StatusPill variant={isPaymentSandbox ? 'yellow' : 'green'} dot>
+                      {isPaymentSandbox ? 'Sandbox' : 'Live API'}
+                    </StatusPill>
                   </div>
-                  <label className="text-[11px] text-[#6B6B6B] block">Merchant Number / Account:</label>
-                  <input
-                    type="text"
-                    value={bkashNumber}
-                    onChange={(e) => setBkashNumber(e.target.value)}
-                    className="w-full p-2 rounded-xl border border-[#EFE9E0] font-mono text-xs focus:outline-[#D6403B]"
-                  />
+                  <div>
+                    <label className="text-[11px] text-[#6B6B6B] block mb-1">Merchant Number / Account:</label>
+                    <input
+                      type="text"
+                      value={bkashNumber}
+                      onChange={(e) => setBkashNumber(e.target.value)}
+                      className="w-full p-2 rounded-xl border border-[#EFE9E0] bg-white font-mono text-xs focus:outline-[#D6403B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#6B6B6B] block mb-1">bKash App Key:</label>
+                    <input
+                      type="text"
+                      value={bkashAppKey}
+                      onChange={(e) => setBkashAppKey(e.target.value)}
+                      className="w-full p-2 rounded-xl border border-[#EFE9E0] bg-white font-mono text-xs focus:outline-[#D6403B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#6B6B6B] block mb-1">bKash App Secret:</label>
+                    <input
+                      type="password"
+                      value={bkashAppSecret}
+                      onChange={(e) => setBkashAppSecret(e.target.value)}
+                      className="w-full p-2 rounded-xl border border-[#EFE9E0] bg-white font-mono text-xs focus:outline-[#D6403B]"
+                    />
+                  </div>
                 </div>
 
-                <div className="p-4 rounded-xl border border-[#EFE9E0] space-y-2">
+                {/* Nagad Configuration */}
+                <div className="p-4 rounded-xl border border-[#EFE9E0] space-y-3 bg-[#FAF7F2]/50">
                   <div className="flex items-center justify-between">
-                    <strong className="text-xs text-[#2B2B2B]">Nagad Payment Gateway</strong>
-                    <StatusPill variant="green" dot>Active</StatusPill>
+                    <strong className="text-xs text-[#2B2B2B] font-bold">Nagad Payment Gateway (PGW)</strong>
+                    <StatusPill variant={isPaymentSandbox ? 'yellow' : 'green'} dot>
+                      {isPaymentSandbox ? 'Sandbox' : 'Live API'}
+                    </StatusPill>
                   </div>
-                  <label className="text-[11px] text-[#6B6B6B] block">Merchant Number / Account:</label>
-                  <input
-                    type="text"
-                    value={nagadNumber}
-                    onChange={(e) => setNagadNumber(e.target.value)}
-                    className="w-full p-2 rounded-xl border border-[#EFE9E0] font-mono text-xs focus:outline-[#D6403B]"
-                  />
+                  <div>
+                    <label className="text-[11px] text-[#6B6B6B] block mb-1">Merchant Number / Account:</label>
+                    <input
+                      type="text"
+                      value={nagadNumber}
+                      onChange={(e) => setNagadNumber(e.target.value)}
+                      className="w-full p-2 rounded-xl border border-[#EFE9E0] bg-white font-mono text-xs focus:outline-[#D6403B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#6B6B6B] block mb-1">Nagad Merchant ID:</label>
+                    <input
+                      type="text"
+                      value={nagadMerchantId}
+                      onChange={(e) => setNagadMerchantId(e.target.value)}
+                      className="w-full p-2 rounded-xl border border-[#EFE9E0] bg-white font-mono text-xs focus:outline-[#D6403B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#6B6B6B] block mb-1">Callback URL (Auto-Generated):</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value="/api/payment/execute"
+                      className="w-full p-2 rounded-xl border border-[#EFE9E0] bg-stone-100 font-mono text-xs text-stone-500"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

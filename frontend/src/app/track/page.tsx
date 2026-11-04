@@ -17,6 +17,7 @@ import {
   ShoppingBag,
   RotateCcw,
   XCircle,
+  Sparkles,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -40,6 +41,25 @@ function TrackContent() {
   const [foundOrder, setFoundOrder] = useState<OrderRecord | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isPayingOnline, setIsPayingOnline] = useState(false);
+
+  const handlePayOnline = async (orderNumber: string) => {
+    setIsPayingOnline(true);
+    try {
+      const res = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderNumber, paymentMethod: 'BKASH' }),
+      });
+      const data = await res.json();
+      setIsPayingOnline(false);
+      if (data.success && data.paymentURL) {
+        window.location.href = data.paymentURL;
+      }
+    } catch {
+      setIsPayingOnline(false);
+    }
+  };
 
   const performSearch = useCallback(async (orderParam: string, phoneParam: string) => {
     const q = orderParam.trim();
@@ -385,9 +405,24 @@ function TrackContent() {
                   </div>
                 ) : null}
                 <div className="flex justify-between border-t border-[#EFE9E0] pt-1.5 font-bold text-[#2B2B2B] text-sm">
-                  <span>সর্বমোট প্রদেয় (COD):</span>
+                  <span>সর্বমোট প্রদেয়:</span>
                   <span className="text-[#FF6B6B]">৳{foundOrder.totalAmount?.toLocaleString('bn-BD') || foundOrder.totalAmount}</span>
                 </div>
+              </div>
+
+              {/* Payment Status */}
+              <div className="mt-3 p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-between text-xs">
+                <span className="text-[#6B6B6B]">পেমেন্ট অবস্থা:</span>
+                {foundOrder.paymentStatus === 'PAID' ? (
+                  <span className="font-bold text-emerald-700 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    পরিশোধিত (Paid)
+                  </span>
+                ) : (
+                  <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    বকেয়া (COD - ডেলিভারির সময় প্রদেয়)
+                  </span>
+                )}
               </div>
             </div>
           </div>

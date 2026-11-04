@@ -67,6 +67,8 @@ export interface OrderRecord {
   internalNote?: string;
   callStatus?: 'PENDING' | 'CONNECTED' | 'NOT_ANSWERED' | 'BUSY' | 'UNREACHABLE' | 'CALL_LATER';
   callLogs?: ICallLog[];
+  transactionId?: string;
+  paidAt?: string;
 }
 
 // In-memory persistent state (shared across client sessions and API routes in server environment)

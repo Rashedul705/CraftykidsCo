@@ -79,6 +79,15 @@ export interface IOrder extends Document {
   timeline?: { status: string; timestamp: string; note?: string }[];
   shipmentId?: mongoose.Types.ObjectId;
   paymentId?: mongoose.Types.ObjectId;
+  transactionId?: string;
+  paidAt?: Date;
+  paymentDetails?: {
+    provider?: string;
+    trxID?: string;
+    amount?: number;
+    paymentExecuteTime?: string;
+    customerMsisdn?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -199,6 +208,9 @@ const OrderSchema = new Schema<IOrder>(
     timeline: [TimelineSchema],
     shipmentId: { type: Schema.Types.ObjectId, ref: 'Shipment' },
     paymentId: { type: Schema.Types.ObjectId, ref: 'Payment' },
+    transactionId: { type: String, index: true },
+    paidAt: { type: Date },
+    paymentDetails: { type: Schema.Types.Mixed },
   },
   { timestamps: true, strict: false }
 );

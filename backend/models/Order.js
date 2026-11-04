@@ -66,6 +66,9 @@ const orderSchema = new mongoose.Schema({
     default: 'PENDING'
   },
   callLogs: [callLogSchema],
+  transactionId: { type: String, index: true },
+  paidAt: { type: Date },
+  paymentDetails: { type: mongoose.Schema.Types.Mixed },
   items: [orderItemSchema],
   timeline: [timelineSchema]
 }, {

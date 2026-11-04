@@ -579,12 +579,12 @@ export default function CheckoutPage() {
                   </span>
                 </label>
 
-                {/* bKash (Mock / Real) */}
+                {/* bKash (Automated Tokenized / Gateway) */}
                 <label
                   className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
                     paymentMethod === 'BKASH'
-                      ? 'border-2 border-[#FF6B6B] bg-[#FFF5F5] shadow-sm'
-                      : 'border-[#EFE9E0] bg-[#FAF7F2] hover:border-[#FF6B6B]'
+                      ? 'border-2 border-[#E2136E] bg-[#FDF1F7] shadow-sm'
+                      : 'border-[#EFE9E0] bg-[#FAF7F2] hover:border-[#E2136E]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -593,14 +593,14 @@ export default function CheckoutPage() {
                       name="payment_method"
                       checked={paymentMethod === 'BKASH'}
                       onChange={() => setPaymentMethod('BKASH')}
-                      className="accent-[#FF6B6B] w-4 h-4"
+                      className="accent-[#E2136E] w-4 h-4 cursor-pointer"
                     />
                     <div>
                       <span className="font-heading font-bold text-sm text-[#2B2B2B] block">
                         বিকাশ অনলাইন পেমেন্ট (bKash Payment)
                       </span>
                       <span className="text-xs text-[#6B6B6B]">
-                        সরাসরি বিকাশ গেটওয়ে দিয়ে নিরাপদ পেমেন্ট।
+                        অগ্রিম বিকাশ গেটওয়ে দিয়ে নিরাপদ ও দ্রুত পেমেন্ট
                       </span>
                     </div>
                   </div>

@@ -70,10 +70,10 @@ PHASE 2: Sales Conversion, Age Filtering & Logistics Speed (Days 3 - 5)
 PHASE 3: Full Automation, Payment Gateway & Scalability (Week 2)
 ================================================================================
 
-[ ] Section 3.1: Automated bKash / Nagad Payment Gateway
+[-] Section 3.1: Automated bKash / Nagad Payment Gateway
     - Integrate bKash Tokenized Checkout / Nagad PGW for automated advance payments.
     - Reduce COD return rate by incentivizing online payment.
-    - Status: [ ] Pending Permission
+    - Status: [-] Skipped (No Merchant Account Yet - Standard COD & Manual bKash Retained)
 
 [ ] Section 3.2: Parenting & Kids Crafting SEO Blog Engine
     - Build MongoDB-backed Blog CMS (`/admin?tab=blog`).
