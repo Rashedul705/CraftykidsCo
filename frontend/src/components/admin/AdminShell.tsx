@@ -18,6 +18,7 @@ import {
 import { BRAND_NAME } from '@/lib/brand';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { TAB_PERMISSION_MAP } from '@/lib/permissions';
 
 export type AdminRole = 'admin' | 'order_handler' | 'product_manager';
 
@@ -85,6 +86,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     items: [
       { id: 'site-settings', label: 'Site settings', allowedRoles: ['admin'] },
       { id: 'staff', label: 'Staff and roles', allowedRoles: ['admin'] },
+      { id: 'moderators', label: 'Moderators & permissions', allowedRoles: ['admin'] },
       { id: 'payments-sms', label: 'Payments and SMS', allowedRoles: ['admin'] },
     ],
   },
@@ -192,6 +194,10 @@ export const TAB_METADATA: Record<string, { title: string; helper: string; mainA
     title: 'Site settings',
     helper: 'Configure navigation, footer, contact info, social media, SEO, Google Analytics, and Facebook Pixel',
   },
+  moderators: {
+    title: 'Moderator Access & Permissions',
+    helper: 'Configure granular module permissions and manage moderator accounts',
+  },
   staff: {
     title: 'Staff and roles',
     helper: 'Configure access permissions for Order Handlers and Product Managers',
@@ -212,6 +218,8 @@ export interface AdminShellProps {
   onLogout: () => void;
   userRole?: AdminRole;
   onRoleChange?: (role: AdminRole) => void;
+  userPermissions?: string[];
+  isSuperAdmin?: boolean;
   children: React.ReactNode;
 }
 
@@ -224,14 +232,29 @@ export function AdminShell({
   onLogout,
   userRole = 'admin',
   onRoleChange,
+  userPermissions,
+  isSuperAdmin,
   children,
 }: AdminShellProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Filter navigation items by role
+  // Filter navigation items by permission and role
   const visibleSections = ADMIN_NAV_SECTIONS.map((section) => ({
     title: section.title,
-    items: section.items.filter((item) => !item.allowedRoles || item.allowedRoles.includes(userRole)),
+    items: section.items.filter((item) => {
+      // Super Admin always sees everything
+      if (isSuperAdmin) return true;
+
+      // If permissions array provided, enforce permission mapping
+      if (Array.isArray(userPermissions)) {
+        const requiredPerm = TAB_PERMISSION_MAP[item.id];
+        if (!requiredPerm) return true;
+        return userPermissions.includes(requiredPerm);
+      }
+
+      // Legacy fallback
+      return !item.allowedRoles || item.allowedRoles.includes(userRole);
+    }),
   })).filter((section) => section.items.length > 0);
 
   const activeMeta = TAB_METADATA[activeTab] || {

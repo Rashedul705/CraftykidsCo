@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
 export async function PUT(req: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'categories.manage');
     if (!auth.authorized) {
       return auth.response;
     }
@@ -90,7 +90,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'categories.manage');
     if (!auth.authorized) {
       return auth.response;
     }

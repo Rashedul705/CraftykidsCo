@@ -65,7 +65,7 @@ export async function GET(req: NextRequest, context: RouteParams) {
 // 2. PATCH /api/products/[id] - Update product details or stock
 export async function PATCH(req: NextRequest, context: RouteParams) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'products.edit');
     if (!auth.authorized) {
       return auth.response;
     }
@@ -358,7 +358,7 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
 // 3. DELETE /api/products/[id] - Delete product permanently
 export async function DELETE(req: NextRequest, context: RouteParams) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'products.delete');
     if (!auth.authorized) {
       return auth.response;
     }

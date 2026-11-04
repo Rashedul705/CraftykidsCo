@@ -10,12 +10,23 @@ export interface IAddress {
   createdAt: Date;
 }
 
+export type UserRole =
+  | 'super_admin'
+  | 'moderator'
+  | 'customer'
+  | 'ADMIN'
+  | 'CUSTOMER'
+  | 'PRODUCT_MANAGER'
+  | 'ORDER_HANDLER'
+  | string;
+
 export interface IUser extends Document {
   phone?: string;
   email?: string;
   name?: string;
   passwordHash?: string;
-  role: 'CUSTOMER' | 'ADMIN' | 'PRODUCT_MANAGER' | 'ORDER_HANDLER';
+  role: UserRole;
+  permissions: string[];
   isActive: boolean;
   otpCode?: string;
   otpExpiresAt?: Date;
@@ -45,11 +56,24 @@ const UserSchema = new Schema<IUser>(
     passwordHash: { type: String },
     role: {
       type: String,
-      enum: ['CUSTOMER', 'ADMIN', 'PRODUCT_MANAGER', 'ORDER_HANDLER'],
-      default: 'CUSTOMER',
+      enum: [
+        'super_admin',
+        'moderator',
+        'customer',
+        'ADMIN',
+        'CUSTOMER',
+        'PRODUCT_MANAGER',
+        'ORDER_HANDLER',
+      ],
+      default: 'customer',
       index: true,
     },
-    isActive: { type: Boolean, default: true },
+    permissions: {
+      type: [String],
+      default: [],
+      index: true,
+    },
+    isActive: { type: Boolean, default: true, index: true },
     otpCode: { type: String },
     otpExpiresAt: { type: Date },
     addresses: [AddressSchema],

@@ -17,3 +17,4 @@ export * from './Notification';
 export * from './Setting';
 export * from './ContactMessage';
 export * from './Expense';
+export * from './ActivityLog';

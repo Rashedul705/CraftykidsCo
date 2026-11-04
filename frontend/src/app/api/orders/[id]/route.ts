@@ -56,13 +56,21 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const { id } = await context.params;
+    const body = await req.json();
+
+    const targetStatus = body?.status;
+    let requiredPerm = 'orders.update_status';
+    if (targetStatus === 'CANCELLED') {
+      requiredPerm = 'orders.cancel';
+    } else if (targetStatus === 'RETURNED') {
+      requiredPerm = 'orders.refund';
+    }
+
+    const auth = await verifyAdminRequest(req, requiredPerm);
     if (!auth.authorized) {
       return auth.response;
     }
-
-    const { id } = await context.params;
-    const body = await req.json();
     const {
       status,
       note,

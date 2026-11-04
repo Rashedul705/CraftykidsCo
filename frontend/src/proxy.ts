@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyAdminToken, ADMIN_COOKIE_NAME } from '@/lib/auth';
 
+const ALLOWED_ADMIN_ROLES = [
+  'admin',
+  'super_admin',
+  'moderator',
+  'order_handler',
+  'product_manager',
+];
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -10,9 +18,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  // Allow 403 Access Denied page without redirect
+  if (pathname === '/admin/403') {
+    return NextResponse.next();
+  }
+
+  const token =
+    request.cookies.get(ADMIN_COOKIE_NAME)?.value ||
+    request.cookies.get('admin_session')?.value;
   const session = token ? await verifyAdminToken(token) : null;
-  const isAuthenticated = Boolean(session && session.role === 'ADMIN');
+  const isAuthenticated = Boolean(
+    session && ALLOWED_ADMIN_ROLES.includes((session.role || '').toLowerCase())
+  );
 
   // Case 1: If visiting /admin/login while already logged in -> redirect to /admin
   if (pathname === '/admin/login') {
@@ -29,7 +46,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Case 3: Authenticated admin -> proceed to requested page
+  // Case 3: Authenticated admin or moderator -> proceed
   return NextResponse.next();
 }
 

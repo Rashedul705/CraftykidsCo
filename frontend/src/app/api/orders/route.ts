@@ -33,9 +33,9 @@ export async function GET(req: NextRequest) {
     const phone = searchParams.get('phone');
     const query = searchParams.get('query');
 
-    // If not searching for a customer's own phone orders, require admin authentication
+    // If not searching for a customer's own phone orders, require admin authentication with orders.view permission
     if (!phone) {
-      const auth = await verifyAdminRequest(req);
+      const auth = await verifyAdminRequest(req, 'orders.view');
       if (!auth.authorized) {
         return auth.response;
       }

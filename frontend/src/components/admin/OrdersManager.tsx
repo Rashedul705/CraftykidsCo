@@ -1,5 +1,7 @@
 'use client';
 
+import Can from '@/components/auth/Can';
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -2284,13 +2286,15 @@ export default function OrdersManager({
 
                   {/* Cancel order if not CANCELLED and not DELIVERED */}
                   {activeOrder.status !== 'CANCELLED' && activeOrder.status !== 'DELIVERED' && (
-                    <button
-                      onClick={() => handleCancelOrder(activeOrder)}
-                      className="px-3 py-1.5 bg-white border border-[#EFE9E0] hover:bg-[#FDE3E1] text-[#9B2420] text-xs font-bold rounded-[8px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      <span>Cancel order</span>
-                    </button>
+                    <Can permission="orders.cancel">
+                      <button
+                        onClick={() => handleCancelOrder(activeOrder)}
+                        className="px-3 py-1.5 bg-white border border-[#EFE9E0] hover:bg-[#FDE3E1] text-[#9B2420] text-xs font-bold rounded-[8px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Cancel order</span>
+                      </button>
+                    </Can>
                   )}
 
                   {/* Restore to Confirmed if CANCELLED or RETURNED */}

@@ -9,7 +9,7 @@ import { verifyAdminRequest } from '@/lib/auth';
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'reviews.view');
     if (!auth.authorized) {
       return auth.response;
     }
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
  */
 export async function PATCH(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'reviews.approve');
     if (!auth.authorized) {
       return auth.response;
     }
@@ -147,7 +147,7 @@ export async function PATCH(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'reviews.delete');
     if (!auth.authorized) {
       return auth.response;
     }

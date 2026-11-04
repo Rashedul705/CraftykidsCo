@@ -39,7 +39,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'categories.manage');
     if (!auth.authorized) {
       return auth.response;
     }
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'categories.manage');
     if (!auth.authorized) {
       return auth.response;
     }
@@ -165,7 +165,7 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'categories.manage');
     if (!auth.authorized) {
       return auth.response;
     }

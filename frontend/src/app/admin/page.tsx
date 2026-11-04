@@ -62,6 +62,9 @@ import { StaffRolesManager } from '@/components/admin/StaffRolesManager';
 import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
 import { SiteSettingsManager } from '@/components/admin/SiteSettingsManager';
 import { PrintSettingsManager } from '@/components/admin/PrintSettingsManager';
+import ModeratorsManager from '@/components/admin/ModeratorsManager';
+import { TAB_PERMISSION_MAP } from '@/lib/permissions';
+import Can from '@/components/auth/Can';
 import { MessagesManager } from '@/components/admin/MessagesManager';
 import { PagesContentEditor } from '@/components/admin/PagesContentEditor';
 import ReviewsModerationManager from '@/components/admin/ReviewsModerationManager';
@@ -94,6 +97,7 @@ const VALID_ADMIN_TABS = [
   'page-editor',
   'site-settings',
   'staff',
+  'moderators',
   'payments-sms',
 ];
 
@@ -107,6 +111,11 @@ export default function AdminDashboardPage() {
 
   // Unified Tab Change Handler that keeps URL & localStorage in sync
   const handleNavChange = (tabId: string, customModeOrFilter?: any) => {
+    const reqPerm = TAB_PERMISSION_MAP[tabId];
+    if (adminUser && !adminUser.isSuperAdmin && reqPerm && !adminUser.permissions?.includes(reqPerm)) {
+      window.location.href = `/admin/403?required=${encodeURIComponent(reqPerm)}&from=${encodeURIComponent(tabId)}`;
+      return;
+    }
     setActiveNav(tabId);
     if (tabId === 'products') {
       if (customModeOrFilter === 'add' || customModeOrFilter === 'edit' || customModeOrFilter === 'list') {
@@ -143,7 +152,15 @@ export default function AdminDashboardPage() {
   const [categories, setCategories] = useState<SampleCategory[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
-  const [adminUser, setAdminUser] = useState<{ email: string; name?: string; role?: string } | null>(null);
+  const [adminUser, setAdminUser] = useState<{
+    id?: string;
+    email: string;
+    name?: string;
+    role?: string;
+    isSuperAdmin?: boolean;
+    permissions?: string[];
+    isActive?: boolean;
+  } | null>(null);
   const [userRole, setUserRole] = useState<AdminRole>('admin');
 
   // Modals
@@ -244,6 +261,13 @@ export default function AdminDashboardPage() {
           setAdminUser(data.user);
           if (data.user.role === 'order_handler' || data.user.role === 'product_manager') {
             setUserRole(data.user.role);
+          }
+          const urlParams = new URLSearchParams(window.location.search);
+          const tabFromUrl = urlParams.get('tab') || 'dashboard';
+          const reqPerm = TAB_PERMISSION_MAP[tabFromUrl];
+          if (!data.user.isSuperAdmin && reqPerm && !data.user.permissions?.includes(reqPerm)) {
+            window.location.href = `/admin/403?required=${encodeURIComponent(reqPerm)}&from=${encodeURIComponent(tabFromUrl)}`;
+            return;
           }
         }
       })
@@ -927,6 +951,8 @@ export default function AdminDashboardPage() {
       onTabChange={(tabId) => handleNavChange(tabId)}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
+      userPermissions={adminUser?.permissions}
+      isSuperAdmin={adminUser?.isSuperAdmin}
       onMainAction={(actionKey) => {
         if (actionKey === 'add_product') {
           handleNavChange('products', 'add');
@@ -1026,12 +1052,14 @@ export default function AdminDashboardPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setProductViewMode('add')}
-                    className="px-3.5 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-                  >
-                    <Plus className="w-4 h-4" /> Add Product
-                  </button>
+                  <Can permission="products.create">
+                    <button
+                      onClick={() => setProductViewMode('add')}
+                      className="px-3.5 py-2 rounded-xl bg-[#D32F2F] text-white text-xs font-bold hover:bg-[#B71C1C] flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                    >
+                      <Plus className="w-4 h-4" /> Add Product
+                    </button>
+                  </Can>
                 </div>
               </div>
 
@@ -1318,13 +1346,15 @@ export default function AdminDashboardPage() {
                         <td className="py-3 text-right pr-2">
                           <div className="flex items-center justify-end gap-1.5">
                             {/* Edit Button */}
-                            <button
-                              onClick={() => handleOpenEditProduct(p)}
-                              className="p-1.5 rounded-lg bg-[#F0FDF4] text-[#16A34A] hover:bg-[#DCFCE7] transition-colors cursor-pointer border border-[#BBF7D0]"
-                              title="Edit Product"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
+                            <Can permission="products.edit">
+                              <button
+                                onClick={() => handleOpenEditProduct(p)}
+                                className="p-1.5 rounded-lg bg-[#F0FDF4] text-[#16A34A] hover:bg-[#DCFCE7] transition-colors cursor-pointer border border-[#BBF7D0]"
+                                title="Edit Product"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            </Can>
 
                             {/* Stock History Button (Section 6 Requirement) */}
                             <button
@@ -1336,13 +1366,15 @@ export default function AdminDashboardPage() {
                             </button>
 
                             {/* Delete Button */}
-                            <button
-                              onClick={() => setDeletingProduct(p)}
-                              className="p-1.5 rounded-lg bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2] transition-colors cursor-pointer border border-[#FECACA]"
-                              title="Delete Product"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <Can permission="products.delete">
+                              <button
+                                onClick={() => setDeletingProduct(p)}
+                                className="p-1.5 rounded-lg bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2] transition-colors cursor-pointer border border-[#FECACA]"
+                                title="Delete Product"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </Can>
 
                             {/* View on storefront */}
                             <Link
@@ -1779,6 +1811,11 @@ export default function AdminDashboardPage() {
         {/* VIEW 12: STAFF AND ROLES (PART B8) */}
         {activeNav === 'staff' && (
           <StaffRolesManager />
+        )}
+
+        {/* VIEW 12.1: MODERATORS & PERMISSION ACCESS CONTROL */}
+        {activeNav === 'moderators' && (
+          <ModeratorsManager />
         )}
 
         {/* VIEW 12.5: SITE SETTINGS (NAV, FOOTER, CONTACT, SOCIAL, SEO, GA4, PIXEL) */}

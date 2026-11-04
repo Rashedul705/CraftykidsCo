@@ -1,3 +1,4 @@
+import { verifyAdminRequest } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getCoupons,
@@ -60,6 +61,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await verifyAdminRequest(req, 'coupons.manage');
+  if (!auth.authorized) return auth.response;
+
   try {
     const body = await req.json();
 
@@ -92,6 +96,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const auth = await verifyAdminRequest(req, 'coupons.manage');
+  if (!auth.authorized) return auth.response;
+
   try {
     const body = await req.json();
     const { id, ...updates } = body;
@@ -110,6 +117,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const auth = await verifyAdminRequest(req, 'coupons.manage');
+  if (!auth.authorized) return auth.response;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');

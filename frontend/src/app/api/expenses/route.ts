@@ -5,7 +5,7 @@ import { verifyAdminRequest } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'reports.view');
     if (!auth.authorized) {
       return auth.response;
     }
