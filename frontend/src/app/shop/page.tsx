@@ -1,8 +1,17 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { Filter, SlidersHorizontal, ArrowUpDown, Search, RotateCcw, Sparkles } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import {
+  Filter,
+  SlidersHorizontal,
+  ArrowUpDown,
+  Search,
+  RotateCcw,
+  Sparkles,
+  Baby,
+} from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
@@ -11,14 +20,35 @@ import { getAllProducts } from '@/lib/store';
 import { sampleCategories } from '@/lib/sample-data';
 import { useCart } from '@/context/CartContext';
 
-export default function ShopPage() {
+function ShopContent() {
+  const searchParams = useSearchParams();
   const { addItem } = useCart();
   const [locale, setLocale] = useState<'bn' | 'en'>('bn');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedAge, setSelectedAge] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('best_selling');
+
+  const initialAge = searchParams.get('age') || 'all';
+  const initialCategory = searchParams.get('category') || 'all';
+  const initialFilter = searchParams.get('filter') || '';
+
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
+  const [selectedAge, setSelectedAge] = useState<string>(initialAge);
+  const [sortBy, setSortBy] = useState<string>(
+    initialFilter === 'new' ? 'newest' : 'best_selling'
+  );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showMobileFilters, setShowMobileFilters] = useState<boolean>(false);
+
+  // Sync state if URL query params change (e.g. user clicked age pill from home)
+  useEffect(() => {
+    const ageFromUrl = searchParams.get('age');
+    if (ageFromUrl) setSelectedAge(ageFromUrl);
+
+    const catFromUrl = searchParams.get('category');
+    if (catFromUrl) setSelectedCategory(catFromUrl);
+
+    const filterFromUrl = searchParams.get('filter');
+    if (filterFromUrl === 'new') setSortBy('newest');
+    else if (filterFromUrl === 'trending') setSortBy('best_selling');
+  }, [searchParams]);
 
   const allProducts = getAllProducts();
 
@@ -51,12 +81,17 @@ export default function ShopPage() {
           }
         }
 
-        // Age group filter
+        // Kid's Age group filter
         if (selectedAge !== 'all') {
           const minAge = product.targetAgeMin || 0;
-          if (selectedAge === '1-3' && minAge > 3) return false;
-          if (selectedAge === '3-5' && (minAge < 2 || minAge > 5)) return false;
-          if (selectedAge === '5+' && minAge < 4) return false;
+          const maxAge = product.targetAgeMax || 99;
+          if (selectedAge === '1-3') {
+            if (minAge > 3) return false;
+          } else if (selectedAge === '3-5') {
+            if (minAge > 5 || maxAge < 3) return false;
+          } else if (selectedAge === '5+') {
+            if (maxAge < 5) return false;
+          }
         }
 
         return true;
@@ -71,22 +106,6 @@ export default function ShopPage() {
         return 0; // default newest
       });
   }, [allProducts, searchQuery, selectedCategory, selectedAge, sortBy]);
-
-  const handleQuickAdd = (productId: string) => {
-    const product = allProducts.find((p) => p.slug === productId || p.id === productId);
-    if (!product) return;
-
-    addItem({
-      id: `${product.id}-default`,
-      productId: product.id,
-      productSlug: product.slug,
-      title: product.titleEn,
-      titleBn: product.titleBn,
-      imageUrl: product.imageUrl,
-      price: product.baseSalePrice || product.basePrice,
-      quantity: 1,
-    });
-  };
 
   const resetFilters = () => {
     setSelectedCategory('all');
@@ -127,7 +146,7 @@ export default function ShopPage() {
         </div>
 
         {/* Category Pills Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none mb-6">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none mb-3">
           <button
             onClick={() => setSelectedCategory('all')}
             className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
@@ -136,7 +155,7 @@ export default function ShopPage() {
                 : 'bg-white border border-[#EFE9E0] text-[#2B2B2B] hover:border-[#FF6B6B]'
             }`}
           >
-            {locale === 'bn' ? 'সব পণ্য (All)' : 'All Products'}
+            {locale === 'bn' ? 'সব ক্যাটাগরি (All)' : 'All Categories'}
           </button>
           {sampleCategories.map((c) => (
             <button
@@ -149,6 +168,32 @@ export default function ShopPage() {
               }`}
             >
               {locale === 'bn' ? c.nameBn : c.nameEn}
+            </button>
+          ))}
+        </div>
+
+        {/* Quick Age Group Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none mb-6">
+          <span className="text-xs font-bold text-[#6B6B6B] flex items-center gap-1 shrink-0 pl-1">
+            <Baby className="w-3.5 h-3.5 text-[#FF6B6B]" /> বাচ্চার বয়স:
+          </span>
+          {[
+            { id: 'all', label: 'সব বয়স (All)', emoji: '🎈' },
+            { id: '1-3', label: '১ - ৩ বছর (Toddler)', emoji: '👶' },
+            { id: '3-5', label: '৩ - ৫ বছর (Pre-School)', emoji: '🎨' },
+            { id: '5+', label: '৫+ বছর (School Age)', emoji: '🚀' },
+          ].map((age) => (
+            <button
+              key={age.id}
+              onClick={() => setSelectedAge(age.id)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                selectedAge === age.id
+                  ? 'bg-[#2B2B2B] text-white shadow-sm'
+                  : 'bg-white border border-[#EFE9E0] text-[#6B6B6B] hover:text-[#2B2B2B] hover:border-[#2B2B2B]'
+              }`}
+            >
+              <span>{age.emoji}</span>
+              <span>{age.label}</span>
             </button>
           ))}
         </div>
@@ -171,9 +216,10 @@ export default function ShopPage() {
               </button>
             </div>
 
-            {/* Age Filter */}
+            {/* Age Filter Radio in Sidebar */}
             <div className="space-y-3">
-              <span className="font-heading font-bold text-sm text-[#2B2B2B] block">
+              <span className="font-heading font-bold text-sm text-[#2B2B2B] block flex items-center gap-1.5">
+                <Baby className="w-4 h-4 text-[#FF6B6B]" />
                 {locale === 'bn' ? 'বয়স সীমা (Age Group)' : 'Age Group'}
               </span>
               <div className="space-y-2 text-xs font-medium text-[#2B2B2B]">
@@ -204,82 +250,98 @@ export default function ShopPage() {
                 ১০০% নিরাপদ গ্যারান্টি
               </span>
               <p className="text-[11px] leading-tight text-[#2D7A3E]/80">
-                আমাদের প্রতিটি ক্রেয়ন ফুড-গ্রেড মোম দিয়ে তৈরি এবং নন-টক্সিক সার্টিফাইড।
+                আমাদের প্রতিটি ক্রেয়ন প্রাকৃতিক মোম দিয়ে তৈরি এবং শিশু-নিরাপদ নন-টক্সিক সার্টিফাইড।
               </p>
             </div>
           </aside>
 
-          {/* Main Catalog Section */}
+          {/* Product Grid Area */}
           <div className="lg:col-span-3 space-y-4">
-            {/* Top Toolbar: Result count & Sort dropdown */}
-            <div className="bg-white border border-[#EFE9E0] rounded-[18px] p-3 px-4 flex items-center justify-between shadow-sm">
+            {/* Active Filters count and sort */}
+            <div className="flex items-center justify-between bg-white border border-[#EFE9E0] p-3 sm:px-4 rounded-2xl shadow-xs">
               <span className="text-xs font-bold text-[#6B6B6B]">
-                {locale === 'bn'
-                  ? `মোট ${filteredProducts.length}টি পণ্য পাওয়া গেছে`
-                  : `Showing ${filteredProducts.length} products`}
+                মোট <span className="text-[#FF6B6B]">{filteredProducts.length}</span> টি পণ্য পাওয়া গেছে
               </span>
 
-              <div className="flex items-center gap-2">
-                <ArrowUpDown className="w-3.5 h-3.5 text-[#6B6B6B]" />
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-[#6B6B6B] hidden sm:inline">সর্ট করুন:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-[#2B2B2B] focus:outline-none cursor-pointer"
+                  className="bg-[#FAF7F2] border border-[#EFE9E0] text-[#2B2B2B] text-xs font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-[#FF6B6B]"
                 >
-                  <option value="best_selling">জনপ্রিয়তা অনুযায়ী (Best Selling)</option>
-                  <option value="price_asc">দাম: কম থেকে বেশি (Price: Low to High)</option>
-                  <option value="price_desc">দাম: বেশি থেকে কম (Price: High to Low)</option>
-                  <option value="newest">নতুন পণ্য (Newest)</option>
+                  <option value="best_selling">জনপ্রিয় পণ্য (Popular)</option>
+                  <option value="price_asc">দাম: কম থেকে বেশি</option>
+                  <option value="price_desc">দাম: বেশি থেকে কম</option>
                 </select>
               </div>
             </div>
 
-            {/* Products Grid */}
-            {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
-                {filteredProducts.map((p) => (
-                  <ProductCard
-                    key={p.slug}
-                    id={p.slug}
-                    slug={p.slug}
-                    title={locale === 'bn' ? p.titleBn : p.titleEn}
-                    price={p.basePrice}
-                    salePrice={p.baseSalePrice}
-                    imageUrl={p.imageUrl}
-                    ageBadgeText={`${p.targetAgeMin}+ বছর`}
-                    hasVariations={Boolean(p.hasVariations || (p.variants && p.variants.length > 0) || (p.variations && p.variations.length > 0))}
-                    variants={p.variants || p.variations}
-                    stock={p.stock}
-                    locale={locale}
-                    onQuickAdd={() => handleQuickAdd(p.slug)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white rounded-[24px] border border-[#EFE9E0] p-12 text-center space-y-4">
-                <span className="text-4xl block">🔍</span>
-                <h3 className="font-heading font-bold text-lg text-[#2B2B2B]">
-                  {locale === 'bn' ? 'কোনো পণ্য খুঁজে পাওয়া যায়নি' : 'No products found'}
+            {/* Empty state */}
+            {filteredProducts.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-[#EFE9E0] p-12 text-center space-y-3">
+                <span className="text-3xl block">🔍</span>
+                <h3 className="font-heading font-black text-lg text-[#2B2B2B]">
+                  কোনো পণ্য খুঁজে পাওয়া যায়নি
                 </h3>
                 <p className="text-xs text-[#6B6B6B] max-w-sm mx-auto">
-                  অন্য কোনো ফিল্টার বা সার্চ টার্ম চেষ্টা করে দেখুন।
+                  আপনার নির্বাচিত ফিল্টারে কোনো পণ্য মেলেনি। অন্য ক্যাটাগরি বা বয়স নির্বাচন করে চেষ্টা করুন।
                 </p>
                 <button
                   onClick={resetFilters}
-                  className="px-5 py-2.5 rounded-full bg-[#FF6B6B] text-white font-bold text-xs"
+                  className="px-4 py-2 rounded-full bg-[#FF6B6B] text-white text-xs font-bold hover:bg-[#E05353] transition-colors"
                 >
-                  Reset Filters
+                  ফিল্টার রিসেট করুন
                 </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
+                {filteredProducts.map((product) => (
+                  <ProductCard
+                    key={product.id || product.slug}
+                    id={product.id || product.slug}
+                    slug={product.slug || product.id}
+                    title={locale === 'bn' ? product.titleBn : product.titleEn}
+                    titleEn={product.titleEn}
+                    price={product.basePrice ?? product.price}
+                    salePrice={product.baseSalePrice ?? product.salePrice}
+                    badge={product.badge}
+                    ageBadgeText={product.targetAgeMin ? `${product.targetAgeMin}+ বছর` : '২+ বছর'}
+                    safetyBadgeText="১০০% নিরাপদ"
+                    rating={product.rating}
+                    imageUrl={product.imageUrl || (product as any).image}
+                    locale={locale}
+                    hasVariations={Boolean(
+                      product.hasVariations ||
+                        (product.variants && product.variants.length > 0) ||
+                        (product.variations && product.variations.length > 0)
+                    )}
+                    variants={product.variants || product.variations}
+                    stock={product.stock}
+                  />
+                ))}
               </div>
             )}
           </div>
         </div>
       </main>
 
-      {/* Centralized Footer */}
       <Footer />
-
-      <MobileBottomNav activeTab="shop" locale={locale} />
+      <MobileBottomNav activeTab="home" />
     </div>
+  );
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center text-xs font-bold text-[#6B6B6B]">
+          ক্যাটালগ লোড হচ্ছে...
+        </div>
+      }
+    >
+      <ShopContent />
+    </Suspense>
   );
 }

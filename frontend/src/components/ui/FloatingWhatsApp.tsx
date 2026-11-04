@@ -1,29 +1,112 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { X, MessageCircle } from 'lucide-react';
 import { BRAND_CONFIG } from '@/lib/brand';
 
 export function FloatingWhatsApp() {
   const pathname = usePathname();
+  const [showAdvisorBubble, setShowAdvisorBubble] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState(BRAND_CONFIG.defaultWhatsapp);
 
   // Do not render on admin panel
   if (pathname?.startsWith('/admin')) {
     return null;
   }
 
-  const whatsappNumber = BRAND_CONFIG.defaultWhatsapp;
+  // Fetch dynamic whatsapp from site-settings if configured
+  useEffect(() => {
+    fetch('/api/site-settings')
+      .then((res) => res.json())
+      .then((data) => {
+        const customNumber =
+          data?.settings?.contact?.whatsapp ||
+          data?.settings?.contact?.phone ||
+          data?.settings?.supportPhone;
+        if (customNumber) {
+          const cleaned = customNumber.replace(/[\s\-\(\)\+]/g, '');
+          if (cleaned.length >= 10) {
+            setWhatsappNumber(cleaned.startsWith('88') ? cleaned : `88${cleaned}`);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Show advisor speech bubble after 2.5 seconds on the page
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isDismissed) {
+        setShowAdvisorBubble(true);
+      }
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [isDismissed, pathname]);
+
+  // Construct context-aware message based on current page
+  let greetingMessage =
+    'আসসালামু আলাইকুম! আমার বাচ্চার বয়স অনুযায়ী সেরা নিরাপদ খেলনা ও মোমের রঙের পরামর্শ নিতে চাচ্ছি।';
+
+  if (pathname?.startsWith('/product/')) {
+    const slug = pathname.replace('/product/', '');
+    greetingMessage = `আসসালামু আলাইকুম! আমি CraftyKidsCo-এর এই পণ্যটি দেখছি: https://craftykidsco.com${pathname}। এটি আমার বাচ্চার বয়সের জন্য উপযুক্ত হবে কিনা জানতে চাই।`;
+  } else if (pathname?.startsWith('/category/')) {
+    greetingMessage = `আসসালামু আলাইকুম! আমি এই ক্যাটাগরির পণ্যগুলো দেখছি: https://craftykidsco.com${pathname}। বাচ্চার বয়স অনুযায়ী কোন আইটেমটি সবচেয়ে ভালো হবে?`;
+  }
+
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-    'আসসালামু আলাইকুম! CraftyKidsCo পণ্য সম্পর্কে বিস্তারিত জানতে চাচ্ছি।'
+    greetingMessage
   )}`;
 
   return (
-    <aside aria-label="Customer Support WhatsApp" className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40 group">
+    <aside
+      aria-label="Parenting & Product Advice WhatsApp"
+      className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40 flex flex-col items-end"
+    >
+      {/* Interactive Advisor Speech Bubble */}
+      {showAdvisorBubble && !isDismissed && (
+        <div className="mb-2.5 max-w-[260px] sm:max-w-xs bg-white border border-[#EFE9E0] rounded-2xl p-3.5 shadow-lg text-xs animate-in fade-in slide-in-from-bottom-2 duration-300 relative">
+          <button
+            type="button"
+            onClick={() => {
+              setShowAdvisorBubble(false);
+              setIsDismissed(true);
+            }}
+            className="absolute top-2 right-2 text-[#6B6B6B] hover:text-[#2B2B2B] p-1 rounded-full hover:bg-[#FAF7F2] transition-colors"
+            title="বন্ধ করুন"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#1F6B43] mb-1">
+            <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
+            <span>অভিভাবক সহায়তা অনলাইনে</span>
+          </div>
+
+          <p className="text-[#2B2B2B] font-medium leading-relaxed pr-3">
+            বাচ্চার বয়স অনুযায়ী সেরা খেলনা বা রং বাছতে কনফিউজড? সরাসরি আমাদের সাথে কথা বলুন! 💬
+          </p>
+
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex items-center gap-1 font-bold text-[#20BA5A] hover:underline text-[11px]"
+          >
+            চ্যাট শুরু করুন &rarr;
+          </a>
+        </div>
+      )}
+
+      {/* Main WhatsApp Floating Pill Button */}
       <a
         href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Chat on WhatsApp (০১৭৩১-৩৭৬৪৯৮)"
+        aria-label="Chat on WhatsApp"
         className="flex items-center gap-2.5 px-3.5 py-2.5 md:px-4 md:py-3 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-full shadow-[0_4px_20px_rgba(37,211,102,0.4)] hover:shadow-[0_6px_25px_rgba(37,211,102,0.55)] transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
       >
         {/* WhatsApp Official Vector Icon */}
@@ -37,8 +120,8 @@ export function FloatingWhatsApp() {
         </svg>
 
         {/* Text */}
-        <span className="font-heading font-bold text-xs sm:text-sm tracking-tight hidden sm:inline whitespace-nowrap">
-          হোয়াটসঅ্যাপে কথা বলুন
+        <span className="font-heading font-bold text-xs sm:text-sm tracking-tight whitespace-nowrap">
+          বাচ্চার বয়স ও খেলনা পরামর্শ
         </span>
       </a>
     </aside>

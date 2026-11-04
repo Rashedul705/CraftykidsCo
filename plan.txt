@@ -44,22 +44,22 @@ PHASE 1: Core Fixes, Fraud Prevention & Real Business Reporting (Days 1 - 2)
 PHASE 2: Sales Conversion, Age Filtering & Logistics Speed (Days 3 - 5)
 ================================================================================
 
-[ ] Section 2.1: Kid Age Group Filter & Floating WhatsApp Advisor
+[x] Section 2.1: Kid Age Group Filter & Floating WhatsApp Advisor
     - Add `ageRange` attribute to products (e.g. "1-3 Years", "3-5 Years", "6-8 Years", "8+ Years").
     - Add Age Filter pills on Homepage and Catalog.
     - Add floating WhatsApp advisor button with pre-filled child advisory message.
-    - Status: [ ] Pending Permission
+    - Status: [x] Completed
 
-[ ] Section 2.2: Steadfast Bulk Courier Dispatch
+[x] Section 2.2: Steadfast Bulk Courier Dispatch
     - Add multi-checkbox selection in Admin Orders table.
     - Implement "Bulk Send to Steadfast" button to dispatch 10-20 orders in one batch.
     - Batch print courier stickers for selected orders.
-    - Status: [ ] Pending Permission
+    - Status: [x] Completed
 
-[ ] Section 2.3: Order Internal Notes & Tele-Sales Call Log
+[>] Section 2.3: Order Internal Notes & Tele-Sales Call Log
     - Add internal notes field to Order schema (call logs, customer requests, verification status).
     - Enable admin/sales staff to save notes like "Customer confirmed 2 PM delivery" or "Phone not reachable".
-    - Status: [ ] Pending Permission
+    - Status: [>] In Progress
 
 [ ] Section 2.4: Real Customer Photo Reviews & Moderation
     - Allow storefront customers to submit ratings, reviews, and upload craft photos.

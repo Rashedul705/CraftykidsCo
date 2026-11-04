@@ -16,6 +16,17 @@ const timelineSchema = new mongoose.Schema({
   note: { type: String }
 }, { _id: false });
 
+const callLogSchema = new mongoose.Schema({
+  status: {
+    type: String,
+    enum: ['PENDING', 'CONNECTED', 'NOT_ANSWERED', 'BUSY', 'UNREACHABLE', 'CALL_LATER'],
+    default: 'PENDING'
+  },
+  note: { type: String, default: '' },
+  calledBy: { type: String, default: 'Admin' },
+  calledAt: { type: String, default: () => new Date().toISOString() }
+}, { _id: false });
+
 const orderSchema = new mongoose.Schema({
   id: { type: String, unique: true },
   orderNumber: { type: String, required: true, unique: true, index: true },
@@ -48,6 +59,13 @@ const orderSchema = new mongoose.Schema({
   courier: { type: String },
   consignmentId: { type: String },
   trackingCode: { type: String },
+  internalNote: { type: String },
+  callStatus: {
+    type: String,
+    enum: ['PENDING', 'CONNECTED', 'NOT_ANSWERED', 'BUSY', 'UNREACHABLE', 'CALL_LATER'],
+    default: 'PENDING'
+  },
+  callLogs: [callLogSchema],
   items: [orderItemSchema],
   timeline: [timelineSchema]
 }, {

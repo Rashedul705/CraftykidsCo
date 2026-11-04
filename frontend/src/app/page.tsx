@@ -20,6 +20,7 @@ import {
   Copy,
   Check,
   Flame,
+  Baby,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -462,6 +463,122 @@ export default function HomePage() {
                 <span className="mt-2 text-xs font-bold text-[#2B2B2B] group-hover:text-[#D6403B] transition-colors line-clamp-1">
                   {isBn ? category.nameBn : category.nameEn}
                 </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 2.5 SHOP BY KID'S AGE GROUP                                               */}
+        {/* ========================================================================= */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-[#FFF3CC] flex items-center justify-center text-[#B76E00]">
+                <Baby className="w-4 h-4 text-[#B76E00]" />
+              </div>
+              <div>
+                <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
+                  Shop by Kid&apos;s Age
+                </h2>
+                <p className="text-xs sm:text-sm text-[#6B6B6B]">
+                  {isBn
+                    ? 'আপনার বাচ্চার বয়স অনুযায়ী সঠিক ও নিরাপদ খেলনা বেছে নিন'
+                    : 'Curated safe toys and coloring kits appropriate for your child’s milestone'}
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/shop"
+              className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors"
+            >
+              <span>View All</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            {[
+              {
+                age: '1-3',
+                titleBn: '১ - ৩ বছর',
+                titleEn: '1 - 3 Years',
+                stageBn: 'টডলার ও প্রথম রং চেনা',
+                descBn: 'সহজে ধরার মতো মোটা মোমের রং ও সেফ উডেন ব্লক',
+                bgGradient: 'from-[#FFF8E6] to-[#FFF1D6]',
+                borderColor: 'border-[#FFE0A3]',
+                textColor: 'text-[#B76E00]',
+                badgeBg: 'bg-[#FFE8B8]',
+                icon: '👶',
+              },
+              {
+                age: '3-5',
+                titleBn: '৩ - ৫ বছর',
+                titleEn: '3 - 5 Years',
+                stageBn: 'প্রি-স্কুল ও আঁকাআঁকি',
+                descBn: 'ত্রিভুজাকার গ্রিপ ক্রেয়ন, নন-টক্সিক প্লে-ডো ও কালারিং বুক',
+                bgGradient: 'from-[#E8F7FD] to-[#D5E6F5]',
+                borderColor: 'border-[#BFE4F7]',
+                textColor: 'text-[#0B5F85]',
+                badgeBg: 'bg-[#CBE4F7]',
+                icon: '🎨',
+              },
+              {
+                age: '5+',
+                titleBn: '৫ - ৮ বছর',
+                titleEn: '5 - 8 Years',
+                stageBn: 'স্কুল কিডস ও ক্রিয়েটিভিটি',
+                descBn: 'প্লাস্টার পেইন্টিং কিট, উডেন পাজল ও মোটর স্কিল খেলনা',
+                bgGradient: 'from-[#FDF2F2] to-[#FCE6E6]',
+                borderColor: 'border-[#FACACA]',
+                textColor: 'text-[#D6403B]',
+                badgeBg: 'bg-[#F9D2D2]',
+                icon: '🚀',
+              },
+              {
+                age: 'all',
+                titleBn: '৮+ বছর ও পরিবার',
+                titleEn: '8+ Years & Family',
+                stageBn: 'মাস্টার আর্টিস্ট ও ক্রাফট',
+                descBn: '২৪ কালার প্রফেশনাল সেট, ক্রাফট মডেল ও আর্ট কম্বো',
+                bgGradient: 'from-[#F3EFFD] to-[#E7DEFA]',
+                borderColor: 'border-[#D9C9F5]',
+                textColor: 'text-[#6C47C2]',
+                badgeBg: 'bg-[#DCD0F7]',
+                icon: '✨',
+              },
+            ].map((item) => (
+              <Link
+                key={item.age}
+                href={`/shop?age=${item.age}`}
+                className={`group p-4 sm:p-5 rounded-2xl bg-gradient-to-br ${item.bgGradient} border ${item.borderColor} hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-2xl sm:text-3xl">{item.icon}</span>
+                    <span
+                      className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${item.badgeBg} ${item.textColor}`}
+                    >
+                      {item.age === 'all' ? 'Family' : `Age ${item.age}`}
+                    </span>
+                  </div>
+                  <h3 className="font-heading font-black text-lg sm:text-xl text-[#2B2B2B] group-hover:text-[#D6403B] transition-colors">
+                    {isBn ? item.titleBn : item.titleEn}
+                  </h3>
+                  <p className="text-xs font-bold text-[#6B6B6B] mt-0.5 mb-2">
+                    {item.stageBn}
+                  </p>
+                  <p className="text-[11px] text-[#6B6B6B] leading-relaxed hidden sm:block">
+                    {item.descBn}
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-black/5 flex items-center justify-between text-xs font-bold">
+                  <span className={item.textColor}>পণ্যসমূহ দেখুন</span>
+                  <ChevronRight
+                    className={`w-3.5 h-3.5 ${item.textColor} group-hover:translate-x-1 transition-transform`}
+                  />
+                </div>
               </Link>
             ))}
           </div>

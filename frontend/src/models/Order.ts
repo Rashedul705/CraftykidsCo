@@ -27,6 +27,13 @@ export interface IOrderStatusHistory {
   timestamp: any;
 }
 
+export interface ICallLog {
+  status: 'PENDING' | 'CONNECTED' | 'NOT_ANSWERED' | 'BUSY' | 'UNREACHABLE' | 'CALL_LATER';
+  note?: string;
+  calledBy?: string;
+  calledAt: string;
+}
+
 export interface IOrder extends Document {
   id?: string;
   orderNumber: string; // e.g. CKC-20261013-0001
@@ -58,6 +65,14 @@ export interface IOrder extends Document {
   trackingCode?: string;
   source?: string;
   internalNote?: string;
+  callStatus?:
+    | 'PENDING'
+    | 'CONNECTED'
+    | 'NOT_ANSWERED'
+    | 'BUSY'
+    | 'UNREACHABLE'
+    | 'CALL_LATER';
+  callLogs?: ICallLog[];
   ipAddress?: string;
   items: IOrderItemSnapshot[];
   statusHistory?: IOrderStatusHistory[];
@@ -110,6 +125,20 @@ const TimelineSchema = new Schema(
   { _id: false }
 );
 
+const CallLogSchema = new Schema<ICallLog>(
+  {
+    status: {
+      type: String,
+      enum: ['PENDING', 'CONNECTED', 'NOT_ANSWERED', 'BUSY', 'UNREACHABLE', 'CALL_LATER'],
+      default: 'PENDING',
+    },
+    note: { type: String, default: '' },
+    calledBy: { type: String, default: 'Admin' },
+    calledAt: { type: String, default: () => new Date().toISOString() },
+  },
+  { _id: false }
+);
+
 const OrderSchema = new Schema<IOrder>(
   {
     id: { type: String },
@@ -158,6 +187,12 @@ const OrderSchema = new Schema<IOrder>(
     trackingCode: { type: String },
     source: { type: String, default: 'website' },
     internalNote: { type: String },
+    callStatus: {
+      type: String,
+      enum: ['PENDING', 'CONNECTED', 'NOT_ANSWERED', 'BUSY', 'UNREACHABLE', 'CALL_LATER'],
+      default: 'PENDING',
+    },
+    callLogs: [CallLogSchema],
     ipAddress: { type: String, index: true },
     items: [OrderItemSnapshotSchema],
     statusHistory: [OrderStatusHistorySchema],

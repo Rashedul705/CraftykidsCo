@@ -33,6 +33,10 @@ import {
   Sparkles,
   Copy,
   Package,
+  PhoneCall,
+  PhoneForwarded,
+  PhoneMissed,
+  PhoneOff,
 } from 'lucide-react';
 import { OrderRecord, getAllProducts } from '@/lib/store';
 import { SampleProduct } from '@/lib/sample-data';
@@ -72,6 +76,48 @@ function formatRelativeTime(isoString: string): string {
     return 'Recently';
   }
 }
+
+const CALL_STATUS_CONFIG: Record<
+  string,
+  { label: string; bn: string; badgeClass: string; dotClass: string }
+> = {
+  PENDING: {
+    label: 'Not Called',
+    bn: 'কল করা হয়নি',
+    badgeClass: 'bg-stone-100 text-stone-600 border-stone-200',
+    dotClass: 'bg-stone-400',
+  },
+  CONNECTED: {
+    label: 'Connected',
+    bn: 'কথা হয়েছে',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    dotClass: 'bg-emerald-500',
+  },
+  NOT_ANSWERED: {
+    label: 'No Answer',
+    bn: 'ধরেননি',
+    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    dotClass: 'bg-amber-500',
+  },
+  BUSY: {
+    label: 'Busy',
+    bn: 'ব্যস্ত ছিল',
+    badgeClass: 'bg-orange-50 text-orange-700 border-orange-200',
+    dotClass: 'bg-orange-500',
+  },
+  UNREACHABLE: {
+    label: 'Unreachable',
+    bn: 'ফোন বন্ধ/নেট নেই',
+    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
+    dotClass: 'bg-rose-500',
+  },
+  CALL_LATER: {
+    label: 'Call Later',
+    bn: 'পরে কল',
+    badgeClass: 'bg-sky-50 text-sky-700 border-sky-200',
+    dotClass: 'bg-sky-500',
+  },
+};
 
 interface OrdersManagerProps {
   orders: OrderRecord[];
@@ -132,6 +178,14 @@ export default function OrdersManager({
   // Internal Notes Map (orderId -> note)
   const [internalNotes, setInternalNotes] = useState<{ [id: string]: string }>({});
   const [currentNoteInput, setCurrentNoteInput] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
+  // Tele-Sales Call Logging State
+  const [callStatusSelect, setCallStatusSelect] = useState<
+    'CONNECTED' | 'NOT_ANSWERED' | 'BUSY' | 'UNREACHABLE' | 'CALL_LATER'
+  >('CONNECTED');
+  const [callNoteInput, setCallNoteInput] = useState('');
+  const [isLoggingCall, setIsLoggingCall] = useState(false);
 
   // Confirmation Modal
   const [confirmDialogData, setConfirmDialogData] = useState<{
@@ -792,6 +846,20 @@ export default function OrdersManager({
     });
   };
 
+  // Select All Ready to Dispatch (Confirmed or Processing orders without consignment)
+  const handleSelectReadyForCourier = () => {
+    const readyOrders = orders.filter(
+      (o) =>
+        (o.status === 'CONFIRMED' || o.status === 'PROCESSING') && !o.consignmentId
+    );
+    if (readyOrders.length === 0) {
+      warning('কুরিয়ারে পাঠানোর মতো কোনো কনফার্মড অর্ডার পাওয়া যায়নি।');
+      return;
+    }
+    setSelectedOrderIds(readyOrders.map((o) => o.id));
+    success(`${readyOrders.length}টি প্রস্তুতকৃত অর্ডার নির্বাচন করা হয়েছে।`);
+  };
+
   // Bulk Steadfast Dispatch
   const handleBulkSteadfast = () => {
     const targetOrders = orders.filter(
@@ -799,40 +867,58 @@ export default function OrdersManager({
     );
 
     if (targetOrders.length === 0) {
-      warning('None of the selected orders are eligible for courier dispatch.');
+      warning('নির্বাচিত অর্ডারগুলোর মধ্যে কোনোটিই কুরিয়ারে পাঠানোর উপযুক্ত নয় (ইতিমধ্যে পাঠানো হয়েছে)।');
       return;
     }
 
     setConfirmDialogData({
       isOpen: true,
-      title: 'Send Orders to Steadfast',
-      message: 'Ready to dispatch these consignments to Steadfast Courier? Tracking codes will be generated automatically.',
+      title: 'স্টিডফাস্টে বাল্ক পার্সেল বুকিং',
+      message: `নির্বাচিত ${targetOrders.length}টি অর্ডার কি স্টিডফাস্ট কুরিয়ারে বুকিং করতে চান? স্বয়ংক্রিয়ভাবে ট্র্যাকিং কোড তৈরি হবে।`,
       itemCount: targetOrders.length,
-      confirmLabel: 'Send to Steadfast',
+      confirmLabel: 'Send to Steadfast (Bulk)',
       isDestructive: false,
       action: async () => {
         setConfirmDialogData((prev) => ({ ...prev, isOpen: false }));
         setIsSubmittingDispatch(true);
-        let successCount = 0;
-        let failCount = 0;
 
-        for (const ord of targetOrders) {
-          try {
-            await onSendToSteadfast(ord);
-            successCount++;
-          } catch {
-            failCount++;
+        try {
+          const res = await fetch('/api/courier/bulk-dispatch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderIds: targetOrders.map((o) => o.id),
+            }),
+          });
+
+          const data = await res.json();
+          setIsSubmittingDispatch(false);
+
+          if (data.success) {
+            success(data.message || `${data.successCount}টি অর্ডার সফলভাবে পাঠানো হয়েছে।`);
+            setSelectedOrderIds([]);
+            onRefresh();
+
+            // Prompt sticker printing immediately for the newly dispatched orders
+            if (data.results && data.results.length > 0) {
+              const successfulIds = data.results
+                .filter((r: any) => r.success)
+                .map((r: any) => r.orderId);
+
+              const dispatchedOrders = targetOrders.filter((o) =>
+                successfulIds.includes(o.id)
+              );
+
+              if (dispatchedOrders.length > 0) {
+                openStickerPrintModal(dispatchedOrders);
+              }
+            }
+          } else {
+            error(data.message || 'বাল্ক ডিসপ্যাচ ব্যর্থ হয়েছে।');
           }
-        }
-
-        setIsSubmittingDispatch(false);
-        setSelectedOrderIds([]);
-        onRefresh();
-
-        if (failCount === 0) {
-          success(`${successCount} orders sent to Steadfast successfully.`);
-        } else {
-          warning(`${successCount} orders sent to Steadfast, ${failCount} failed.`);
+        } catch (err: any) {
+          setIsSubmittingDispatch(false);
+          error('সার্ভার এরর: ' + (err.message || ''));
         }
       },
     });
@@ -1024,11 +1110,68 @@ export default function OrdersManager({
     }
   };
 
-  // Save Internal Note
-  const handleSaveInternalNote = () => {
+  // Save Internal Note to Database
+  const handleSaveInternalNote = async () => {
     if (!activeOrder) return;
-    setInternalNotes((prev) => ({ ...prev, [activeOrder.id]: currentNoteInput }));
-    success('Internal note saved.');
+    setIsSavingNote(true);
+    try {
+      const res = await fetch(`/api/orders/${activeOrder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ internalNote: currentNoteInput.trim() }),
+      });
+      const data = await res.json();
+      setIsSavingNote(false);
+      if (data.success) {
+        setInternalNotes((prev) => ({ ...prev, [activeOrder.id]: currentNoteInput }));
+        success('ইন্টারনাল নোট সংরক্ষিত হয়েছে।');
+        onRefresh();
+      } else {
+        error(data.message || 'নোট সংরক্ষণ ব্যর্থ হয়েছে।');
+      }
+    } catch {
+      setIsSavingNote(false);
+      error('সার্ভারে যোগাযোগ করা যায়নি।');
+    }
+  };
+
+  // Submit Tele-Sales Call Log
+  const handleLogCall = async (
+    statusOverride?: 'CONNECTED' | 'NOT_ANSWERED' | 'BUSY' | 'UNREACHABLE' | 'CALL_LATER'
+  ) => {
+    if (!activeOrder) return;
+    const finalStatus = statusOverride || callStatusSelect;
+    setIsLoggingCall(true);
+
+    try {
+      const res = await fetch(`/api/orders/${activeOrder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          callStatus: finalStatus,
+          callLog: {
+            status: finalStatus,
+            note: callNoteInput.trim(),
+            calledBy: 'Admin Staff',
+            calledAt: new Date().toISOString(),
+          },
+        }),
+      });
+
+      const data = await res.json();
+      setIsLoggingCall(false);
+
+      if (data.success) {
+        setCallNoteInput('');
+        success(`কল রেকর্ড যুক্ত হয়েছে (${CALL_STATUS_CONFIG[finalStatus]?.bn || finalStatus})`);
+        onRefresh();
+      } else {
+        error(data.message || 'কল রেকর্ড সংরক্ষণ করা যায়নি।');
+      }
+    } catch {
+      setIsLoggingCall(false);
+      error('সার্ভার এরর');
+    }
   };
 
   // Save Edited Address
@@ -1451,6 +1594,17 @@ export default function OrdersManager({
           <option value="phone">Phone</option>
           <option value="manual">Manual</option>
         </select>
+
+        {/* Quick Bulk Select Ready Orders Button */}
+        <button
+          type="button"
+          onClick={handleSelectReadyForCourier}
+          className="px-3.5 py-2.5 rounded-[12px] bg-[#E8F7FD] border border-[#BFE4F7] hover:bg-[#d4effa] text-[#0B5F85] text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors shrink-0"
+          title="সকল প্রস্তুতকৃত/কনফার্মড অর্ডার একসাথে নির্বাচন করুন"
+        >
+          <Truck className="w-4 h-4 text-[#0B5F85]" />
+          রেডি অর্ডার নির্বাচন ({orders.filter((o) => (o.status === 'CONFIRMED' || o.status === 'PROCESSING') && !o.consignmentId).length})
+        </button>
       </div>
 
       {/* 5. STICKY DARK BULK ACTION BAR (When Rows are Selected) */}
@@ -1604,9 +1758,30 @@ export default function OrdersManager({
                       >
                         {ord.customerName}
                       </span>
-                      <span className="text-xs text-[#6B6B6B] block mt-0.5 font-mono truncate">
-                        {ord.customerPhone}
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="text-xs text-[#6B6B6B] font-mono truncate">
+                          {ord.customerPhone}
+                        </span>
+                        {ord.callStatus && ord.callStatus !== 'PENDING' && (
+                          <span
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded-[6px] border ${CALL_STATUS_CONFIG[ord.callStatus]?.badgeClass || 'bg-stone-100 text-stone-600 border-stone-200'}`}
+                            title={`টেলিসেলস কল: ${CALL_STATUS_CONFIG[ord.callStatus]?.bn || ord.callStatus}`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${CALL_STATUS_CONFIG[ord.callStatus]?.dotClass || 'bg-stone-400'}`}
+                            />
+                            {CALL_STATUS_CONFIG[ord.callStatus]?.bn || ord.callStatus}
+                          </span>
+                        )}
+                        {(ord.internalNote || internalNotes[ord.id]) && (
+                          <span
+                            className="inline-flex items-center text-[10px] text-[#0B5F85] bg-[#E8F7FD] px-1.5 py-0.5 rounded-[6px] border border-[#BFE4F7] font-semibold"
+                            title={`নোট: ${internalNotes[ord.id] || ord.internalNote}`}
+                          >
+                            নোট
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
 
                     {/* 4. District */}
@@ -2941,11 +3116,147 @@ export default function OrdersManager({
                 </div>
               </div>
 
+              {/* Tele-Sales & Call Log Section */}
+              <div className="p-4 bg-[#FAF7F2] rounded-[16px] border border-[#EFE9E0] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <PhoneCall className="w-4 h-4 text-[#D6403B]" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#2B2B2B]">
+                      টেলিসেলস ও কনফার্মেশন কল লগ
+                    </h4>
+                  </div>
+                  {activeOrder.callStatus && (
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold rounded-[8px] border ${CALL_STATUS_CONFIG[activeOrder.callStatus]?.badgeClass || 'bg-stone-100 text-stone-600 border-stone-200'}`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${CALL_STATUS_CONFIG[activeOrder.callStatus]?.dotClass || 'bg-stone-400'}`}
+                      />
+                      {CALL_STATUS_CONFIG[activeOrder.callStatus]?.bn || activeOrder.callStatus}
+                    </span>
+                  )}
+                </div>
+
+                {/* Quick Call Action Buttons */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                  <button
+                    type="button"
+                    disabled={isLoggingCall}
+                    onClick={() => handleLogCall('CONNECTED')}
+                    className="px-2 py-1.5 rounded-[10px] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Check className="w-3 h-3 text-emerald-600" />
+                    কথা হয়েছে
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLoggingCall}
+                    onClick={() => handleLogCall('CALL_LATER')}
+                    className="px-2 py-1.5 rounded-[10px] bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <PhoneForwarded className="w-3 h-3 text-sky-600" />
+                    পরে কল
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLoggingCall}
+                    onClick={() => handleLogCall('NOT_ANSWERED')}
+                    className="px-2 py-1.5 rounded-[10px] bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <PhoneMissed className="w-3 h-3 text-amber-600" />
+                    ধরেননি
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLoggingCall}
+                    onClick={() => handleLogCall('BUSY')}
+                    className="px-2 py-1.5 rounded-[10px] bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-800 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Clock className="w-3 h-3 text-orange-600" />
+                    ব্যস্ত ছিল
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLoggingCall}
+                    onClick={() => handleLogCall('UNREACHABLE')}
+                    className="px-2 py-1.5 rounded-[10px] bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <PhoneOff className="w-3 h-3 text-rose-600" />
+                    ফোন বন্ধ
+                  </button>
+                </div>
+
+                {/* Custom Call Note & Save */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={callNoteInput}
+                    onChange={(e) => setCallNoteInput(e.target.value)}
+                    placeholder="কলের মন্তব্য (যেমন: কাস্টমার বিকেলে ডেলিভারি দিতে বললেন)..."
+                    className="flex-1 px-3 py-1.5 rounded-[10px] border border-[#EFE9E0] bg-white text-xs text-[#2B2B2B] focus:outline-none focus:border-[#D6403B]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleLogCall();
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    disabled={isLoggingCall}
+                    onClick={() => handleLogCall()}
+                    className="shrink-0 text-xs"
+                  >
+                    {isLoggingCall ? <Loader2 className="w-3 h-3 animate-spin" /> : 'লগ করুন'}
+                  </Button>
+                </div>
+
+                {/* Call History Timeline */}
+                {activeOrder.callLogs && activeOrder.callLogs.length > 0 && (
+                  <div className="pt-2 border-t border-[#EFE9E0] space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B]">
+                      পূর্বের কল হিস্ট্রি ({activeOrder.callLogs.length}টি)
+                    </span>
+                    <div className="max-h-28 overflow-y-auto space-y-1.5 pr-1">
+                      {[...activeOrder.callLogs].reverse().map((log, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-start justify-between gap-2 p-1.5 bg-white rounded-[8px] border border-[#EFE9E0] text-[11px]"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${CALL_STATUS_CONFIG[log.status]?.badgeClass || 'bg-stone-100 text-stone-600'}`}
+                            >
+                              {CALL_STATUS_CONFIG[log.status]?.bn || log.status}
+                            </span>
+                            {log.note && (
+                              <span className="text-[#2B2B2B] font-medium">{log.note}</span>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0 text-[10px] text-[#888]">
+                            <span>
+                              {new Date(log.calledAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Internal Note */}
               <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
-                  Internal Staff Note
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B6B6B]">
+                    Internal Staff Note (ডাটাবেজে সংরক্ষিত নোট)
+                  </h4>
+                  {isSavingNote && <Loader2 className="w-3 h-3 animate-spin text-[#D6403B]" />}
+                </div>
                 <Textarea
                   value={currentNoteInput}
                   onChange={(e) => setCurrentNoteInput(e.target.value)}
@@ -2953,8 +3264,13 @@ export default function OrdersManager({
                   rows={2}
                 />
                 <div className="flex justify-end">
-                  <Button size="sm" variant="secondary" onClick={handleSaveInternalNote}>
-                    Save note
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={isSavingNote}
+                    onClick={handleSaveInternalNote}
+                  >
+                    {isSavingNote ? 'সংরক্ষণ হচ্ছে...' : 'Save note'}
                   </Button>
                 </div>
               </div>

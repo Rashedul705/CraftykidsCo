@@ -74,6 +74,8 @@ export async function PATCH(
       customerNote,
       internalNote,
       paymentStatus,
+      callStatus,
+      callLog,
     } = body;
 
     const validStatuses = [
@@ -188,6 +190,46 @@ export async function PATCH(
       setFields.internalNote = internalNote.trim();
     }
 
+    const validCallStatuses = [
+      'PENDING',
+      'CONNECTED',
+      'NOT_ANSWERED',
+      'BUSY',
+      'UNREACHABLE',
+      'CALL_LATER',
+    ];
+
+    if (callStatus !== undefined && validCallStatuses.includes(callStatus)) {
+      setFields.callStatus = callStatus;
+    }
+
+    let callLogEntry: any = null;
+    if (callLog && typeof callLog === 'object') {
+      const callStatusFinal = callLog.status || callStatus || 'CONNECTED';
+      callLogEntry = {
+        status: validCallStatuses.includes(callStatusFinal) ? callStatusFinal : 'CONNECTED',
+        note: callLog.note ? String(callLog.note).trim() : '',
+        calledBy: callLog.calledBy || 'Admin Staff',
+        calledAt: callLog.calledAt || now.toISOString(),
+      };
+      setFields.callStatus = callLogEntry.status;
+
+      const callStatusBn: Record<string, string> = {
+        PENDING: 'অপেক্ষমাণ',
+        CONNECTED: 'কথা হয়েছে (রিসিভড)',
+        NOT_ANSWERED: 'ফোন ধরেননি',
+        BUSY: 'ব্যস্ত ছিল',
+        UNREACHABLE: 'ফোন বন্ধ / নেটওয়ার্ক নেই',
+        CALL_LATER: 'পরে কল করতে বলেছে',
+      };
+
+      timelineEntries.push({
+        status: `CALL_${callLogEntry.status}`,
+        timestamp: callLogEntry.calledAt,
+        note: `টেলিসেলস কল: ${callStatusBn[callLogEntry.status] || callLogEntry.status}${callLogEntry.note ? ' - ' + callLogEntry.note : ''} (${callLogEntry.calledBy})`,
+      });
+    }
+
     if (paymentStatus !== undefined && ['UNPAID', 'PAID', 'REFUNDED'].includes(paymentStatus)) {
       setFields.paymentStatus = paymentStatus;
     }
@@ -207,11 +249,21 @@ export async function PATCH(
       };
 
       const updateOp: any = { $set: setFields };
+      const pushOperations: any = {};
+
       if (timelineEntries.length > 0) {
-        updateOp.$push = {
-          timeline: { $each: timelineEntries },
-          ...(statusHistoryEntries.length > 0 ? { statusHistory: { $each: statusHistoryEntries } } : {}),
-        };
+        pushOperations.timeline = { $each: timelineEntries };
+        if (statusHistoryEntries.length > 0) {
+          pushOperations.statusHistory = { $each: statusHistoryEntries };
+        }
+      }
+
+      if (callLogEntry) {
+        pushOperations.callLogs = callLogEntry;
+      }
+
+      if (Object.keys(pushOperations).length > 0) {
+        updateOp.$push = pushOperations;
       }
 
       const updatedDoc = await Order.findOneAndUpdate(
@@ -232,6 +284,10 @@ export async function PATCH(
       updateOrderStatus(id, status as OrderRecord['status'], note);
     }
     const memUpdated = updateOrder(id, setFields);
+    if (memUpdated && callLogEntry) {
+      if (!(memUpdated as any).callLogs) (memUpdated as any).callLogs = [];
+      (memUpdated as any).callLogs.push(callLogEntry);
+    }
     if (!updated && memUpdated) {
       updated = memUpdated;
     }

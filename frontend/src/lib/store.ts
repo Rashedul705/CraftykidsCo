@@ -33,6 +33,13 @@ export interface OrderItemRecord {
   imageUrl?: string;
 }
 
+export interface ICallLog {
+  status: 'PENDING' | 'CONNECTED' | 'NOT_ANSWERED' | 'BUSY' | 'UNREACHABLE' | 'CALL_LATER';
+  note?: string;
+  calledBy?: string;
+  calledAt: string;
+}
+
 export interface OrderRecord {
   id: string;
   orderNumber: string;
@@ -58,6 +65,8 @@ export interface OrderRecord {
   createdAt: string;
   source?: 'website' | 'facebook' | 'phone' | 'manual';
   internalNote?: string;
+  callStatus?: 'PENDING' | 'CONNECTED' | 'NOT_ANSWERED' | 'BUSY' | 'UNREACHABLE' | 'CALL_LATER';
+  callLogs?: ICallLog[];
 }
 
 // In-memory persistent state (shared across client sessions and API routes in server environment)
