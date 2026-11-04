@@ -9,6 +9,7 @@ const Category = require('./models/Category');
 const Attribute = require('./models/Attribute');
 const Order = require('./models/Order');
 const Blocklist = require('./models/Blocklist');
+const Expense = require('./models/Expense');
 const SiteSettings = require('./models/SiteSettings');
 
 const app = express();
@@ -1368,6 +1369,182 @@ app.delete('/api/blocklist/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
     res.json({ success: true, message: 'Number unblocked' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// --- Expenses & P&L Endpoints ---
+app.get('/api/expenses', async (req, res) => {
+  try {
+    const { range = '30d', category, month, startDate, endDate } = req.query;
+    const filter = {};
+
+    if (category && category !== 'ALL') {
+      filter.category = category;
+    }
+
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const [yearStr, monthStr] = month.split('-');
+      const y = parseInt(yearStr, 10);
+      const m = parseInt(monthStr, 10) - 1;
+      filter.date = {
+        $gte: new Date(y, m, 1, 0, 0, 0, 0),
+        $lte: new Date(y, m + 1, 0, 23, 59, 59, 999),
+      };
+    } else if (startDate || endDate) {
+      filter.date = {};
+      if (startDate) filter.date.$gte = new Date(startDate);
+      if (endDate) filter.date.$lte = new Date(endDate);
+    } else if (range !== 'all') {
+      const now = new Date();
+      if (range === 'today') {
+        filter.date = { $gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0) };
+      } else if (range === '7d') {
+        filter.date = { $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) };
+      } else if (range === '30d') {
+        filter.date = { $gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) };
+      }
+    }
+
+    const expenses = await Expense.find(filter).sort({ date: -1, createdAt: -1 }).lean();
+    let totalAmount = 0;
+    const categoryBreakdown = {
+      FB_ADS: { total: 0, count: 0 },
+      PACKAGING: { total: 0, count: 0 },
+      COURIER: { total: 0, count: 0 },
+      SALARY: { total: 0, count: 0 },
+      OFFICE_RENT: { total: 0, count: 0 },
+      SOFTWARE_SMS: { total: 0, count: 0 },
+      OTHER: { total: 0, count: 0 },
+    };
+
+    for (const exp of expenses) {
+      const amt = Number(exp.amount) || 0;
+      totalAmount += amt;
+      const cat = exp.category || 'OTHER';
+      if (!categoryBreakdown[cat]) {
+        categoryBreakdown[cat] = { total: 0, count: 0 };
+      }
+      categoryBreakdown[cat].total += amt;
+      categoryBreakdown[cat].count += 1;
+    }
+
+    res.json({
+      success: true,
+      count: expenses.length,
+      totalAmount,
+      categoryBreakdown,
+      expenses,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/expenses', async (req, res) => {
+  try {
+    const { title, category = 'OTHER', amount, date, paymentMethod = 'Cash', note, receiptUrl, recordedBy = 'Admin' } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, message: 'Expense title is required' });
+    }
+    const num = Number(amount);
+    if (!num || num <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid positive amount is required' });
+    }
+
+    const expense = await Expense.create({
+      title: title.trim(),
+      category,
+      amount: Math.round(num),
+      date: date ? new Date(date) : new Date(),
+      paymentMethod,
+      note: (note || '').trim(),
+      receiptUrl: (receiptUrl || '').trim(),
+      recordedBy,
+    });
+
+    res.json({
+      success: true,
+      message: 'Expense recorded successfully',
+      expense,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/expenses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doc = await Expense.findByIdAndDelete(id);
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Expense not found' });
+    }
+    res.json({ success: true, message: 'Expense deleted successfully', id });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// --- Steadfast Courier Webhook Listener ---
+app.all(['/api/webhooks/steadfast', '/api/courier/webhook'], async (req, res) => {
+  if (req.method === 'GET') {
+    return res.json({
+      status: 'active',
+      provider: 'STEADFAST',
+      service: 'CraftyKidsCo Steadfast Courier Webhook Listener',
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  try {
+    const data = req.body?.data || req.body?.payload || req.body || {};
+    const invoice = (data.invoice || data.order_id || data.orderNumber || '').toString().trim();
+    const consignmentId = (data.consignment_id || data.consignmentId || '').toString().trim();
+    const trackingCode = (data.tracking_code || data.trackingCode || '').toString().trim();
+    const rawStatus = (data.status || data.delivery_status || '').toString().trim();
+
+    if (!rawStatus) {
+      return res.status(400).json({ success: false, message: 'Status is required' });
+    }
+
+    const queries = [];
+    if (invoice) {
+      queries.push({ orderNumber: invoice });
+      queries.push({ id: invoice });
+    }
+    if (consignmentId) queries.push({ consignmentId });
+    if (trackingCode) queries.push({ trackingCode });
+
+    if (queries.length === 0) {
+      return res.status(400).json({ success: false, message: 'Order identifier required' });
+    }
+
+    const order = await Order.findOne({ $or: queries });
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const s = rawStatus.toLowerCase();
+    let targetStatus = null;
+    if (s.includes('delivered') || s.includes('partial_delivered')) targetStatus = 'DELIVERED';
+    else if (s.includes('return')) targetStatus = 'RETURNED';
+    else if (s.includes('cancelled') || s.includes('canceled')) targetStatus = 'CANCELLED';
+    else if (s.includes('transit') || s.includes('shipped')) targetStatus = 'SHIPPED';
+    else if (s.includes('pending') || s.includes('hold')) targetStatus = 'PROCESSING';
+
+    if (targetStatus && targetStatus !== order.status) {
+      order.status = targetStatus;
+      if (targetStatus === 'DELIVERED') order.paymentStatus = 'PAID';
+      const note = `Steadfast Webhook: ${rawStatus} -> ${targetStatus}`;
+      if (!order.timeline) order.timeline = [];
+      order.timeline.push({ status: targetStatus, timestamp: new Date().toISOString(), note });
+      await order.save();
+      return res.json({ success: true, message: 'Order status updated', orderNumber: order.orderNumber, status: targetStatus });
+    }
+
+    res.json({ success: true, message: 'Order status checked, no change needed', orderNumber: order.orderNumber, currentStatus: order.status });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -75,17 +75,17 @@ PHASE 3: Full Automation, Payment Gateway & Scalability (Week 2)
     - Reduce COD return rate by incentivizing online payment.
     - Status: [-] Skipped (No Merchant Account Yet - Standard COD & Manual bKash Retained)
 
-[ ] Section 3.2: Parenting & Kids Crafting SEO Blog Engine
+[-] Section 3.2: Parenting & Kids Crafting SEO Blog Engine
     - Build MongoDB-backed Blog CMS (`/admin?tab=blog`).
     - Create public `/blog` and `/blog/[slug]` routes for organic Google SEO traffic.
-    - Status: [ ] Pending Permission
+    - Status: [-] Skipped (Store does not publish blog articles)
 
-[ ] Section 3.3: Operational Expense Manager (P&L Tracking)
+[x] Section 3.3: Operational Expense Manager (P&L Tracking)
     - Add `Expense` model (Facebook Ads, packaging boxes, delivery bags, staff salaries).
     - Admin Expenses tab with monthly Profit & Loss balance sheet.
-    - Status: [ ] Pending Permission
+    - Status: [x] Completed
 
-[ ] Section 3.4: Automated Steadfast Courier Status Webhook / Sync Cron
+[x] Section 3.4: Automated Steadfast Courier Status Webhook / Sync Cron
     - Background worker to poll Steadfast status (`delivered`, `in_transit`, `returned`).
     - Automatically mark delivered/returned orders without manual admin checking.
-    - Status: [ ] Pending Permission
+    - Status: [x] Completed

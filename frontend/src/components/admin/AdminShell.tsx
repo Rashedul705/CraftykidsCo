@@ -38,6 +38,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     items: [
       { id: 'dashboard', label: 'Dashboard', allowedRoles: ['admin', 'order_handler', 'product_manager'] },
       { id: 'reports', label: 'Reports', allowedRoles: ['admin'] },
+      { id: 'expenses', label: 'Expense & P&L', allowedRoles: ['admin'] },
     ],
   },
   {
@@ -98,6 +99,11 @@ export const TAB_METADATA: Record<string, { title: string; helper: string; mainA
   reports: {
     title: 'Reports',
     helper: 'Financial summaries, revenue trends, and return analytics',
+  },
+  expenses: {
+    title: 'Expense & P&L Manager',
+    helper: 'Record operational costs (Meta ads, packaging, salaries) and track real net business profit',
+    mainAction: { label: '+ Add Expense', action: 'add_expense' },
   },
   orders: {
     title: 'Orders',

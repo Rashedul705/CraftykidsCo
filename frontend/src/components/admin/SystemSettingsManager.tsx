@@ -23,6 +23,7 @@ import {
   Calendar,
   Boxes,
   Percent,
+  Receipt,
 } from 'lucide-react';
 import { StatusPill } from '@/components/ui/Pill';
 
@@ -34,9 +35,13 @@ interface AnalyticsData {
     cogs: number;
     deliveryCollected: number;
     discountsGiven: number;
+    grossProfit?: number;
+    totalExpenses?: number;
+    expenseBreakdown?: Record<string, number>;
     netProfit: number;
     profitMargin: number;
   };
+  expensesCount?: number;
   logistics: {
     deliveredCount: number;
     deliveredRevenue: number;
@@ -753,43 +758,86 @@ export function SystemSettingsManager({ activeTab, onNavigateTab }: SystemSettin
                   </div>
                 </div>
 
-                {/* Net Profit */}
-                <div className="bg-white rounded-2xl border border-[#C4EDCD] bg-gradient-to-br from-white to-[#F0FAF2] p-5 shadow-xs relative overflow-hidden">
-                  <div className="flex items-center justify-between text-[#1F6B43] text-xs font-medium">
-                    <span>প্রকৃত নিট লাভ (Net Profit)</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#DDF3E6] text-[#1F6B43] border border-[#BDE7CC]">
-                      {analyticsData.financials.profitMargin}% মার্জিন
-                    </span>
+                {/* Operational Expenses (OPEX) */}
+                <div className="bg-white rounded-2xl border border-[#FED7D7] bg-gradient-to-br from-white to-[#FFF5F5] p-5 shadow-xs relative overflow-hidden">
+                  <div className="flex items-center justify-between text-[#D6403B] text-xs font-medium">
+                    <span>পরিচালন ব্যয় (Total OPEX)</span>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateTab?.('expenses')}
+                      className="text-[10px] font-bold text-[#D6403B] hover:underline"
+                    >
+                      ব্যয় বিবরণী →
+                    </button>
                   </div>
                   <div className="mt-2">
-                    <span className="font-heading font-black text-2xl sm:text-3xl text-[#1F6B43] block">
-                      ৳{analyticsData.financials.netProfit.toLocaleString('bn-BD')}
+                    <span className="font-heading font-black text-2xl sm:text-3xl text-[#D6403B] block">
+                      -৳{(analyticsData.financials.totalExpenses || 0).toLocaleString('bn-BD')}
                     </span>
-                    <span className="text-[11px] font-bold text-[#2D7A3E] mt-1 block">
-                      বিক্রি থেকে খরচ ও রিটার্ন বাদ দিয়ে
+                    <span className="text-[11px] font-bold text-[#C53030] mt-1 block">
+                      অ্যাড, বক্স, বেতন ও অন্যান্য
                     </span>
                   </div>
                 </div>
 
-                {/* Collected / Delivered Sales */}
-                <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 shadow-xs relative overflow-hidden">
-                  <div className="flex items-center justify-between text-[#6B6B6B] text-xs font-medium">
-                    <span>কালেক্টেড ক্যাশ (Delivered)</span>
-                    <CheckCircle className="w-4 h-4 text-[#0B5F85]" />
-                  </div>
-                  <div className="mt-2">
-                    <span className="font-heading font-black text-2xl sm:text-3xl text-[#0B5F85] block">
-                      ৳{analyticsData.logistics.deliveredRevenue.toLocaleString('bn-BD')}
-                    </span>
-                    <span className="text-[11px] font-bold text-[#0B5F85] mt-1 block">
-                      {analyticsData.logistics.deliveredCount}টি ডেলিভারি সম্পন্ন
-                    </span>
-                  </div>
-                </div>
+                {/* True Net Profit */}
+                {(() => {
+                  const net = analyticsData.financials.netProfit || 0;
+                  const isProfitable = net >= 0;
+                  return (
+                    <div
+                      className={`rounded-2xl border p-5 shadow-xs relative overflow-hidden ${
+                        isProfitable
+                          ? 'border-[#C4EDCD] bg-gradient-to-br from-white to-[#F0FAF2]'
+                          : 'border-[#FEB2B2] bg-gradient-to-br from-white to-[#FFF5F5]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-xs font-medium">
+                        <span className={isProfitable ? 'text-[#1F6B43]' : 'text-[#C53030]'}>
+                          প্রকৃত নিট লাভ (Net Profit)
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                            isProfitable
+                              ? 'bg-[#DDF3E6] text-[#1F6B43] border-[#BDE7CC]'
+                              : 'bg-[#FED7D7] text-[#C53030] border-[#FEB2B2]'
+                          }`}
+                        >
+                          {analyticsData.financials.profitMargin}% মার্জিন
+                        </span>
+                      </div>
+                      <div className="mt-2">
+                        <span
+                          className={`font-heading font-black text-2xl sm:text-3xl block ${
+                            isProfitable ? 'text-[#1F6B43]' : 'text-[#C53030]'
+                          }`}
+                        >
+                          {isProfitable ? '৳' : '-৳'}
+                          {Math.abs(net).toLocaleString('bn-BD')}
+                        </span>
+                        <span className="text-[11px] font-bold text-[#6B6B6B] mt-1 block">
+                          COGS ও পরিচালন ব্যয় বাদ দিয়ে
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* SECONDARY LOGISTICS & RISK METRICS */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                {/* Collected / Delivered Sales */}
+                <div className="bg-white rounded-2xl border border-[#EFE9E0] p-4 shadow-xs">
+                  <span className="text-xs font-medium text-[#6B6B6B] block">কালেক্টেড ক্যাশ (Delivered)</span>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="font-heading font-black text-xl text-[#0B5F85]">
+                      ৳{analyticsData.logistics.deliveredRevenue.toLocaleString('bn-BD')}
+                    </span>
+                    <span className="text-[11px] font-bold text-[#0B5F85]">
+                      {analyticsData.logistics.deliveredCount} ডেলিভারি
+                    </span>
+                  </div>
+                </div>
                 {/* In Transit */}
                 <div className="bg-white rounded-2xl border border-[#EFE9E0] p-4 shadow-xs">
                   <span className="text-xs font-medium text-[#6B6B6B] block">কুরিয়ারে চলমান ক্যাশ</span>

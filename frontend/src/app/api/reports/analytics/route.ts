@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Order } from '@/models/Order';
 import { Product } from '@/models/Product';
+import { Expense } from '@/models/Expense';
 import { verifyAdminRequest } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
@@ -29,14 +30,17 @@ export async function GET(req: NextRequest) {
     } // 'all' leaves startDate as null
 
     const orderFilter: any = {};
+    const expenseFilter: any = {};
     if (startDate) {
       orderFilter.createdAt = { $gte: startDate };
+      expenseFilter.date = { $gte: startDate };
     }
 
-    // 2. Fetch Orders & Products
-    const [orders, products] = await Promise.all([
+    // 2. Fetch Orders, Products & Operational Expenses
+    const [orders, products, expenses] = await Promise.all([
       Order.find(orderFilter).sort({ createdAt: -1 }).lean(),
       Product.find({}).lean(),
+      Expense.find(expenseFilter).sort({ date: -1 }).lean(),
     ]);
 
     // Build product cost lookup map
@@ -55,7 +59,30 @@ export async function GET(req: NextRequest) {
       if (p.slug) productCostMap[p.slug] = { cost, title };
     }
 
-    // 3. Aggregate Metrics
+    // 3. Operational Expenses Aggregation (Meta Ads, Packaging, Salaries, etc.)
+    let totalExpenses = 0;
+    const expenseBreakdown: Record<string, number> = {
+      FB_ADS: 0,
+      PACKAGING: 0,
+      COURIER: 0,
+      SALARY: 0,
+      OFFICE_RENT: 0,
+      SOFTWARE_SMS: 0,
+      OTHER: 0,
+    };
+
+    for (const exp of expenses) {
+      const amt = Number(exp.amount) || 0;
+      totalExpenses += amt;
+      const cat = exp.category || 'OTHER';
+      if (expenseBreakdown[cat] !== undefined) {
+        expenseBreakdown[cat] += amt;
+      } else {
+        expenseBreakdown[cat] = amt;
+      }
+    }
+
+    // 4. Aggregate Order Metrics
     let totalGrossRevenue = 0;
     let totalCogs = 0;
     let totalDeliveryCollected = 0;
@@ -170,10 +197,13 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Net Profit Calculation: Gross Revenue minus Product Costs (COGS) and Delivery Fees
-    const netProfit = Math.max(0, totalGrossRevenue - totalCogs - returnedLoss);
+    // P&L Net Profit Calculations:
+    // Gross Profit = Gross Revenue minus Product Costs (COGS) and Return courier losses
+    const grossProfit = Math.max(0, totalGrossRevenue - totalCogs - returnedLoss);
+    // True Net Business Profit = Gross Profit minus all Operational Expenses (Ads, Salaries, Boxes, etc.)
+    const trueNetProfit = grossProfit - totalExpenses;
     const profitMargin =
-      totalGrossRevenue > 0 ? Number(((netProfit / totalGrossRevenue) * 100).toFixed(1)) : 0;
+      totalGrossRevenue > 0 ? Number(((trueNetProfit / totalGrossRevenue) * 100).toFixed(1)) : 0;
 
     // Dispatched orders for return rate calculation
     const totalDispatched = deliveredCount + returnedCount + inTransitCount;
@@ -220,7 +250,10 @@ export async function GET(req: NextRequest) {
         cogs: totalCogs,
         deliveryCollected: totalDeliveryCollected,
         discountsGiven: totalDiscountsGiven,
-        netProfit,
+        grossProfit,
+        totalExpenses,
+        expenseBreakdown,
+        netProfit: trueNetProfit,
         profitMargin,
       },
       logistics: {
@@ -240,6 +273,7 @@ export async function GET(req: NextRequest) {
       },
       topProducts,
       dailyTrend,
+      expensesCount: expenses.length,
     });
   } catch (error: any) {
     console.error('Reports Analytics Error:', error);
