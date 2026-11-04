@@ -115,7 +115,7 @@ export async function verifyAdminToken(token: string): Promise<AdminTokenPayload
     }
 
     return payload as unknown as AdminTokenPayload;
-  } catch {
+  } catch (err: any) {
     return null;
   }
 }

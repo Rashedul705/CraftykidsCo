@@ -383,3 +383,4 @@ export const TAB_PERMISSION_MAP: Record<string, string | null> = {
   moderators: 'users.manage', // Super admin
   'payments-sms': 'settings.view', // Super admin
 };
+

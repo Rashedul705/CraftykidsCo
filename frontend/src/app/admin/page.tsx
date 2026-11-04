@@ -251,7 +251,7 @@ export default function AdminDashboardPage() {
     fetch('/api/admin/me')
       .then((res) => {
         if (!res.ok) {
-          window.location.href = '/admin/login';
+          window.location.href = '/admin/login?reauth=1';
           return null;
         }
         return res.json();

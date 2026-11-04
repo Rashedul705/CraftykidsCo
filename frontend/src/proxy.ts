@@ -33,6 +33,9 @@ export async function proxy(request: NextRequest) {
 
   // Case 1: If visiting /admin/login while already logged in -> redirect to /admin
   if (pathname === '/admin/login') {
+    if (request.nextUrl.searchParams.has('reauth') || request.nextUrl.searchParams.has('logout')) {
+      return NextResponse.next();
+    }
     if (isAuthenticated) {
       return NextResponse.redirect(new URL('/admin', request.url));
     }

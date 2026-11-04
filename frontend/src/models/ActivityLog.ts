@@ -44,3 +44,4 @@ export const ActivityLog: Model<IActivityLog> =
   mongoose.models.ActivityLog || mongoose.model<IActivityLog>('ActivityLog', ActivityLogSchema);
 
 export default ActivityLog;
+

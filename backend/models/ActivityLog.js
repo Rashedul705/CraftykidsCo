@@ -19,3 +19,4 @@ activityLogSchema.index({ createdAt: -1, action: 1 });
 
 module.exports =
   mongoose.models.ActivityLog || mongoose.model('ActivityLog', activityLogSchema);
+
