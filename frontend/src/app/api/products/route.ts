@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllProducts as getMemoryProducts, addProduct as addMemoryProduct } from '@/lib/store';
+import mongoose from 'mongoose';
+import {
+  getAllProducts as getMemoryProducts,
+  addProduct as addMemoryProduct,
+  deleteProducts as deleteMemoryProducts,
+} from '@/lib/store';
+import { ActivityLog } from '@/models/ActivityLog';
 import { SampleProduct } from '@/lib/sample-data';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
@@ -213,6 +219,87 @@ export async function POST(req: NextRequest) {
     console.error('Error in POST /api/products:', error);
     return NextResponse.json(
       { success: false, message: `নতুন পণ্য সংরক্ষণে ত্রুটি: ${error?.message || ''}` },
+      { status: 500 }
+    );
+  }
+}
+
+// 3. DELETE /api/products - Bulk delete products permanently
+export async function DELETE(req: NextRequest) {
+  try {
+    const auth = await verifyAdminRequest(req, 'products.delete');
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const ids: string[] = Array.isArray(body?.ids) ? body.ids : [];
+
+    if (!ids || ids.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'মুছে ফেলার জন্য কোনো পণ্য নির্বাচন করা হয়নি' },
+        { status: 400 }
+      );
+    }
+
+    let deletedDbCount = 0;
+
+    // 1. Delete from MongoDB Atlas
+    try {
+      await connectToDatabase();
+      const validObjectIds = ids
+        .filter((id) => mongoose.Types.ObjectId.isValid(id))
+        .map((id) => new mongoose.Types.ObjectId(id));
+
+      const mongoFilter: any = {
+        $or: [
+          { id: { $in: ids } },
+          { slug: { $in: ids } },
+        ],
+      };
+      if (validObjectIds.length > 0) {
+        mongoFilter.$or.unshift({ _id: { $in: validObjectIds } });
+      }
+
+      const res = await Product.deleteMany(mongoFilter);
+      deletedDbCount = res.deletedCount || 0;
+    } catch (dbErr: any) {
+      console.error('MongoDB error in bulk product delete:', dbErr.message);
+    }
+
+    // 2. Delete from memory store
+    const deletedMemCount = deleteMemoryProducts(ids);
+
+    const totalDeleted = Math.max(deletedDbCount, deletedMemCount);
+
+    // 3. Log activity
+    try {
+      await ActivityLog.create({
+        actorEmail: auth.user.email,
+        actorName: auth.user.name || 'Admin',
+        action: 'PRODUCT_BULK_DELETE',
+        details: {
+          module: 'products',
+          message: `Deleted ${ids.length} products permanently.`,
+          requestedCount: ids.length,
+          deletedCount: totalDeleted,
+          ids,
+        },
+      });
+    } catch (logErr) {
+      console.warn('Failed to record activity log for bulk product delete:', logErr);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `${totalDeleted > 0 ? totalDeleted : ids.length}টি পণ্য সফলভাবে মুছে ফেলা হয়েছে`,
+      count: totalDeleted > 0 ? totalDeleted : ids.length,
+      deletedIds: ids,
+    });
+  } catch (error: any) {
+    console.error('Error in DELETE /api/products:', error);
+    return NextResponse.json(
+      { success: false, message: error?.message || 'পণ্য ডিলিট করতে সমস্যা হয়েছে' },
       { status: 500 }
     );
   }

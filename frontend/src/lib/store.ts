@@ -494,6 +494,23 @@ export function deleteProduct(id: string): boolean {
   return true;
 }
 
+export function deleteProducts(ids: string[]): number {
+  const initialLength = globalProducts.length;
+  const idSet = new Set(ids.map((id) => id.toString()));
+  globalProducts = globalProducts.filter((p) => !idSet.has(p.id) && !idSet.has(p.slug));
+  return initialLength - globalProducts.length;
+}
+
+export function deleteOrdersByCustomerPhones(phones: string[]): number {
+  const initialLength = globalOrders.length;
+  const cleanPhoneSet = new Set(phones.map((p) => p.replace(/[^\d]/g, '').trim()));
+  globalOrders = globalOrders.filter((o) => {
+    const cleanPhone = (o.customerPhone || '').replace(/[^\d]/g, '').trim();
+    return !cleanPhoneSet.has(cleanPhone);
+  });
+  return initialLength - globalOrders.length;
+}
+
 export function getProductBySlug(slug: string): SampleProduct | undefined {
   return globalProducts.find((p) => p.slug === slug);
 }

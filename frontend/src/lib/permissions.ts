@@ -95,6 +95,12 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     group: 'customers',
     description: 'গ্রাহকের তথ্য, নোট ও ব্লকলিস্ট আপডেট করার অনুমতি',
   },
+  {
+    key: 'customers.delete',
+    label: 'Delete Customers',
+    group: 'customers',
+    description: 'গ্রাহকের রেকর্ড ও সংশ্লিষ্ট অর্ডার হিস্ট্রি মুছে ফেলার অনুমতি',
+  },
 
   // 5. Reviews
   {

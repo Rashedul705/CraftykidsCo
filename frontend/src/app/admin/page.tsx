@@ -192,6 +192,11 @@ export default function AdminDashboardPage() {
   const [editingProduct, setEditingProduct] = useState<SampleProduct | null>(null);
   const [productEditInitialTab, setProductEditInitialTab] = useState<'general' | 'stock_history'>('general');
 
+  // Bulk Delete Product States
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [isBulkDeletingProducts, setIsBulkDeletingProducts] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+
   // Delete Product Confirmation State
   const [deletingProduct, setDeletingProduct] = useState<SampleProduct | null>(null);
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
@@ -715,6 +720,53 @@ export default function AdminDashboardPage() {
 
 
 
+  // Checkbox selection handlers for products
+  const toggleSelectProduct = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedProductIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllProducts = () => {
+    if (filteredProducts.length > 0 && selectedProductIds.length === filteredProducts.length) {
+      setSelectedProductIds([]);
+    } else {
+      setSelectedProductIds(filteredProducts.map((p) => p.id));
+    }
+  };
+
+  // Bulk Delete Products Handler
+  const handleConfirmBulkDeleteProducts = async () => {
+    if (selectedProductIds.length === 0) return;
+    setIsBulkDeletingProducts(true);
+
+    try {
+      const res = await fetch('/api/products', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedProductIds }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        refreshData();
+        setActionFeedback(data.message || `${selectedProductIds.length}টি পণ্য সফলভাবে মুছে ফেলা হয়েছে!`);
+        setSelectedProductIds([]);
+        setShowBulkDeleteModal(false);
+        setTimeout(() => setActionFeedback(null), 3500);
+      } else {
+        setActionFeedback(data.message || 'পণ্য ডিলিট করতে সমস্যা হয়েছে');
+        setTimeout(() => setActionFeedback(null), 3000);
+      }
+    } catch {
+      setActionFeedback('পণ্য বাল্ক ডিলিট করতে ব্যর্থ হয়েছে');
+      setTimeout(() => setActionFeedback(null), 3000);
+    } finally {
+      setIsBulkDeletingProducts(false);
+    }
+  };
+
   // Confirm delete product permanently
   const handleConfirmDeleteProduct = async () => {
     if (!deletingProduct) return;
@@ -1147,10 +1199,51 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
+            {/* Bulk Action Sticky Bar for Products */}
+            {selectedProductIds.length > 0 && (
+              <div className="bg-[#1A1A1A] text-white px-4 py-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl border border-white/10 animate-fade-in">
+                <div className="flex items-center gap-3">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-bold text-amber-300">
+                    ✓ {selectedProductIds.length} টি পণ্য নির্বাচিত
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProductIds([])}
+                    className="text-xs text-gray-400 hover:text-white underline cursor-pointer"
+                  >
+                    সব নির্বাচন বাতিল
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Can permission="products.delete">
+                    <button
+                      type="button"
+                      onClick={() => setShowBulkDeleteModal(true)}
+                      className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>নির্বাচিত ({selectedProductIds.length}) পণ্য ডিলিট করুন</span>
+                    </button>
+                  </Can>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs min-w-[700px]">
                 <thead>
                   <tr className="border-b border-[#EFEAE2] text-[#6B6B6B]">
+                    <th className="pb-3 w-8 pl-1 text-center">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all products"
+                        checked={filteredProducts.length > 0 && selectedProductIds.length === filteredProducts.length}
+                        onChange={toggleSelectAllProducts}
+                        className="rounded accent-[#D6403B] cursor-pointer"
+                      />
+                    </th>
                     <th className="pb-3 font-semibold">Image</th>
                     <th className="pb-3 font-semibold">Product Name</th>
                     <th className="pb-3 font-semibold">Price</th>
@@ -1191,6 +1284,15 @@ export default function AdminDashboardPage() {
                     return (
                       <React.Fragment key={p.id}>
                         <tr className="hover:bg-[#FAF7F2]/50 transition-colors">
+                          <td className="py-3 pl-1 text-center" onClick={(e) => toggleSelectProduct(p.id, e)}>
+                            <input
+                              type="checkbox"
+                              aria-label={`Select product ${p.titleBn}`}
+                              checked={selectedProductIds.includes(p.id)}
+                              onChange={() => {}}
+                              className="rounded accent-[#D6403B] cursor-pointer"
+                            />
+                          </td>
                           <td className="py-3">
                             <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#FAF7F2] border border-[#EFEAE2] shrink-0 flex items-center justify-center">
                               {p.imageUrl && p.imageUrl.trim() ? (
@@ -1392,7 +1494,7 @@ export default function AdminDashboardPage() {
                       {/* Expandable Variations Mini-Table (Section 5 Requirement) */}
                       {isVariable && isExpanded && (
                         <tr className="bg-[#FAF7F2]/60 border-b border-[#EFEAE2]">
-                          <td colSpan={5} className="p-3 sm:p-4">
+                          <td colSpan={6} className="p-3 sm:p-4">
                             <div className="bg-white rounded-xl border border-[#EFEAE2] p-3.5 shadow-2xs space-y-2.5">
                               <div className="flex items-center justify-between pb-2 border-b border-[#EFEAE2]">
                                 <div className="flex items-center gap-2">
@@ -1785,6 +1887,7 @@ export default function AdminDashboardPage() {
             orders={orders}
             onSelectOrder={setSelectedOrder}
             onNavigateTab={handleNavChange}
+            onRefreshData={refreshData}
           />
         )}
 
@@ -2293,6 +2396,96 @@ export default function AdminDashboardPage() {
               >
                 {isDeletingProduct && <Loader2 className="w-4 h-4 animate-spin" />}
                 <span>Delete Permanently</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* =========================================================================
+          BULK DELETE PRODUCTS CONFIRMATION MODAL
+         ========================================================================= */}
+      {showBulkDeleteModal && selectedProductIds.length > 0 && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-[#FECACA]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EFEAE2]">
+              <div className="flex items-center gap-3 text-[#DC2626]">
+                <div className="w-10 h-10 rounded-2xl bg-[#FEF2F2] flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5 text-[#DC2626]" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-black text-base text-[#1A1A1A]">
+                    পণ্য বাল্ক ডিলিট কনফার্মেশন
+                  </h3>
+                  <span className="text-[11px] text-[#6B6B6B]">এই কাজটি পূর্বাবস্থায় ফিরিয়ে আনা সম্ভব নয়</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteModal(false)}
+                className="w-8 h-8 rounded-full bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#1A1A1A] flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#991B1B] space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-[#DC2626] shrink-0" />
+                <span>সতর্কতা: স্থায়ীভাবে মুছে ফেলা হবে</span>
+              </div>
+              <p className="text-[11px] text-[#B91C1C] leading-relaxed">
+                আপনি একসাথে {selectedProductIds.length}টি পণ্য স্থায়ীভাবে ডিলিট করতে যাচ্ছেন। এগুলো ডাটাবেজ থেকে মুছে যাবে এবং স্টোরফ্রন্টে আর প্রদর্শিত হবে না।
+              </p>
+            </div>
+
+            {/* List of Products being deleted */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-bold text-[#6B6B6B] block">
+                যে পণ্যগুলো মুছে ফেলা হবে ({selectedProductIds.length} টি):
+              </span>
+              <div className="max-h-48 overflow-y-auto space-y-2 p-2 rounded-2xl bg-[#FAF7F2] border border-[#EFEAE2] divide-y divide-[#EFEAE2]">
+                {products
+                  .filter((p) => selectedProductIds.includes(p.id))
+                  .map((p) => (
+                    <div key={p.id} className="pt-2 first:pt-0 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-[#EFEAE2] relative shrink-0">
+                          {p.imageUrl ? (
+                            <Image src={p.imageUrl} alt={p.titleBn} fill className="object-cover" />
+                          ) : (
+                            <span className="text-sm flex items-center justify-center h-full">🎨</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-bold text-[#1A1A1A] block">{p.titleBn}</span>
+                          <span className="text-[10px] text-[#6B6B6B]">{p.titleEn}</span>
+                        </div>
+                      </div>
+                      <span className="font-black text-[#D32F2F] text-xs">
+                        ৳{p.baseSalePrice || p.basePrice || (p as any).regularPrice || 0}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2 border-t border-[#EFEAE2]">
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteModal(false)}
+                disabled={isBulkDeletingProducts}
+                className="px-4 py-2.5 rounded-xl bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#1A1A1A] font-bold text-xs cursor-pointer"
+              >
+                বাতিল করুন
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmBulkDeleteProducts}
+                disabled={isBulkDeletingProducts}
+                className="px-5 py-2.5 rounded-xl bg-[#DC2626] text-white font-bold text-xs hover:bg-[#B91C1C] flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md"
+              >
+                {isBulkDeletingProducts && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>হ্যাঁ, {selectedProductIds.length}টি পণ্য ডিলিট করুন</span>
               </button>
             </div>
           </div>
