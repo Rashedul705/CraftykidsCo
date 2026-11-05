@@ -11,6 +11,8 @@ import {
   getAssignablePermissions,
 } from '@/lib/permissions';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     // Only Super Admin can view and manage moderators

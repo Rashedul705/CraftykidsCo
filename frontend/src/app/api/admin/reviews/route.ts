@@ -7,6 +7,8 @@ import { verifyAdminRequest } from '@/lib/auth';
  * GET /api/admin/reviews
  * Fetch customer reviews for admin moderation panel with filtering & search.
  */
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await verifyAdminRequest(req, 'reviews.view');

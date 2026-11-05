@@ -3,6 +3,8 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { Expense } from '@/models/Expense';
 import { verifyAdminRequest } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
