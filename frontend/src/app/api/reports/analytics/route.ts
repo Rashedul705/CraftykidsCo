@@ -276,6 +276,9 @@ export async function GET(req: NextRequest) {
       expensesCount: expenses.length,
     });
   } catch (error: any) {
+    if (error?.digest === 'NEXT_PRERENDER_INTERRUPTED' || error?.digest?.startsWith?.('NEXT_')) {
+      throw error;
+    }
     console.error('Reports Analytics Error:', error);
     return NextResponse.json(
       { success: false, message: 'রিপোর্ট তৈরি করতে ত্রুটি হয়েছে: ' + (error.message || '') },

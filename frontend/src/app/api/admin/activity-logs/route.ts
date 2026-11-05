@@ -41,6 +41,9 @@ export async function GET(req: NextRequest) {
       })),
     });
   } catch (error: any) {
+    if (error?.digest === 'NEXT_PRERENDER_INTERRUPTED' || error?.digest?.startsWith?.('NEXT_')) {
+      throw error;
+    }
     console.error('Fetch activity logs error:', error);
     return NextResponse.json(
       { success: false, message: 'অ্যাক্টিভিটি লগ আনতে ত্রুটি হয়েছে: ' + (error.message || '') },

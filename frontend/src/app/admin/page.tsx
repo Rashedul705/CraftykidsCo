@@ -243,7 +243,9 @@ export default function AdminDashboardPage() {
     fetch('/api/admin/me')
       .then((res) => {
         if (!res.ok) {
-          window.location.href = '/admin/login?reauth=1';
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
+            window.location.replace('/admin/login?reauth=1');
+          }
           return null;
         }
         return res.json();

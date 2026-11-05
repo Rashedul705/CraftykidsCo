@@ -19,7 +19,7 @@ import { formatBDT } from '@/lib/utils';
 import { BRAND_CONFIG } from '@/lib/brand';
 import { SiteSettings, defaultSiteSettings } from '@/lib/site-settings';
 
-interface HeaderProps {
+export interface HeaderProps {
   locale?: 'bn' | 'en';
   onToggleLocale?: () => void;
   announcement?: SiteSettings['announcement'];
@@ -472,4 +472,6 @@ export function Header(props: HeaderProps) {
     </Suspense>
   );
 }
+
+export default Header;
 

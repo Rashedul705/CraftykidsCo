@@ -35,6 +35,9 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
+    if (error?.digest === 'NEXT_PRERENDER_INTERRUPTED' || error?.digest?.startsWith?.('NEXT_')) {
+      throw error;
+    }
     console.error('Error in GET /api/admin/me:', error);
     return NextResponse.json(
       { authenticated: false, message: error?.message || 'Authentication error' },

@@ -62,9 +62,6 @@ const CategorySchema = new Schema<ICategory>(
   { timestamps: true }
 );
 
-// Indexes
-CategorySchema.index({ slug: 1 });
-
 export const Category: Model<ICategory> =
   mongoose.models.Category || mongoose.model<ICategory>('Category', CategorySchema);
 export default Category;
