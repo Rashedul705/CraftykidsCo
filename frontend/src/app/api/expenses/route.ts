@@ -3,8 +3,6 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { Expense } from '@/models/Expense';
 import { verifyAdminRequest } from '@/lib/auth';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(req: NextRequest) {
   try {
     const auth = await verifyAdminRequest(req, 'reports.view');

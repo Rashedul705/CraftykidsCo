@@ -6,8 +6,6 @@ import { ActivityLog } from '@/models/ActivityLog';
 import { verifyAdminRequest } from '@/lib/auth';
 import { deleteOrdersByCustomerPhones, getAllOrders } from '@/lib/store';
 
-export const dynamic = 'force-dynamic';
-
 // 1. GET /api/customers - List aggregated customers from DB or memory
 export async function GET(req: NextRequest) {
   try {
