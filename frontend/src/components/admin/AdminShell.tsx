@@ -79,7 +79,6 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     items: [
       { id: 'site-settings', label: 'Site settings', allowedRoles: ['admin'] },
       { id: 'staff', label: 'Staff and roles', allowedRoles: ['admin'] },
-      { id: 'moderators', label: 'Moderators & permissions', allowedRoles: ['admin'] },
       { id: 'payments-sms', label: 'Payments and SMS', allowedRoles: ['admin'] },
     ],
   },
@@ -178,14 +177,10 @@ export const TAB_METADATA: Record<string, { title: string; helper: string; mainA
     title: 'Site settings',
     helper: 'Configure navigation, footer, contact info, social media, SEO, Google Analytics, and Facebook Pixel',
   },
-  moderators: {
-    title: 'Moderator Access & Permissions',
-    helper: 'Configure granular module permissions and manage moderator accounts',
-  },
   staff: {
     title: 'Staff and roles',
-    helper: 'Configure access permissions for Order Handlers and Product Managers',
-    mainAction: { label: '+ Add staff', action: 'add_staff' },
+    helper: 'Manage team members, assign operational roles, and customize granular permissions anytime',
+    mainAction: { label: '+ Add team member', action: 'add_staff' },
   },
   'payments-sms': {
     title: 'Payments and SMS',

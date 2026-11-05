@@ -64,7 +64,7 @@ export async function PUT(
 
     const { id } = await context.params;
     const body = await req.json();
-    const { name, permissions, isActive, password } = body;
+    const { name, email, permissions, isActive, password } = body;
 
     await connectToDatabase();
 
@@ -92,15 +92,45 @@ export async function PUT(
 
     const updateFields: any = { updatedAt: new Date() };
 
-    if (name && typeof name === 'string') {
+    if (name && typeof name === 'string' && name.trim()) {
       updateFields.name = name.trim();
+    }
+
+    // Support updating moderator email by Super Admin
+    if (email && typeof email === 'string' && email.trim()) {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) {
+        return NextResponse.json(
+          { success: false, message: 'সঠিক ইমেইল এড্রেস প্রদান করুন।' },
+          { status: 400 }
+        );
+      }
+      // Check if email already used by another user
+      const conflict = await User.findOne({
+        email: cleanEmail,
+        _id: { $ne: id },
+      });
+      if (conflict) {
+        return NextResponse.json(
+          { success: false, message: 'এই ইমেইলটি অন্য একজন ব্যবহারকারীর অ্যাকাউন্টে ইতিমধ্যে ব্যবহৃত হচ্ছে।' },
+          { status: 409 }
+        );
+      }
+      updateFields.email = cleanEmail;
     }
 
     if (typeof isActive === 'boolean') {
       updateFields.isActive = isActive;
     }
 
-    if (password && typeof password === 'string' && password.length >= 6) {
+    // Support changing moderator password by Super Admin
+    if (password && typeof password === 'string' && password.trim()) {
+      if (password.length < 6) {
+        return NextResponse.json(
+          { success: false, message: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' },
+          { status: 400 }
+        );
+      }
       updateFields.passwordHash = await bcrypt.hash(password, 10);
     }
 

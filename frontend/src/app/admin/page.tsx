@@ -61,7 +61,6 @@ import { DeliveryChargesManager } from '@/components/admin/DeliveryChargesManage
 import { StaffRolesManager } from '@/components/admin/StaffRolesManager';
 import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
 import { SiteSettingsManager } from '@/components/admin/SiteSettingsManager';
-import ModeratorsManager from '@/components/admin/ModeratorsManager';
 import { TAB_PERMISSION_MAP } from '@/lib/permissions';
 import Can from '@/components/auth/Can';
 import { MessagesManager } from '@/components/admin/MessagesManager';
@@ -87,7 +86,6 @@ const VALID_ADMIN_TABS = [
   'page-editor',
   'site-settings',
   'staff',
-  'moderators',
   'payments-sms',
 ];
 
@@ -281,6 +279,8 @@ export default function AdminDashboardPage() {
 
       if (targetTab === 'steadfast') {
         setActiveNav('orders');
+      } else if (targetTab === 'moderators') {
+        setActiveNav('staff');
       } else if (targetTab && VALID_ADMIN_TABS.includes(targetTab)) {
         setActiveNav(targetTab);
         if (!tabFromUrl && targetTab !== 'dashboard') {
@@ -300,6 +300,8 @@ export default function AdminDashboardPage() {
         const tab = urlParams.get('tab') || 'dashboard';
         if (tab === 'steadfast') {
           setActiveNav('orders');
+        } else if (tab === 'moderators') {
+          setActiveNav('staff');
         } else if (VALID_ADMIN_TABS.includes(tab)) {
           setActiveNav(tab);
         }
@@ -1717,14 +1719,9 @@ export default function AdminDashboardPage() {
           <DeliveryChargesManager />
         )}
 
-        {/* VIEW 12: STAFF AND ROLES (PART B8) */}
+        {/* VIEW 12: STAFF AND ROLES (WITH CUSTOMIZABLE PERMISSIONS) */}
         {activeNav === 'staff' && (
           <StaffRolesManager />
-        )}
-
-        {/* VIEW 12.1: MODERATORS & PERMISSION ACCESS CONTROL */}
-        {activeNav === 'moderators' && (
-          <ModeratorsManager />
         )}
 
         {/* VIEW 12.5: SITE SETTINGS (NAV, FOOTER, CONTACT, SOCIAL, SEO, GA4, PIXEL) */}
