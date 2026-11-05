@@ -8,6 +8,7 @@ import {
   deleteContactMessage,
 } from '@/lib/store';
 import { verifyAdminRequest } from '@/lib/auth';
+import { sendContactNotificationEmail } from '@/lib/mailer';
 
 export async function GET(req: NextRequest) {
   try {
@@ -25,6 +26,7 @@ export async function GET(req: NextRequest) {
         const formatted = docs.map((d: any) => ({
           id: d._id.toString(),
           name: d.name,
+          email: d.email,
           phone: d.phone,
           subject: d.subject,
           message: d.message,
@@ -57,7 +59,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, phone, subject, message } = body;
+    const { name, email, phone, subject, message } = body;
 
     if (!name || !phone || !message) {
       return NextResponse.json(
@@ -72,6 +74,7 @@ export async function POST(req: NextRequest) {
       await connectToDatabase();
       const doc = await ContactMessage.create({
         name,
+        email: email || undefined,
         phone,
         subject: subject || 'সাধারণ জিজ্ঞাসা',
         message,
@@ -80,6 +83,7 @@ export async function POST(req: NextRequest) {
       savedMessage = {
         id: doc._id.toString(),
         name: doc.name,
+        email: doc.email,
         phone: doc.phone,
         subject: doc.subject,
         message: doc.message,
@@ -93,15 +97,34 @@ export async function POST(req: NextRequest) {
     // Also sync to in-memory store
     const memMsg = addContactMessage({
       name,
+      email: email || undefined,
       phone,
       subject: subject || 'সাধারণ জিজ্ঞাসা',
       message,
     });
 
+    const finalContactMessage = savedMessage || memMsg;
+
+    // Send admin notification email asynchronously (non-blocking)
+    try {
+      sendContactNotificationEmail({
+        name,
+        email,
+        phone,
+        subject: subject || 'সাধারণ জিজ্ঞাসা',
+        message,
+        createdAt: finalContactMessage?.createdAt || new Date(),
+      }).catch((mailErr) => {
+        console.error('[Mailer Contact Notification Error]:', mailErr?.message || mailErr);
+      });
+    } catch (mailSyncErr) {
+      console.error('[Mailer Contact Trigger Error]:', mailSyncErr);
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Message sent successfully',
-      contactMessage: savedMessage || memMsg,
+      contactMessage: finalContactMessage,
     });
   } catch (error: any) {
     return NextResponse.json(

@@ -24,6 +24,7 @@ export default function ContactPage() {
   const [pageData, setPageData] = useState(defaultSiteSettings.customPages!.contact);
   const [formData, setFormData] = useState({
     name: '',
+    email: '',
     phone: '',
     subject: 'সাধারণ জিজ্ঞাসা',
     message: '',
@@ -73,6 +74,7 @@ export default function ContactPage() {
         setIsSubmitted(true);
         setFormData({
           name: '',
+          email: '',
           phone: '',
           subject: 'সাধারণ জিজ্ঞাসা',
           message: '',
@@ -262,23 +264,40 @@ export default function ContactPage() {
                   </div>
                 </div>
 
-                {/* Subject Dropdown */}
-                <div className="space-y-1.5">
-                  <label htmlFor="contact-subject" className="block text-xs font-bold text-[#2B2B2B]">
-                    বিষয়ের ধরণ
-                  </label>
-                  <select
-                    id="contact-subject"
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs sm:text-sm text-[#2B2B2B] focus:bg-white focus:outline-none focus:border-[#D6403B] transition-all"
-                  >
-                    <option value="সাধারণ জিজ্ঞাসা">সাধারণ জিজ্ঞাসা</option>
-                    <option value="অর্ডার ও ট্র্যাকিং সহায়তা">অর্ডার ও ট্র্যাকিং সহায়তা</option>
-                    <option value="স্কুল বা বাল্ক অর্ডার">স্কুল বা বাল্ক অর্ডার</option>
-                    <option value="রিপ্লেসমেন্ট বা রিটার্ন">রিপ্লেসমেন্ট বা রিটার্ন</option>
-                    <option value="অন্যান্য পরামর্শ">অন্যান্য পরামর্শ</option>
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Email (Optional) */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="contact-email" className="block text-xs font-bold text-[#2B2B2B]">
+                      ইমেইল এড্রেস <span className="text-[#999999] font-normal">(ঐচ্ছিক / Optional)</span>
+                    </label>
+                    <input
+                      id="contact-email"
+                      type="email"
+                      placeholder="yourname@example.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs sm:text-sm text-[#2B2B2B] placeholder-[#999999] focus:bg-white focus:outline-none focus:border-[#D6403B] focus:ring-2 focus:ring-[#D6403B]/10 transition-all"
+                    />
+                  </div>
+
+                  {/* Subject Dropdown */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="contact-subject" className="block text-xs font-bold text-[#2B2B2B]">
+                      বিষয়ের ধরণ
+                    </label>
+                    <select
+                      id="contact-subject"
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs sm:text-sm text-[#2B2B2B] focus:bg-white focus:outline-none focus:border-[#D6403B] transition-all"
+                    >
+                      <option value="সাধারণ জিজ্ঞাসা">সাধারণ জিজ্ঞাসা</option>
+                      <option value="অর্ডার ও ট্র্যাকিং সহায়তা">অর্ডার ও ট্র্যাকিং সহায়তা</option>
+                      <option value="স্কুল বা বাল্ক অর্ডার">স্কুল বা বাল্ক অর্ডার</option>
+                      <option value="রিপ্লেসমেন্ট বা রিটার্ন">রিপ্লেসমেন্ট বা রিটার্ন</option>
+                      <option value="অন্যান্য পরামর্শ">অন্যান্য পরামর্শ</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Message */}

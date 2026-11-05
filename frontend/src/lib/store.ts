@@ -741,6 +741,7 @@ export function updateSiteSettings(newSettings: Partial<SiteSettings>): SiteSett
 export interface ContactMessageRecord {
   id: string;
   name: string;
+  email?: string;
   phone: string;
   subject: string;
   message: string;

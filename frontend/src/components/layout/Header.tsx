@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import {
@@ -34,7 +34,7 @@ const fallbackNavItems = [
   { id: 'nav-shop', labelBn: 'Shop', labelEn: 'Shop', href: '/shop' },
 ];
 
-export function Header({
+function HeaderContent({
   locale = 'bn',
   onToggleLocale,
   announcement = defaultSiteSettings.announcement,
@@ -413,3 +413,63 @@ export function Header({
     </>
   );
 }
+
+function HeaderFallback({
+  announcement = defaultSiteSettings.announcement,
+  logoUrl,
+  settings: propSettings,
+}: HeaderProps) {
+  const headerLogo =
+    logoUrl ||
+    propSettings?.branding?.headerLogoUrl ||
+    propSettings?.nav?.logoUrl ||
+    '';
+  const brandName = propSettings?.branding?.brandName || BRAND_CONFIG.name;
+  const showBrandText = propSettings?.branding?.showBrandTextHeader !== false;
+
+  return (
+    <header className="sticky top-0 z-40 bg-white border-b border-[#EFE9E0] shadow-xs">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {headerLogo ? (
+              <img
+                src={headerLogo}
+                alt={brandName}
+                className="h-8 sm:h-10 w-auto object-contain shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#D6403B] flex items-center justify-center text-white font-extrabold text-lg sm:text-xl shrink-0">
+                C
+              </div>
+            )}
+            {showBrandText && (
+              <span className="font-heading font-black text-lg sm:text-2xl text-[#2B2B2B] tracking-tight leading-none">
+                {brandName}
+              </span>
+            )}
+          </Link>
+        </div>
+        <nav className="hidden md:flex items-center gap-6 lg:gap-8 font-bold text-sm text-[#2B2B2B]">
+          {fallbackNavItems.map((item) => (
+            <Link key={item.id} href={item.href} className="py-1.5 text-[#2B2B2B]">
+              {item.labelEn}
+            </Link>
+          ))}
+        </nav>
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-stone-50" />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export function Header(props: HeaderProps) {
+  return (
+    <Suspense fallback={<HeaderFallback {...props} />}>
+      <HeaderContent {...props} />
+    </Suspense>
+  );
+}
+

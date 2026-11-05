@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IContactMessage extends Document {
   name: string;
+  email?: string;
   phone: string;
   subject: string;
   message: string;
@@ -16,6 +17,7 @@ export interface IContactMessage extends Document {
 const ContactMessageSchema = new Schema<IContactMessage>(
   {
     name: { type: String, required: true },
+    email: { type: String, trim: true },
     phone: { type: String, required: true, index: true },
     subject: { type: String, default: 'সাধারণ জিজ্ঞাসা' },
     message: { type: String, required: true },

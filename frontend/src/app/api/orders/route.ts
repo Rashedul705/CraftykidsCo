@@ -25,6 +25,7 @@ import {
 import { getNotificationProvider } from '@/core/notification';
 import { verifyAdminRequest } from '@/lib/auth';
 import { sendMetaCapiEvent } from '@/lib/meta-capi';
+import { sendOrderNotificationEmail } from '@/lib/mailer';
 
 export async function GET(req: NextRequest) {
   try {
@@ -424,6 +425,15 @@ export async function POST(req: NextRequest) {
       });
     } catch (capiWrapperErr) {
       console.warn('[Meta CAPI Purchase Trigger Error]:', capiWrapperErr);
+    }
+
+    // 10. Admin Email Notification (Gmail SMTP / Nodemailer)
+    try {
+      sendOrderNotificationEmail(finalOrder).catch((mailErr) => {
+        console.error(`[Mailer Order Notification Error #${finalOrder.orderNumber}]:`, mailErr?.message || mailErr);
+      });
+    } catch (mailSyncErr) {
+      console.error(`[Mailer Order Trigger Error #${finalOrder.orderNumber}]:`, mailSyncErr);
     }
 
     return NextResponse.json(

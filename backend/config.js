@@ -23,17 +23,31 @@ function validateJwtSecret() {
     );
   }
 
-  const forbiddenWords = ['dev-secret', 'change-in-production', 'secret', '123456'];
+  const insecurePlaceholders = [
+    'dev-secret',
+    'change-in-production',
+    'replace-with-a-long-random-string',
+    'your_secure_random_jwt_secret_key',
+    '12345678901234567890123456789012',
+  ];
   const lowerSecret = secret.toLowerCase();
-  for (const word of forbiddenWords) {
-    if (lowerSecret.includes(word)) {
+  for (const placeholder of insecurePlaceholders) {
+    if (lowerSecret.includes(placeholder)) {
       throw new Error(
-        `[FATAL SECURITY CONFIGURATION ERROR] JWT_SECRET contains an insecure, disallowed pattern ("${word}"). Please supply a cryptographically strong value. Server startup aborted.`
+        `[FATAL SECURITY CONFIGURATION ERROR] Insecure placeholder pattern detected in JWT_SECRET ("${placeholder}"). Please supply a cryptographically strong value. Server startup aborted.`
       );
     }
   }
 
   return secret;
+}
+
+function validateRequiredEnv() {
+  if (!process.env.MONGODB_URI || process.env.MONGODB_URI.trim().length === 0) {
+    throw new Error(
+      '[FATAL SECURITY CONFIGURATION ERROR] Missing required environment variable: MONGODB_URI. Server startup aborted.'
+    );
+  }
 }
 
 /**
@@ -79,6 +93,7 @@ function parseCorsOrigins(isProduction) {
 
 const isProduction = process.env.NODE_ENV === 'production';
 const jwtSecret = validateJwtSecret();
+validateRequiredEnv();
 const corsOrigins = parseCorsOrigins(isProduction);
 
 /**

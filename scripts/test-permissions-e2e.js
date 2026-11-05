@@ -54,7 +54,11 @@ function loadEnv() {
 loadEnv();
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const JWT_SECRET = process.env.JWT_SECRET || 'craftykidsco_super_secret_jwt_key_2026_dev_env';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('[FATAL SECURITY CONFIGURATION ERROR] JWT_SECRET environment variable is missing.');
+}
 const PORT = 3000;
 const BASE_URL = `http://localhost:${PORT}`;
 

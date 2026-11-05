@@ -6,11 +6,20 @@ require(path.join(__dirname, '../backend/node_modules/dotenv')).config({
 });
 if (!process.env.JWT_SECRET) {
   require(path.join(__dirname, '../backend/node_modules/dotenv')).config({
+    path: path.join(__dirname, '../frontend/.env'),
+  });
+}
+if (!process.env.JWT_SECRET) {
+  require(path.join(__dirname, '../backend/node_modules/dotenv')).config({
     path: path.join(__dirname, '../backend/.env'),
   });
 }
 
-const secretKey = new TextEncoder().encode(process.env.JWT_SECRET || 'craftykidsco-secret-key-production-2024');
+if (!process.env.JWT_SECRET) {
+  throw new Error('[FATAL SECURITY CONFIGURATION ERROR] JWT_SECRET environment variable is missing.');
+}
+
+const secretKey = new TextEncoder().encode(process.env.JWT_SECRET);
 
 async function createToken(payload) {
   return await new jose.SignJWT(payload)

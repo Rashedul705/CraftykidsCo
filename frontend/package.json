@@ -11,7 +11,8 @@
     "lint": "eslint",
     "test": "tsx --test tests/*.test.ts",
     "cleanup:variations": "tsx --env-file=.env scripts/cleanup-variations.ts",
-    "cleanup:variations:commit": "tsx --env-file=.env scripts/cleanup-variations.ts --commit --disambiguate-skus"
+    "cleanup:variations:commit": "tsx --env-file=.env scripts/cleanup-variations.ts --commit --disambiguate-skus",
+    "test:email": "tsx scripts/test-email.ts"
   },
   "dependencies": {
     "@emnapi/core": "^1.11.3",
@@ -26,6 +27,7 @@
     "lucide-react": "^1.55.0",
     "mongoose": "^9.11.2",
     "next": "^16.4.2",
+    "nodemailer": "^10.3.1",
     "puppeteer-core": "^25.15.0",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
@@ -37,6 +39,7 @@
     "@tailwindcss/turbopack": "^4",
     "@types/bwip-js": "^3.2.3",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -246,7 +246,9 @@ export default function OrderConfirmationPage() {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#2B2B2B] flex flex-col justify-between">
       <div>
-        <Header />
+        <Suspense fallback={<div className="h-20 bg-white border-b border-[#EFE9E0]" />}>
+          <Header />
+        </Suspense>
         <Suspense
           fallback={
             <div className="p-12 text-center text-xs text-stone-500">
