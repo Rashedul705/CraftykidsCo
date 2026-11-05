@@ -416,9 +416,9 @@ export function SiteSettingsManager() {
   };
 
   const handleResetNavToDefault = () => {
-    if (confirm('আপনি কি নেভিগেশন মেনু স্টোরফ্রন্টের মূল ৮টি ডিফল্ট লিঙ্কে রিস্টোর করতে চান?')) {
+    if (confirm('আপনি কি নেভিগেশন মেনু স্টোরফ্রন্টের মূল ডিফল্ট লিঙ্কে (Home, About, Contact, Shop) রিস্টোর করতে চান?')) {
       updateNav({ menuItems: [...defaultSiteSettings.nav!.menuItems] });
-      showToast('নেভিগেশন মেনু সফলভাবে ডিফল্ট ৮টি লিঙ্কে রিস্টোর করা হয়েছে!');
+      showToast('নেভিগেশন মেনু সফলভাবে ডিফল্ট লিঙ্কে রিস্টোর করা হয়েছে!');
     }
   };
 
@@ -1049,7 +1049,7 @@ export function SiteSettingsManager() {
                 </div>
               )}
 
-              {/* 2. Main Header (Logo, Search, Cart) */}
+              {/* 2. Main Navigation Bar (Single Unified Row: Logo, Nav Links, Small Search Icon, Wishlist, Account, Cart) */}
               <div className="p-3 sm:p-4 bg-white flex items-center justify-between gap-3 border-b border-[#EFE9E0]">
                 {/* Logo & Brand text */}
                 <div className="flex items-center gap-2.5 shrink-0">
@@ -1071,18 +1071,38 @@ export function SiteSettingsManager() {
                   )}
                 </div>
 
-                {/* Search Bar Replica */}
-                <div className="flex-1 max-w-md mx-2 hidden sm:flex relative items-center">
-                  <div className="w-full pl-3.5 pr-10 py-2 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-xs text-[#6B6B6B]">
-                    খেলনা, মোমের রঙ বা আর্ট কিট খুঁজুন...
-                  </div>
-                  <div className="absolute right-1 p-1.5 rounded-lg bg-[#D6403B] text-white">
-                    <Search className="w-3.5 h-3.5" />
-                  </div>
+                {/* Center: Navigation Links on the Same Line */}
+                <div className="hidden md:flex items-center gap-5 lg:gap-7 text-xs font-bold text-[#2B2B2B] whitespace-nowrap">
+                  {currentNav.menuItems
+                    .filter((item) => item.enabled !== false)
+                    .map((item) => (
+                      <div
+                        key={item.id}
+                        className={`flex items-center gap-1 cursor-default ${
+                          item.isHighlight
+                            ? 'text-[#D6403B] font-extrabold'
+                            : 'hover:text-[#D6403B]'
+                        }`}
+                      >
+                        {item.badge && <span className="text-xs">{item.badge}</span>}
+                        <span>{item.labelEn || item.labelBn || "(Unlabeled Link)"}</span>
+                      </div>
+                    ))}
+                  {currentNav.menuItems.filter((item) => item.enabled !== false).length === 0 && (
+                    <span className="text-xs text-gray-400 italic">কোনো মেনু লিঙ্ক সক্রিয় নেই</span>
+                  )}
                 </div>
 
-                {/* Right Actions: Wishlist, Login, Cart */}
-                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                {/* Right Actions: Small Search Icon, Wishlist, Login, Cart */}
+                <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                  {/* Small Search Bar (Icon Only) */}
+                  <div
+                    className="p-2 rounded-xl text-[#2B2B2B] hover:bg-[#FAF7F2] hover:text-[#D6403B] cursor-default flex items-center justify-center"
+                    title="ছোট সার্চ আইকন"
+                  >
+                    <Search className="w-4 h-4" />
+                  </div>
+
                   <div className="p-2 rounded-xl text-[#6B6B6B] hidden md:flex items-center justify-center">
                     <Heart className="w-4 h-4" />
                   </div>
@@ -1102,30 +1122,6 @@ export function SiteSettingsManager() {
                       <span className="text-[11px] font-extrabold">৳১,৬০০</span>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* 3. Secondary Category Menu Bar (Exact replica showing currentNav.menuItems) */}
-              <div className="bg-[#FAF7F2] px-4 py-2 border-t border-[#EFE9E0] overflow-x-auto scrollbar-none">
-                <div className="flex items-center gap-5 sm:gap-7 text-xs font-bold text-[#2B2B2B] whitespace-nowrap">
-                  {currentNav.menuItems
-                    .filter((item) => item.enabled !== false)
-                    .map((item) => (
-                      <div
-                        key={item.id}
-                        className={`flex items-center gap-1 cursor-default ${
-                          item.isHighlight
-                            ? 'text-[#D6403B] font-extrabold'
-                            : 'hover:text-[#D6403B]'
-                        }`}
-                      >
-                        {item.badge && <span className="text-xs">{item.badge}</span>}
-                        <span>{item.labelBn || item.labelEn || "(নামবিহীন লিঙ্ক)"}</span>
-                      </div>
-                    ))}
-                  {currentNav.menuItems.filter((item) => item.enabled !== false).length === 0 && (
-                    <span className="text-xs text-gray-400 italic">কোনো মেনু লিঙ্ক সক্রিয় নেই</span>
-                  )}
                 </div>
               </div>
             </div>
@@ -1156,7 +1152,7 @@ export function SiteSettingsManager() {
                   title="স্টোরফ্রন্টের মূল ৮টি ডিফল্ট লিঙ্ক ফিরিয়ে আনুন"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span>ডিফল্ট ৮টি লিঙ্ক</span>
+                  <span>ডিফল্ট লিঙ্কসমূহ</span>
                 </Button>
                 <Button
                   type="button"

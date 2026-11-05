@@ -1,17 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   ShoppingBag,
   Search,
   PhoneCall,
   Heart,
-  Gift,
   Truck,
   User,
   MessageCircle,
+  X,
+  Menu,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { formatBDT } from '@/lib/utils';
@@ -26,6 +27,13 @@ interface HeaderProps {
   settings?: SiteSettings;
 }
 
+const fallbackNavItems = [
+  { id: 'nav-home', labelBn: 'Home', labelEn: 'Home', href: '/' },
+  { id: 'nav-about', labelBn: 'About', labelEn: 'About', href: '/about' },
+  { id: 'nav-contact', labelBn: 'Contact', labelEn: 'Contact', href: '/contact' },
+  { id: 'nav-shop', labelBn: 'Shop', labelEn: 'Shop', href: '/shop' },
+];
+
 export function Header({
   locale = 'bn',
   onToggleLocale,
@@ -35,9 +43,16 @@ export function Header({
 }: HeaderProps) {
   const { cartCount, subtotal } = useCart();
   const router = useRouter();
+  const pathname = usePathname();
+
   const [internalLocale, setInternalLocale] = useState<'bn' | 'en'>(locale);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(propSettings || null);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (propSettings) {
@@ -54,13 +69,52 @@ export function Header({
     }
   }, [propSettings]);
 
-  const toggle = () => {
-    if (onToggleLocale) {
-      onToggleLocale();
-    } else {
-      setInternalLocale((prev) => (prev === 'bn' ? 'en' : 'bn'));
+  // Focus input when search opens
+  useEffect(() => {
+    if (isSearchOpen) {
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [isSearchOpen]);
+
+  // Close search & mobile menu on route change
+  useEffect(() => {
+    setIsSearchOpen(false);
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Close search on Escape or outside click
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsSearchOpen(false);
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        isSearchOpen &&
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(e.target as Node)
+      ) {
+        // Only close if click is not on the search toggle button
+        const target = e.target as HTMLElement;
+        if (!target.closest('[data-search-toggle]')) {
+          setIsSearchOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSearchOpen]);
 
   const activeLocale = onToggleLocale ? locale : internalLocale;
   const isBn = activeLocale === 'bn';
@@ -86,18 +140,30 @@ export function Header({
     siteSettings?.contact?.whatsapp ||
     BRAND_CONFIG.defaultWhatsapp;
   const showTrackOrder = siteSettings?.nav?.showTrackOrder !== false;
-  const showContact = siteSettings?.nav?.showContact !== false;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/shop?q=${encodeURIComponent(searchQuery.trim())}`);
+      setIsSearchOpen(false);
     }
   };
 
+  const isLinkActive = (href: string) => {
+    if (!pathname) return false;
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
+  };
+
+  // Nav items from settings or fallback
+  const navItems =
+    Array.isArray(siteSettings?.nav?.menuItems) && siteSettings.nav.menuItems.length > 0
+      ? siteSettings.nav.menuItems.filter((item) => item.enabled !== false)
+      : fallbackNavItems;
+
   return (
     <>
-      {/* 1. Top Bar (Hotline, WhatsApp, Track Order, Contact Us) */}
+      {/* 1. Top Bar (Hotline, WhatsApp, Track Order) */}
       {showTopBar && (
         <div className="bg-[#2B2B2B] text-white py-1.5 px-3 sm:px-4 text-xs font-medium border-b border-black/10">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
@@ -125,7 +191,7 @@ export function Header({
               </a>
             </div>
 
-            {/* Right: Track Order & Contact Us */}
+            {/* Right: Track Order */}
             <div className="flex items-center gap-2.5 sm:gap-3 text-xs text-[#CCCCCC] shrink-0">
               {showTrackOrder && (
                 <Link
@@ -136,75 +202,91 @@ export function Header({
                   <span>{isBn ? 'অর্ডার ট্র্যাক করুন' : 'Track Order'}</span>
                 </Link>
               )}
-
-              {showTrackOrder && showContact && (
-                <span className="text-white/30">•</span>
-              )}
-
-              {showContact && (
-                <Link
-                  href="/contact"
-                  className="flex items-center gap-1 hover:text-white transition-colors text-[11px] sm:text-xs"
-                >
-                  <PhoneCall className="w-3.5 h-3.5 text-[#4ADE80]" />
-                  <span>Contact Us</span>
-                </Link>
-              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* 2. Main Branding & Search Header: logo, wide search bar, wishlist, login, cart with total */}
-      <header className="sticky top-0 z-40 bg-white border-b border-[#EFE9E0] shadow-xs transition-all">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-3">
-          {/* Brand Logo - CraftyKidsCo */}
-          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0 group">
-            {headerLogo ? (
-              <img
-                src={headerLogo}
-                alt={logoAlt}
-                className="h-8 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105 shrink-0"
-              />
-            ) : (
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#D6403B] flex items-center justify-center text-white font-extrabold text-lg sm:text-xl shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                C
-              </div>
-            )}
-            {showBrandText && (
-              <span className="font-heading font-black text-lg sm:text-2xl text-[#2B2B2B] tracking-tight leading-none min-w-0">
-                {brandName}
-              </span>
-            )}
-          </Link>
-
-          {/* Desktop Wide Search Bar */}
-          <form
-            onSubmit={handleSearchSubmit}
-            className="flex-1 max-w-xl mx-2 hidden sm:flex relative items-center"
-          >
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isBn ? 'খেলনা, মোমের রঙ বা আর্ট কিট খুঁজুন...' : 'Search crayons, clay or art kits...'}
-              className="w-full pl-4 pr-11 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-sm text-[#2B2B2B] placeholder-[#6B6B6B] focus:bg-white focus:outline-none focus:border-[#D6403B] focus:ring-2 focus:ring-[#D6403B]/15 transition-all"
-            />
+      {/* 2. Main Navigation Bar (Single unified row: Logo, Nav Links, Small Search Icon, Wishlist, Account, Cart) */}
+      <header className="sticky top-0 z-40 bg-white border-b border-[#EFE9E0] shadow-xs transition-all relative">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-4">
+          {/* Left: Mobile Hamburger Toggle + Brand Logo */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
-              type="submit"
-              className="absolute right-1.5 p-2 rounded-lg bg-[#D6403B] text-white hover:bg-[#BF3430] transition-colors cursor-pointer"
+              type="button"
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              className="md:hidden p-2 -ml-1 rounded-xl text-[#2B2B2B] hover:bg-[#FAF7F2] transition-colors cursor-pointer"
+              aria-label="Toggle navigation menu"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
+            <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0 group">
+              {headerLogo ? (
+                <img
+                  src={headerLogo}
+                  alt={logoAlt}
+                  className="h-8 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105 shrink-0"
+                />
+              ) : (
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#D6403B] flex items-center justify-center text-white font-extrabold text-lg sm:text-xl shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                  C
+                </div>
+              )}
+              {showBrandText && (
+                <span className="font-heading font-black text-lg sm:text-2xl text-[#2B2B2B] tracking-tight leading-none min-w-0">
+                  {brandName}
+                </span>
+              )}
+            </Link>
+          </div>
+
+          {/* Center: Desktop Navigation Links (Home, About, Contact, Shop) on the SAME LINE */}
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8 font-bold text-sm text-[#2B2B2B]">
+            {navItems.map((item) => {
+              const label = item.labelEn || item.labelBn;
+              const active = isLinkActive(item.href);
+              return (
+                <Link
+                  key={item.id || item.href}
+                  href={item.href}
+                  className={`relative py-1.5 transition-colors whitespace-nowrap ${
+                    active
+                      ? 'text-[#D6403B] font-extrabold'
+                      : 'text-[#2B2B2B] hover:text-[#D6403B]'
+                  }`}
+                >
+                  <span>{label}</span>
+                  {active && (
+                    <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#D6403B] rounded-full" />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Right Actions: Small Search (Icon only), Wishlist, Login/Account, Cart */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* Search Icon Button (Small, Icon Only) */}
+            <button
+              type="button"
+              data-search-toggle="true"
+              onClick={() => setIsSearchOpen((prev) => !prev)}
+              className={`p-2 sm:p-2.5 rounded-xl transition-colors cursor-pointer flex items-center justify-center ${
+                isSearchOpen
+                  ? 'bg-[#FAF7F2] text-[#D6403B]'
+                  : 'text-[#2B2B2B] hover:bg-[#FAF7F2] hover:text-[#D6403B]'
+              }`}
+              title={isBn ? 'অনুসন্ধান' : 'Search'}
               aria-label="Search"
             >
-              <Search className="w-3.5 h-3.5" />
+              {isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
             </button>
-          </form>
 
-          {/* Right Actions: Wishlist, Login, Cart with Total */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Wishlist */}
             <Link
               href="/shop"
-              className="p-2.5 rounded-xl hover:bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#D6403B] transition-colors hidden md:flex items-center justify-center"
+              className="p-2 sm:p-2.5 rounded-xl hover:bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#D6403B] transition-colors hidden sm:flex items-center justify-center"
               title={isBn ? 'উইশলিস্ট' : 'Wishlist'}
             >
               <Heart className="w-5 h-5" />
@@ -213,7 +295,7 @@ export function Header({
             {/* Login / Account */}
             <Link
               href="/account"
-              className="p-2.5 rounded-xl hover:bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#D6403B] transition-colors hidden sm:flex items-center justify-center gap-1.5 text-xs font-bold"
+              className="p-2 sm:p-2.5 rounded-xl hover:bg-[#FAF7F2] text-[#6B6B6B] hover:text-[#D6403B] transition-colors hidden sm:flex items-center justify-center gap-1.5 text-xs font-bold"
               title={isBn ? 'লগইন বা অ্যাকাউন্ট' : 'Login / Account'}
             >
               <User className="w-5 h-5" />
@@ -223,7 +305,7 @@ export function Header({
             {/* Cart with Total */}
             <Link
               href="/cart"
-              className="flex items-center gap-2 py-2 px-3 sm:px-3.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white shadow-xs transition-all shrink-0 cursor-pointer"
+              className="flex items-center gap-2 py-2 px-3 sm:px-3.5 rounded-xl bg-[#D6403B] hover:bg-[#BF3430] text-white shadow-xs transition-all shrink-0 cursor-pointer ml-1"
             >
               <div className="relative">
                 <ShoppingBag className="w-4 h-4" />
@@ -241,54 +323,92 @@ export function Header({
           </div>
         </div>
 
-        {/* Mobile Search Input (< sm) */}
-        <div className="px-3 pb-2.5 sm:hidden">
-          <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isBn ? 'খেলনা, মোমের রঙ বা আর্ট কিট খুঁজুন...' : 'Search crayons, clay or art kits...'}
-              className="w-full pl-3.5 pr-10 py-2 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-sm text-[#2B2B2B] focus:bg-white focus:outline-none focus:border-[#D6403B] transition-all"
-            />
-            <button
-              type="submit"
-              className="absolute right-1 p-1.5 rounded-lg bg-[#D6403B] text-white hover:bg-[#BF3430] transition-colors"
-              aria-label="Search"
-            >
-              <Search className="w-3.5 h-3.5" />
-            </button>
-          </form>
-        </div>
+        {/* 3. Dropdown Search Bar (Revealed when Small Search Icon is clicked) */}
+        {isSearchOpen && (
+          <div
+            ref={searchContainerRef}
+            className="absolute top-full left-0 right-0 bg-white border-b border-[#EFE9E0] shadow-md px-4 py-3 z-50 transition-all"
+          >
+            <div className="max-w-2xl mx-auto">
+              <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+                <Search className="w-4 h-4 text-[#6B6B6B] absolute left-3.5 pointer-events-none" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={
+                    isBn
+                      ? 'খেলনা, মোমের রঙ বা আর্ট কিট খুঁজুন...'
+                      : 'Search crayons, clay or art kits...'
+                  }
+                  className="w-full pl-10 pr-24 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] text-sm text-[#2B2B2B] placeholder-[#6B6B6B] focus:bg-white focus:outline-none focus:border-[#D6403B] focus:ring-2 focus:ring-[#D6403B]/15 transition-all"
+                />
+                <div className="absolute right-1.5 flex items-center gap-1">
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-lg bg-[#D6403B] hover:bg-[#BF3430] text-white text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    {isBn ? 'খুঁজুন' : 'Search'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsSearchOpen(false)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-[#6B6B6B] hover:text-[#2B2B2B] cursor-pointer"
+                    aria-label="Close search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
-        {/* 3. Secondary Category Menu Bar */}
-        <div className="bg-[#FAF7F2] border-t border-[#EFE9E0] overflow-x-auto scrollbar-none">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-6 sm:gap-8 h-10 text-xs sm:text-sm font-bold text-[#2B2B2B] whitespace-nowrap">
-            {(Array.isArray(siteSettings?.nav?.menuItems)
-              ? siteSettings.nav.menuItems
-              : defaultSiteSettings.nav!.menuItems
-            )
-              .filter((item) => item.enabled !== false)
-              .map((item) => {
-                const label = isBn ? item.labelBn : item.labelEn;
-                const isHighlight = item.isHighlight;
+        {/* 4. Mobile Navigation Drawer (For mobile screens < md) */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-[#EFE9E0] bg-white px-4 py-3 space-y-2 shadow-lg">
+            <div className="space-y-1">
+              {navItems.map((item) => {
+                const label = item.labelEn || item.labelBn;
+                const active = isLinkActive(item.href);
                 return (
                   <Link
-                    key={item.id}
+                    key={item.id || item.href}
                     href={item.href}
-                    className={`flex items-center gap-1.5 transition-colors ${
-                      isHighlight
-                        ? 'text-[#D6403B] hover:text-[#BF3430] font-extrabold'
-                        : 'hover:text-[#D6403B]'
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`block px-3 py-2 rounded-xl text-sm font-bold transition-colors ${
+                      active
+                        ? 'bg-[#D6403B]/10 text-[#D6403B]'
+                        : 'text-[#2B2B2B] hover:bg-[#FAF7F2]'
                     }`}
                   >
-                    {item.badge && <span className="text-xs">{item.badge}</span>}
-                    <span>{label}</span>
+                    {label}
                   </Link>
                 );
               })}
+            </div>
+
+            <div className="pt-2 border-t border-[#EFE9E0] flex items-center justify-between text-xs font-semibold text-[#6B6B6B] px-1">
+              <Link
+                href="/account"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-1.5 hover:text-[#D6403B] py-1"
+              >
+                <User className="w-4 h-4" />
+                <span>{isBn ? 'লগইন / অ্যাকাউন্ট' : 'Account'}</span>
+              </Link>
+              <Link
+                href="/track"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-1.5 hover:text-[#D6403B] py-1"
+              >
+                <Truck className="w-4 h-4 text-[#5BC0EB]" />
+                <span>{isBn ? 'অর্ডার ট্র্যাক' : 'Track Order'}</span>
+              </Link>
+            </div>
           </div>
-        </div>
+        )}
       </header>
     </>
   );

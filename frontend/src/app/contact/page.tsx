@@ -110,7 +110,7 @@ export default function ContactPage() {
         <div className="text-center max-w-2xl mx-auto space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#D6403B]/10 text-[#D6403B] font-bold text-xs">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>আমরা আপনার সহায়তায় সদা প্রস্তুত</span>
+            <span>{pageData.badge || 'আমরা আপনার সহায়তায় সদা প্রস্তুত'}</span>
           </div>
           <h1 className="font-heading font-black text-2xl sm:text-4xl text-[#2B2B2B] tracking-tight">
             {pageData.headline || 'যোগাযোগ করুন'}
@@ -189,10 +189,10 @@ export default function ContactPage() {
           <div className="lg:col-span-7 bg-white rounded-[28px] border border-[#EFE9E0] p-6 sm:p-8 shadow-sm">
             <div className="space-y-1 mb-6">
               <h2 className="font-heading font-black text-xl text-[#2B2B2B]">
-                আমাদের বার্তা পাঠান (Send Us a Message)
+                {pageData.formTitle || 'আমাদের বার্তা পাঠান (Send Us a Message)'}
               </h2>
               <p className="text-xs sm:text-sm text-[#6B6B6B]">
-                আপনার মতামত বা প্রশ্ন লিখে পাঠান, আমাদের কাস্টমার কেয়ার টিম দ্রুত আপনার সাথে যোগাযোগ করবে।
+                {pageData.formSubtitle || 'আপনার মতামত বা প্রশ্ন লিখে পাঠান, আমাদের কাস্টমার কেয়ার টিম দ্রুত আপনার সাথে যোগাযোগ করবে।'}
               </p>
             </div>
 

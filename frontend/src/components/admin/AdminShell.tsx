@@ -38,8 +38,6 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     title: 'OVERVIEW',
     items: [
       { id: 'dashboard', label: 'Dashboard', allowedRoles: ['admin', 'order_handler', 'product_manager'] },
-      { id: 'reports', label: 'Reports', allowedRoles: ['admin'] },
-      { id: 'expenses', label: 'Expense & P&L', allowedRoles: ['admin'] },
     ],
   },
   {
@@ -64,21 +62,16 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   {
     title: 'SHIPPING',
     items: [
-      { id: 'steadfast', label: 'Steadfast courier', allowedRoles: ['admin'] },
       { id: 'delivery-charges', label: 'Delivery charges', allowedRoles: ['admin'] },
-      { id: 'print-settings', label: 'Print & stickers', allowedRoles: ['admin', 'order_handler'] },
       { id: 'block-list', label: 'Block list', allowedRoles: ['admin'] },
     ],
   },
   {
     title: 'CONTENT',
     items: [
-      { id: 'reviews', label: 'Photo reviews', allowedRoles: ['admin', 'order_handler'] },
       { id: 'messages', label: 'Messages', allowedRoles: ['admin', 'order_handler'] },
       { id: 'page-editor', label: 'Page editor', allowedRoles: ['admin'] },
       { id: 'home-sections', label: 'Home sections', allowedRoles: ['admin'] },
-      { id: 'faq-policies', label: 'FAQ and policies', allowedRoles: ['admin'] },
-      { id: 'blog', label: 'Blog', allowedRoles: ['admin'] },
     ],
   },
   {
@@ -97,15 +90,6 @@ export const TAB_METADATA: Record<string, { title: string; helper: string; mainA
     title: 'Dashboard',
     helper: "Monitor today's sales, pending orders, and urgent tasks",
     mainAction: { label: '+ Create order', action: 'create_order' },
-  },
-  reports: {
-    title: 'Reports',
-    helper: 'Financial summaries, revenue trends, and return analytics',
-  },
-  expenses: {
-    title: 'Expense & P&L Manager',
-    helper: 'Record operational costs (Meta ads, packaging, salaries) and track real net business profit',
-    mainAction: { label: '+ Add Expense', action: 'add_expense' },
   },
   orders: {
     title: 'Orders',

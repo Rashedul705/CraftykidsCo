@@ -577,7 +577,7 @@ export function DashboardView({
 
               {/* Item 4: Courier sync errors */}
               <div
-                onClick={() => onNavigateTab('steadfast')}
+                onClick={() => onNavigateTab('orders')}
                 className="group flex items-center justify-between p-3 rounded-xl bg-[#FAF7F2] hover:bg-[#DDF3E6]/40 border border-[#EFE9E0] hover:border-[#DDF3E6] transition-all cursor-pointer"
               >
                 <div className="space-y-0.5">

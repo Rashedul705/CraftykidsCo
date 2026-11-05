@@ -39,6 +39,7 @@ import {
   PhoneForwarded,
   PhoneMissed,
   PhoneOff,
+  RefreshCw,
 } from 'lucide-react';
 import { OrderRecord, getAllProducts } from '@/lib/store';
 import { SampleProduct } from '@/lib/sample-data';
@@ -204,6 +205,51 @@ export default function OrdersManager({
     message: '',
     action: () => {},
   });
+
+  // Steadfast Courier States & Auto-Sync
+  const [isSyncingSteadfast, setIsSyncingSteadfast] = useState(false);
+  const [steadfastBalance, setSteadfastBalance] = useState<number | null>(null);
+  const [isFetchingBalance, setIsFetchingBalance] = useState(false);
+
+  const fetchBalance = async () => {
+    try {
+      setIsFetchingBalance(true);
+      const res = await fetch('/api/courier/balance');
+      const data = await res.json();
+      if (data?.success && data.balance !== undefined) {
+        setSteadfastBalance(data.balance);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsFetchingBalance(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBalance();
+  }, []);
+
+  const handleSyncSteadfast = async () => {
+    try {
+      setIsSyncingSteadfast(true);
+      const res = await fetch('/api/courier/sync?source=manual', { method: 'POST' });
+      const data = await res.json();
+      if (data?.success) {
+        success(
+          `Steadfast sync complete: ${data.scannedCount || 0} parcels scanned, ${data.updatedCount || 0} updated.`
+        );
+        onRefresh();
+        fetchBalance();
+      } else {
+        error(data?.message || 'Steadfast sync failed.');
+      }
+    } catch (err: any) {
+      error('Server error: Failed to sync with Steadfast.');
+    } finally {
+      setIsSyncingSteadfast(false);
+    }
+  };
 
   // Manual Order Creation Form State
   const [newOrderCustomer, setNewOrderCustomer] = useState('');
@@ -1396,11 +1442,45 @@ export default function OrdersManager({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          {/* Steadfast Balance Pill */}
+          {steadfastBalance !== null && (
+            <div
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FAF7F2] border border-[#EFE9E0] text-[#2B2B2B] shadow-2xs"
+              title="Steadfast Account Balance"
+            >
+              <Truck className="w-3.5 h-3.5 text-[#D6403B]" />
+              <span>৳{steadfastBalance.toLocaleString()}</span>
+              <button
+                type="button"
+                onClick={fetchBalance}
+                disabled={isFetchingBalance}
+                title="Refresh balance"
+                className="hover:text-[#D6403B] cursor-pointer text-xs ml-0.5"
+              >
+                <RefreshCw className={`w-3 h-3 ${isFetchingBalance ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          )}
+
+          {/* Sync Steadfast Button */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleSyncSteadfast}
+            disabled={isSyncingSteadfast}
+            className="flex items-center gap-1.5 text-xs font-bold"
+            title="Sync delivery statuses with Steadfast Courier"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSteadfast ? 'animate-spin' : ''}`} />
+            <span>{isSyncingSteadfast ? 'Syncing...' : 'Sync Steadfast'}</span>
+          </Button>
+
           <Button variant="secondary" size="sm" onClick={handleExportCSV}>
             <Download className="w-3.5 h-3.5" />
             <span>Export</span>
           </Button>
+
           <Button variant="primary" size="sm" onClick={() => setIsCreateModalOpen(true)}>
             <Plus className="w-4 h-4" />
             <span>Create order</span>

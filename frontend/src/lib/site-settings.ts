@@ -287,12 +287,15 @@ export interface PixelSettings {
 
 export interface CustomPagesSettings {
   contact: {
+    badge?: string;
     headline: string;
     subtitle: string;
     phone: string;
     whatsapp: string;
     location: string;
     openingHours: string;
+    formTitle?: string;
+    formSubtitle?: string;
     noticeBannerText: string;
   };
   about: {
@@ -680,12 +683,15 @@ export const defaultSiteSettings: SiteSettings = {
   },
   customPages: {
     contact: {
+      badge: 'আমরা আপনার সহায়তায় সদা প্রস্তুত',
       headline: 'যোগাযোগ করুন',
       subtitle: 'শিশুদের নিরাপদ মোমের রঙ, খেলনা বা আপনার অর্ডার সংক্রান্ত যেকোনো তথ্যের জন্য সরাসরি আমাদের সাথে যুক্ত থাকুন।',
       phone: '01731-376498',
       whatsapp: '01731-376498',
       location: 'তেরখাদিয়া, রাজপাড়া, রাজশাহী।',
       openingHours: 'ওপেন ২৪ ঘণ্টা',
+      formTitle: 'আমাদের বার্তা পাঠান (Send Us a Message)',
+      formSubtitle: 'আপনার মতামত বা প্রশ্ন লিখে পাঠান, আমাদের কাস্টমার কেয়ার টিম দ্রুত আপনার সাথে যোগাযোগ করবে।',
       noticeBannerText: 'পণ্য নির্বাচন, বয়স উপযোগী খেলনার পরামর্শ বা যেকোনো প্রশ্নের সরাসরি সমাধানের জন্য আমাদের WhatsApp এ মেসেজ দিন।',
     },
     about: {
@@ -768,14 +774,10 @@ export const defaultSiteSettings: SiteSettings = {
     hotline: '01731-376498',
     whatsapp: '01731-376498',
     menuItems: [
-      { id: 'nav-home', labelBn: 'হোম', labelEn: 'Home', href: '/', isHighlight: true, enabled: true },
-      { id: 'nav-crayons', labelBn: 'মোমের রঙ', labelEn: 'Wax Crayons', href: '/category/wax-crayons', enabled: true },
-      { id: 'nav-dough', labelBn: 'ক্লে ও ডো', labelEn: 'Clay & Dough', href: '/category/play-dough-clay', enabled: true },
-      { id: 'nav-sketchbooks', labelBn: 'ড্রয়িং খাতা', labelEn: 'Drawing Books', href: '/category/sketchbooks', enabled: true },
-      { id: 'nav-wooden', labelBn: 'কাঠের খেলনা', labelEn: 'Wooden Toys', href: '/category/wooden-toys', enabled: true },
-      { id: 'nav-puzzles', labelBn: 'পাজল গেম', labelEn: 'Puzzles', href: '/category/puzzles', enabled: true },
-      { id: 'nav-art', labelBn: 'আর্ট কিট', labelEn: 'Art Kits', href: '/category/art-kits', enabled: true },
-      { id: 'nav-offers', labelBn: 'অফারসমূহ', labelEn: 'Offers', href: '/shop', badge: '🎁', isHighlight: true, enabled: true },
+      { id: 'nav-home', labelBn: 'Home', labelEn: 'Home', href: '/', enabled: true },
+      { id: 'nav-about', labelBn: 'About', labelEn: 'About', href: '/about', enabled: true },
+      { id: 'nav-contact', labelBn: 'Contact', labelEn: 'Contact', href: '/contact', enabled: true },
+      { id: 'nav-shop', labelBn: 'Shop', labelEn: 'Shop', href: '/shop', enabled: true },
     ],
     logoUrl: '',
   },

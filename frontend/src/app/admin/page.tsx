@@ -61,21 +61,16 @@ import { DeliveryChargesManager } from '@/components/admin/DeliveryChargesManage
 import { StaffRolesManager } from '@/components/admin/StaffRolesManager';
 import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
 import { SiteSettingsManager } from '@/components/admin/SiteSettingsManager';
-import { PrintSettingsManager } from '@/components/admin/PrintSettingsManager';
 import ModeratorsManager from '@/components/admin/ModeratorsManager';
 import { TAB_PERMISSION_MAP } from '@/lib/permissions';
 import Can from '@/components/auth/Can';
 import { MessagesManager } from '@/components/admin/MessagesManager';
 import { PagesContentEditor } from '@/components/admin/PagesContentEditor';
-import ReviewsModerationManager from '@/components/admin/ReviewsModerationManager';
-import ExpenseManager from '@/components/admin/ExpenseManager';
 import { AdminShell, AdminRole } from '@/components/admin/AdminShell';
 import { StatusPill } from '@/components/ui/Pill';
 
 const VALID_ADMIN_TABS = [
   'dashboard',
-  'reports',
-  'expenses',
   'orders',
   'incomplete-orders',
   'customers',
@@ -85,13 +80,8 @@ const VALID_ADMIN_TABS = [
   'categories',
   'bundles',
   'stock',
-  'steadfast',
   'delivery-charges',
-  'print-settings',
   'block-list',
-  'reviews',
-  'blog',
-  'faq-policies',
   'home-sections',
   'messages',
   'page-editor',
@@ -107,7 +97,6 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
   const [productViewMode, setProductViewMode] = useState<'list' | 'add' | 'edit'>('list');
-  const [triggerAddExpense, setTriggerAddExpense] = useState<boolean>(false);
 
   // Unified Tab Change Handler that keeps URL & localStorage in sync
   const handleNavChange = (tabId: string, customModeOrFilter?: any) => {
@@ -290,7 +279,9 @@ export default function AdminDashboardPage() {
 
       const targetTab = tabFromUrl || (hashFromUrl && VALID_ADMIN_TABS.includes(hashFromUrl) ? hashFromUrl : savedTab);
 
-      if (targetTab && VALID_ADMIN_TABS.includes(targetTab)) {
+      if (targetTab === 'steadfast') {
+        setActiveNav('orders');
+      } else if (targetTab && VALID_ADMIN_TABS.includes(targetTab)) {
         setActiveNav(targetTab);
         if (!tabFromUrl && targetTab !== 'dashboard') {
           const newUrl = new URL(window.location.href);
@@ -307,7 +298,9 @@ export default function AdminDashboardPage() {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const tab = urlParams.get('tab') || 'dashboard';
-        if (VALID_ADMIN_TABS.includes(tab)) {
+        if (tab === 'steadfast') {
+          setActiveNav('orders');
+        } else if (VALID_ADMIN_TABS.includes(tab)) {
           setActiveNav(tab);
         }
       } catch {}
@@ -1012,8 +1005,6 @@ export default function AdminDashboardPage() {
           handleNavChange('orders');
         } else if (actionKey === 'add_category') {
           setShowAddCategoryModal(true);
-        } else if (actionKey === 'add_expense') {
-          setTriggerAddExpense(true);
         }
       }}
       onLogout={handleLogout}
@@ -1681,186 +1672,6 @@ export default function AdminDashboardPage() {
           />
         )}
 
-        {/* =====================================================================
-            VIEW 5: STEADFAST COURIER AUTOMATION & AUTO-SYNC
-           ===================================================================== */}
-        {activeNav === 'steadfast' && (
-          <div className="bg-white rounded-2xl border border-[#EFEAE2] p-6 shadow-xs space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EFEAE2] gap-3">
-              <div>
-                <h3 className="font-heading font-black text-base text-[#1A1A1A] flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-[#D32F2F]" /> Steadfast Courier Automation &amp; Status Auto-Sync
-                </h3>
-                <p className="text-xs text-[#6B6B6B] mt-0.5">
-                  অফিসিয়াল Steadfast Live Gateway (Packzy API v1) এর সাথে সংযুক্ত। ওয়েবহুক ও ব্যাকগ্রাউন্ড ওয়ার্কারের মাধ্যমে ডেলিভারি স্ট্যাটাস স্বয়ংক্রিয়ভাবে সিঙ্ক হয়।
-                </p>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={handleSyncSteadfast}
-                  disabled={isSyncingSteadfast}
-                  className="px-4 py-2 rounded-xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white flex items-center gap-1.5 text-xs font-bold shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSteadfast ? 'animate-spin' : ''}`} />
-                  {isSyncingSteadfast ? 'সিঙ্ক হচ্ছে...' : 'স্টিডফাস্ট স্ট্যাটাস অটো-সিঙ্ক'}
-                </button>
-
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#E8F5E9] text-[#2E7D32] border border-[#C8E6C9]">
-                  <span className="w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse"></span>
-                  <span>Steadfast Live Connected</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#F3F4F6] text-[#1F2937] border border-[#E5E7EB]">
-                  <span>ব্যালেন্স: ৳{steadfastBalance !== null ? steadfastBalance.toLocaleString() : '...'}</span>
-                  <button
-                    onClick={fetchSteadfastBalance}
-                    disabled={isFetchingSteadfastBalance}
-                    title="ব্যালেন্স রিফ্রেশ করুন"
-                    className="hover:text-[#D32F2F] cursor-pointer text-xs"
-                  >
-                    🔄
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Sync Summary Alert */}
-            {syncSummary && (
-              <div className="p-3.5 rounded-xl bg-[#E0F2FE] border border-[#BAE6FD] text-xs font-bold text-[#0369A1] flex items-center justify-between">
-                <span>
-                  সর্বশেষ সিঙ্ক: {syncSummary.time} &bull; স্ক্যানকৃত পার্সেল: {syncSummary.scanned}টি &bull; স্ট্যাটাস আপডেট হয়েছে: {syncSummary.updated}টি
-                </span>
-                <span className="text-[11px] font-normal text-[#0369A1]">স্বয়ংক্রিয়ভাবে ডাটাবেজ আপডেট সম্পন্ন</span>
-              </div>
-            )}
-
-            {/* Quick Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EFEAE2]">
-                <span className="text-[11px] text-[#6B6B6B] block">মোট অর্ডার</span>
-                <strong className="text-lg font-heading font-black text-[#1A1A1A]">{orders.length}</strong>
-              </div>
-              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EFEAE2]">
-                <span className="text-[11px] text-[#6B6B6B] block">Steadfast ডিসপ্যাচড</span>
-                <strong className="text-lg font-heading font-black text-[#0369A1]">
-                  {orders.filter((o) => o.consignmentId).length}
-                </strong>
-              </div>
-              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EFEAE2]">
-                <span className="text-[11px] text-[#6B6B6B] block">কুরিয়ারে চলমান</span>
-                <strong className="text-lg font-heading font-black text-[#B76E00]">
-                  {orders.filter((o) => o.status === 'SHIPPED' && o.consignmentId).length}
-                </strong>
-              </div>
-              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#EFEAE2]">
-                <span className="text-[11px] text-[#6B6B6B] block">ডেলিভারি সম্পন্ন</span>
-                <strong className="text-lg font-heading font-black text-[#2E7D32]">
-                  {orders.filter((o) => o.status === 'DELIVERED').length}
-                </strong>
-              </div>
-            </div>
-
-            {/* WEBHOOK SETUP BANNER */}
-            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFEAE2] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <span className="text-xs font-black text-[#2B2B2B] flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#D32F2F]"></span>
-                  Steadfast Inbound Webhook Listener (রিয়েল-টাইম অটো ডেলিভারি)
-                </span>
-                <p className="text-[11px] text-[#6B6B6B]">
-                  Steadfast মার্চেন্ট পোর্টালে এই Webhook URL টি যুক্ত করলে পার্সেল ডেলিভারি বা রিটার্ন হলে স্বয়ংক্রিয়ভাবে অর্ডার স্ট্যাটাস আপডেট হয়ে যাবে।
-                </p>
-                <code className="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-[#EFEAE2] text-[#D32F2F] inline-block">
-                  {typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/steadfast` : 'https://craftykidsco.com/api/webhooks/steadfast'}
-                </code>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const url = typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/steadfast` : 'https://craftykidsco.com/api/webhooks/steadfast';
-                  navigator.clipboard.writeText(url);
-                  setCopiedWebhook(true);
-                  setTimeout(() => setCopiedWebhook(false), 2500);
-                }}
-                className="px-3 py-1.5 rounded-xl border border-[#EFEAE2] bg-white hover:bg-[#FAF7F2] text-xs font-bold text-[#2B2B2B] shrink-0 flex items-center gap-1.5 transition-colors"
-              >
-                {copiedWebhook ? <Check className="w-3.5 h-3.5 text-[#2E7D32]" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedWebhook ? 'কপি হয়েছে!' : 'Webhook URL কপি করুন'}
-              </button>
-            </div>
-
-            <div className="divide-y divide-[#EFEAE2]">
-              {orders.map((ord, idx) => (
-                <div key={ord.id || ord.orderNumber || `stf-ord-${idx}`} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-[#D32F2F] block text-sm">
-                        {ord.orderNumber} &bull; {ord.customerName}
-                      </span>
-                      <StatusPill
-                        variant={
-                          ord.status === 'DELIVERED'
-                            ? 'green'
-                            : ord.status === 'SHIPPED'
-                            ? 'blue'
-                            : ord.status === 'CANCELLED' || ord.status === 'RETURNED'
-                            ? 'red'
-                            : 'yellow'
-                        }
-                        dot
-                        size="sm"
-                      >
-                        {ord.status}
-                      </StatusPill>
-                    </div>
-                    <span className="text-[#6B6B6B] block mt-0.5">
-                      {ord.customerPhone} &bull; {ord.district} &bull; COD: ৳{ord.totalAmount}
-                    </span>
-                    <span className="text-[11px] text-[#8A8A8A] block mt-0.5">
-                      {ord.fullAddress}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {ord.consignmentId ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleCheckSingleOrderStatus(ord)}
-                          disabled={singleCheckingId === (ord.id || ord.orderNumber)}
-                          className="px-3 py-1.5 rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] text-[#0369A1] font-bold hover:bg-[#E0F2FE] transition-colors flex items-center gap-1"
-                          title="স্টিডফাস্ট থেকে লাইভ স্ট্যাটাস চেক করুন"
-                        >
-                          <RefreshCw className={`w-3 h-3 ${singleCheckingId === (ord.id || ord.orderNumber) ? 'animate-spin' : ''}`} />
-                          <span>চেক করুন</span>
-                        </button>
-
-                        <a
-                          href={`https://steadfast.com.bd/t/${ord.trackingCode || ord.consignmentId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1.5 rounded-xl bg-[#E0F2FE] text-[#0369A1] font-bold hover:bg-[#BAE6FD] transition-colors inline-flex items-center gap-1.5"
-                          title="Steadfast লাইভ ট্র্যাকিং পেজ দেখুন"
-                        >
-                          <span>ট্র্যাকিং: {ord.trackingCode}</span>
-                          <span className="text-[10px]">↗</span>
-                        </a>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleSendToSteadfast(ord)}
-                        className="px-4 py-2 rounded-xl bg-[#D32F2F] text-white font-bold hover:bg-[#B71C1C] cursor-pointer shadow-xs transition-colors"
-                      >
-                        Send to Steadfast
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* VIEW 6: HOME SECTIONS & STOREFRONT CUSTOMIZER */}
         {activeNav === 'home-sections' && (
           <HomeSectionsEditor onSaved={refreshData} />
@@ -1906,11 +1717,6 @@ export default function AdminDashboardPage() {
           <DeliveryChargesManager />
         )}
 
-        {/* VIEW 11.5: PRINT & STICKER SETTINGS */}
-        {activeNav === 'print-settings' && (
-          <PrintSettingsManager />
-        )}
-
         {/* VIEW 12: STAFF AND ROLES (PART B8) */}
         {activeNav === 'staff' && (
           <StaffRolesManager />
@@ -1926,22 +1732,8 @@ export default function AdminDashboardPage() {
           <SiteSettingsManager />
         )}
 
-        {/* VIEW 12.8: CUSTOMER PHOTO REVIEWS MODERATION */}
-        {activeNav === 'reviews' && (
-          <ReviewsModerationManager />
-        )}
-
-        {/* VIEW 12.9: OPERATIONAL EXPENSE MANAGER (P&L TRACKING) */}
-        {activeNav === 'expenses' && (
-          <ExpenseManager
-            onNavigateTab={handleNavChange}
-            externalTriggerAdd={triggerAddExpense}
-            onResetExternalTrigger={() => setTriggerAddExpense(false)}
-          />
-        )}
-
-        {/* VIEW 13: SYSTEM SETTINGS (PAYMENTS, SMS, BLOCKLIST, BLOG, FAQ, REPORTS) */}
-        {['payments-sms', 'block-list', 'blog', 'faq-policies', 'reports'].includes(activeNav) && (
+        {/* VIEW 13: SYSTEM SETTINGS (PAYMENTS, SMS, BLOCKLIST) */}
+        {['payments-sms', 'block-list'].includes(activeNav) && (
           <SystemSettingsManager activeTab={activeNav as any} onNavigateTab={handleNavChange} />
         )}
       {/* View ends */}
