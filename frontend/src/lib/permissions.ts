@@ -16,266 +16,284 @@ export interface PermissionGroup {
 }
 
 export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
-  // 0. Overview & Dashboard
+  // 1. OVERVIEW
   {
     key: 'dashboard.view',
-    label: 'View Overview & Dashboard',
-    group: 'dashboard',
+    label: 'Dashboard (ড্যাশবোর্ড ও ওভারভিউ)',
+    group: 'overview',
     description: 'অ্যাডমিন হোম ড্যাশবোর্ড ওভারভিউ ও দৈনিক বিক্রয় মেট্রিক্স দেখার অনুমতি',
   },
 
-  // 1. Products
-  {
-    key: 'products.view',
-    label: 'View Products',
-    group: 'products',
-    description: 'পণ্য ক্যাটালগ ও ইনভেন্টরি স্টক দেখার অনুমতি',
-  },
-  {
-    key: 'products.create',
-    label: 'Create Products',
-    group: 'products',
-    description: 'নতুন পণ্য যোগ করার অনুমতি',
-  },
-  {
-    key: 'products.edit',
-    label: 'Edit Products',
-    group: 'products',
-    description: 'পণ্যের তথ্য, ছবি ও মূল্য পরিবর্তনের অনুমতি',
-  },
-  {
-    key: 'products.delete',
-    label: 'Delete Products',
-    group: 'products',
-    description: 'পণ্য মুছে ফেলার অনুমতি',
-  },
-
-  // 2. Categories
-  {
-    key: 'categories.view',
-    label: 'View Categories',
-    group: 'categories',
-    description: 'ক্যাটাগরি ও অ্যাট্রিবিউট তালিকা দেখার অনুমতি',
-  },
-  {
-    key: 'categories.manage',
-    label: 'Manage Categories',
-    group: 'categories',
-    description: 'ক্যাটাগরি তৈরি, সম্পাদনা ও সাজানোর অনুমতি',
-  },
-
-  // 3. Orders
+  // 2. SALES
   {
     key: 'orders.view',
-    label: 'View Orders',
-    group: 'orders',
-    description: 'সকল অর্ডারের বিবরণ ও কাস্টমার তথ্য দেখার অনুমতি',
+    label: 'Orders (অর্ডার তালিকা ও বিবরণ)',
+    group: 'sales',
+    description: 'সকল অর্ডারের বিবরণ, কাস্টমার তথ্য ও শিপিং দেখার অনুমতি',
   },
   {
     key: 'orders.update_status',
-    label: 'Update Order Status',
-    group: 'orders',
+    label: 'Update Order Status (স্ট্যাটাস ও কুরিয়ার পরিবর্তন)',
+    group: 'sales',
     description: 'অর্ডারের স্ট্যাটাস পরিবর্তন ও কুরিয়ারে পাঠানোর অনুমতি',
   },
   {
     key: 'orders.cancel',
-    label: 'Cancel Orders',
-    group: 'orders',
+    label: 'Cancel Orders (অর্ডার বাতিলকরণ)',
+    group: 'sales',
     description: 'অর্ডার বাতিল ও স্টক রিস্টোর করার অনুমতি',
   },
   {
     key: 'orders.refund',
-    label: 'Refund Orders',
-    group: 'orders',
+    label: 'Refund Orders (রিফান্ড ও রিটার্ন প্রসেস)',
+    group: 'sales',
     description: 'রিফান্ড প্রদান ও রিটার্ন প্রসেস করার অনুমতি',
   },
-
-  // 4. Customers
+  {
+    key: 'orders.incomplete',
+    label: 'Incomplete orders (ইনকমপ্লিট / পরিত্যক্ত অর্ডার)',
+    group: 'sales',
+    description: 'চেকআউটে অসমাপ্ত বা পরিত্যক্ত কার্ট অর্ডার ট্র্যাকিং ও ফলোআপ করার অনুমতি',
+  },
   {
     key: 'customers.view',
-    label: 'View Customers',
-    group: 'customers',
+    label: 'Customers (গ্রাহক তালিকা ও হিস্ট্রি)',
+    group: 'sales',
     description: 'গ্রাহকদের তালিকা ও অর্ডার হিস্ট্রি দেখার অনুমতি',
   },
   {
     key: 'customers.edit',
-    label: 'Edit Customers',
-    group: 'customers',
-    description: 'গ্রাহকের তথ্য, নোট ও ব্লকলিস্ট আপডেট করার অনুমতি',
+    label: 'Edit Customers (গ্রাহক তথ্য সম্পাদনা)',
+    group: 'sales',
+    description: 'গ্রাহকের তথ্য, ফোন নম্বর ও কাস্টমার নোট আপডেট করার অনুমতি',
   },
   {
     key: 'customers.delete',
-    label: 'Delete Customers',
-    group: 'customers',
+    label: 'Delete Customers (গ্রাহক মুছে ফেলা)',
+    group: 'sales',
     description: 'গ্রাহকের রেকর্ড ও সংশ্লিষ্ট অর্ডার হিস্ট্রি মুছে ফেলার অনুমতি',
   },
+  {
+    key: 'coupons.view',
+    label: 'Coupons (ডিসকাউন্ট কুপন তালিকা)',
+    group: 'sales',
+    description: 'ডিসকাউন্ট কুপন কোডের তালিকা দেখার অনুমতি',
+  },
+  {
+    key: 'coupons.manage',
+    label: 'Manage Coupons (কুপন তৈরি ও নিয়ন্ত্রণ)',
+    group: 'sales',
+    description: 'নতুন কুপন তৈরি, এডিট ও মেয়াদ নির্ধারণ করার অনুমতি',
+  },
+  {
+    key: 'campaigns.sms',
+    label: 'SMS campaigns (বাল্ক এসএমএস ক্যাম্পেইন)',
+    group: 'sales',
+    description: 'বাল্ক এসএমএস ক্যাম্পেইন তৈরি, প্রমোশন মেসেজ পাঠানো ও ব্যালেন্স দেখার অনুমতি',
+  },
 
-  // 5. Reviews
+  // 3. CATALOG
+  {
+    key: 'products.view',
+    label: 'Products (পণ্য ক্যাটালগ ও স্টক)',
+    group: 'catalog',
+    description: 'পণ্য ক্যাটালগ ও ইনভেন্টরি স্টক দেখার অনুমতি',
+  },
+  {
+    key: 'products.create',
+    label: 'Create Products (নতুন পণ্য যোগ)',
+    group: 'catalog',
+    description: 'নতুন পণ্য তৈরি ও আপলোড করার অনুমতি',
+  },
+  {
+    key: 'products.edit',
+    label: 'Edit Products (পণ্য সম্পাদনা)',
+    group: 'catalog',
+    description: 'পণ্যের তথ্য, ছবি, ভ্যারিয়েশন ও মূল্য পরিবর্তনের অনুমতি',
+  },
+  {
+    key: 'products.delete',
+    label: 'Delete Products (পণ্য মুছে ফেলা)',
+    group: 'catalog',
+    description: 'পণ্য মুছে ফেলার অনুমতি',
+  },
+  {
+    key: 'categories.view',
+    label: 'Categories and attributes (ক্যাটাগরি ও বৈশিষ্ট্য)',
+    group: 'catalog',
+    description: 'ক্যাটাগরি ও ফিল্টার অ্যাট্রিবিউট তালিকা দেখার অনুমতি',
+  },
+  {
+    key: 'categories.manage',
+    label: 'Manage Categories (ক্যাটাগরি তৈরি ও সাজানো)',
+    group: 'catalog',
+    description: 'ক্যাটাগরি তৈরি, সম্পাদনা ও সাজানোর অনুমতি',
+  },
+  {
+    key: 'bundles.manage',
+    label: 'Bundles (কম্বো ও প্রোডাক্ট বান্ডেল)',
+    group: 'catalog',
+    description: 'কম্বো অফার ও প্রোডাক্ট বান্ডেল প্যাকেজ তৈরি এবং সাজানোর অনুমতি',
+  },
+  {
+    key: 'stock.manage',
+    label: 'Stock (ইনভেন্টরি স্টক এডজাস্টার)',
+    group: 'catalog',
+    description: 'ইনভেন্টরি স্টক সংখ্যা আপডেট, দ্রুত রিস্টক ও স্টক হিস্ট্রি লগ দেখার অনুমতি',
+  },
+
+  // 4. SHIPPING
+  {
+    key: 'shipping.charges',
+    label: 'Delivery charges (ডেলিভারি চার্জ)',
+    group: 'shipping',
+    description: 'ঢাকা ও ঢাকার বাইরে ডেলিভারি চার্জ রেট ও ফ্রি শিপিং নির্ধারণের অনুমতি',
+  },
+  {
+    key: 'customers.blocklist',
+    label: 'Block list (ফ্রড ও ফেক কাস্টমার ব্লকলিস্ট)',
+    group: 'shipping',
+    description: 'সন্দেহভাজন বা ফেক গ্রাহক ও ফোন নম্বর ব্লকলিস্ট পরিচালনা করার অনুমতি',
+  },
+
+  // 5. CONTENT
+  {
+    key: 'messages.view',
+    label: 'Messages (গ্রাহকদের মেসেজ)',
+    group: 'content',
+    description: 'ওয়েবসাইটের কন্টাক্ট ফর্ম থেকে আসা গ্রাহকদের বার্তা ও মেসেজ দেখার অনুমতি',
+  },
+  {
+    key: 'pages.manage',
+    label: 'Page editor (পেজ এডিটর)',
+    group: 'content',
+    description: 'এবাউট, কন্টাক্ট, পলিসি ও কাস্টম পেজ তৈরি ও টেক্সট পরিবর্তনের অনুমতি',
+  },
+  {
+    key: 'home.sections',
+    label: 'Home sections (হোম সেকশন ও ব্যানার)',
+    group: 'content',
+    description: 'হোমপেজ ব্যানার, ক্যাটাগরি গ্রিড, অফার ব্যানার ও সেকশন বিন্যাস সাজানোর অনুমতি',
+  },
+
+  // 6. SYSTEM
+  {
+    key: 'settings.site',
+    label: 'Site settings (সাইট সেটিংস)',
+    group: 'system',
+    description: 'ওয়েবসাইট টাইটেল, লোগো, সোশ্যাল লিংক ও সাধারণ সেটিংস কনফিগারেশনের অনুমতি',
+  },
+  {
+    key: 'users.manage',
+    label: 'Staff and roles (টিম মেম্বার ও পারমিশন)',
+    group: 'system',
+    description: 'মডারেটর ও স্টাফদের অ্যাকাউন্ট তৈরি, পাসওয়ার্ড রিসেট ও পারমিশন নিয়ন্ত্রণের অনুমতি',
+  },
+  {
+    key: 'settings.payments_sms',
+    label: 'Payments and SMS (পেমেন্ট গেটওয়ে ও এসএমএস এপিআই)',
+    group: 'system',
+    description: 'bKash, Nagad, Shurjopay পেমেন্ট গেটওয়ে এবং বাল্ক এসএমএস এপিআই কি কনফিগারেশন',
+  },
+
+  // 7. REVIEWS
   {
     key: 'reviews.view',
-    label: 'View Reviews',
+    label: 'View Reviews (গ্রাহক ফটো রিভিউ)',
     group: 'reviews',
-    description: 'গ্রাহকদের দেওয়া ফটো রিভিউ ও রেটিং দেখার অনুমতি',
+    description: 'গ্রাহকদের দেওয়া ফটো রিভিউ ও স্টার রেটিং দেখার অনুমতি',
   },
   {
     key: 'reviews.approve',
-    label: 'Approve / Reject Reviews',
+    label: 'Approve / Reject Reviews (রিভিউ অনুমোদন/অপ্রকাশ)',
     group: 'reviews',
     description: 'রিভিউ যাচাই করে ওয়েবসাইটে প্রকাশ বা স্থগিত করার অনুমতি',
   },
   {
     key: 'reviews.delete',
-    label: 'Delete Reviews',
+    label: 'Delete Reviews (রিভিউ মুছে ফেলা)',
     group: 'reviews',
     description: 'আপত্তিকর রিভিউ মুছে ফেলার অনুমতি',
   },
 
-  // 6. Coupons
-  {
-    key: 'coupons.view',
-    label: 'View Coupons',
-    group: 'coupons',
-    description: 'ডিসকাউন্ট কুপন কোডের তালিকা দেখার অনুমতি',
-  },
-  {
-    key: 'coupons.manage',
-    label: 'Manage Coupons',
-    group: 'coupons',
-    description: 'নতুন কুপন তৈরি ও মেয়াদ নির্ধারণ করার অনুমতি',
-  },
-
-  // 7. Banners & Storefront Content
-  {
-    key: 'banners.view',
-    label: 'View Banners & Layout',
-    group: 'banners',
-    description: 'হোমপেজ ব্যানার ও সেকশন বিন্যাস দেখার অনুমতি',
-  },
-  {
-    key: 'banners.manage',
-    label: 'Manage Banners & Content',
-    group: 'banners',
-    description: 'ব্যানার ছবি, অফার টেক্সট ও পেজ এডিটর পরিবর্তনের অনুমতি',
-  },
-
-  // 8. Reports & P&L Analytics
+  // 8. FINANCIAL REPORTS
   {
     key: 'reports.view',
-    label: 'View Reports & P&L',
+    label: 'Financial Reports & P&L (আর্থিক রিপোর্ট ও লাভ-ক্ষতি)',
     group: 'reports',
-    description: 'বিক্রয় রিপোর্ট, পণ্য উৎপাদন খরচ (COGS) ও নিট প্রফিট দেখার অনুমতি',
-  },
-
-  // 9. Core Settings (Super Admin Only - Never assignable to moderators)
-  {
-    key: 'settings.view',
-    label: 'Manage Settings (Super Admin Only)',
-    group: 'settings',
-    description: 'ওয়েবসাইটের মূল সেটিংস, পেমেন্ট গেটওয়ে ও এসএমএস এপিআই কনফিগারেশন',
-    isSuperAdminOnly: true,
-  },
-
-  // 10. Users & Permissions (Super Admin Only - Never assignable to moderators)
-  {
-    key: 'users.manage',
-    label: 'Manage Moderators (Super Admin Only)',
-    group: 'users',
-    description: 'মডারেটরদের তৈরি, পারমিশন নির্ধারণ ও অ্যাকাউন্ট নিয়ন্ত্রণ',
-    isSuperAdminOnly: true,
+    description: 'বিক্রয় রিপোর্ট, পণ্য উৎপাদন খরচ (COGS) ও নিট প্রফিট এনালিটিক্স দেখার অনুমতি',
   },
 ];
 
 export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
-    id: 'dashboard',
-    name: 'Overview & Dashboard',
-    nameBn: 'ওভারভিউ ও ড্যাশবোর্ড',
-    description: 'দৈনিক বিক্রয় সামারি, পেন্ডিং অর্ডার ও অ্যাকশন কার্ড দেখার নিয়ন্ত্রণ',
+    id: 'overview',
+    name: 'OVERVIEW',
+    nameBn: 'ওভারভিউ',
+    description: 'ড্যাশবোর্ড ও প্রতিদিনের বিক্রয় মেট্রিক্স সামারি',
     viewPermissionKey: 'dashboard.view',
-    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'dashboard'),
+    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'overview'),
   },
   {
-    id: 'products',
-    name: 'Products & Inventory',
-    nameBn: 'পণ্য ও স্টক ব্যবস্থাপনা',
-    description: 'পণ্য ক্যাটালগ তৈরি, সম্পাদনা ও ডিলিট করার নিয়ন্ত্রণ',
-    viewPermissionKey: 'products.view',
-    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'products'),
-  },
-  {
-    id: 'categories',
-    name: 'Categories & Attributes',
-    nameBn: 'ক্যাটাগরি ও বৈশিষ্ট্য',
-    description: 'ক্যাটাগরি এবং ফিল্টার অ্যাট্রিবিউট পরিচালনা',
-    viewPermissionKey: 'categories.view',
-    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'categories'),
-  },
-  {
-    id: 'orders',
-    name: 'Orders & Shipments',
-    nameBn: 'অর্ডার ও কুরিয়ার ডেলিভারি',
-    description: 'অর্ডার প্রসেসিং, কুরিয়ার ডিসপ্যাচ ও রিটার্ন হ্যান্ডলিং',
+    id: 'sales',
+    name: 'SALES',
+    nameBn: 'সেলস ও কাস্টমার',
+    description: 'অর্ডার, ইনকমপ্লিট অর্ডার, কাস্টমার, কুপন ও এসএমএস ক্যাম্পেইন',
     viewPermissionKey: 'orders.view',
-    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'orders'),
+    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'sales'),
   },
   {
-    id: 'customers',
-    name: 'Customers & CRM',
-    nameBn: 'গ্রাহক তথ্য ও সিআরএম',
-    description: 'গ্রাহকদের হিস্ট্রি, ফোন ভেরিফিকেশন ও ব্লকলিস্ট',
-    viewPermissionKey: 'customers.view',
-    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'customers'),
+    id: 'catalog',
+    name: 'CATALOG',
+    nameBn: 'পণ্য ক্যাটালগ ও ইনভেন্টরি',
+    description: 'পণ্য, ক্যাটাগরি ও অ্যাট্রিবিউট, বান্ডেল এবং ইনভেন্টরি স্টক',
+    viewPermissionKey: 'products.view',
+    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'catalog'),
+  },
+  {
+    id: 'shipping',
+    name: 'SHIPPING',
+    nameBn: 'শিপিং ও ডেলিভারি',
+    description: 'ডেলিভারি চার্জ নির্ধারণ এবং ফ্রড কাস্টমার ব্লকলিস্ট',
+    viewPermissionKey: 'shipping.charges',
+    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'shipping'),
+  },
+  {
+    id: 'content',
+    name: 'CONTENT',
+    nameBn: 'কনটেন্ট ও পেজ',
+    description: 'কন্টাক্ট মেসেজ, পেজ এডিটর এবং হোমপেজ সেকশন বিন্যাস',
+    viewPermissionKey: 'messages.view',
+    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'content'),
+  },
+  {
+    id: 'system',
+    name: 'SYSTEM',
+    nameBn: 'সিস্টেম ও কনফিগারেশন',
+    description: 'সাইট সেটিংস, স্টাফ ও পারমিশন রোল এবং পেমেন্ট/এসএমএস গেটওয়ে',
+    viewPermissionKey: 'settings.site',
+    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'system'),
   },
   {
     id: 'reviews',
-    name: 'Customer Photo Reviews',
-    nameBn: 'গ্রাহক ফটো রিভিউ মডারেশন',
-    description: 'রিভিউ যাচাই, এপ্রুভ ও মুছে ফেলার নিয়ন্ত্রণ',
+    name: 'REVIEWS',
+    nameBn: 'গ্রাহক ফটো রিভিউ',
+    description: 'গ্রাহকদের ফটো রিভিউ মডারেশন ও রেটিং যাচাই',
     viewPermissionKey: 'reviews.view',
     permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'reviews'),
   },
   {
-    id: 'coupons',
-    name: 'Discounts & Coupons',
-    nameBn: 'কুপন ও ডিসকাউন্ট',
-    description: 'প্রমোশনাল কুপন ও ডিসকাউন্ট ক্যাম্পেইন',
-    viewPermissionKey: 'coupons.view',
-    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'coupons'),
-  },
-  {
-    id: 'banners',
-    name: 'Banners & Storefront Content',
-    nameBn: 'ব্যানার ও পেজ কনটেন্ট',
-    description: 'হোমপেজ ব্যানার, পেজ এডিটর ও পলিসি কনটেন্ট',
-    viewPermissionKey: 'banners.view',
-    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'banners'),
-  },
-  {
     id: 'reports',
-    name: 'Financial Reports & P&L',
+    name: 'FINANCIALS',
     nameBn: 'আর্থিক রিপোর্ট ও লাভ-ক্ষতি',
-    description: 'রেভিনিউ, পরিচালন ব্যয় (OPEX) ও নিট প্রফিট এনালিটিক্স',
+    description: 'বিক্রয় রিপোর্ট, পণ্য উৎপাদন খরচ (COGS) ও নিট প্রফিট এনালিটিক্স',
     viewPermissionKey: 'reports.view',
     permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'reports'),
-  },
-  {
-    id: 'settings',
-    name: 'Core System Settings',
-    nameBn: 'সিস্টেম ও সিকিউরিটি সেটিংস',
-    description: 'শুধুমাত্র সুপার এডমিন (কখনো মডারেটরদের জন্য প্রযোজ্য নয়)',
-    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'settings'),
-  },
-  {
-    id: 'users',
-    name: 'Staff & Moderators Access',
-    nameBn: 'মডারেটর পারমিশন অ্যাক্সেস',
-    description: 'শুধুমাত্র সুপার এডমিন (কখনো মডারেটরদের জন্য প্রযোজ্য নয়)',
-    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'users'),
   },
 ];
 
 /**
- * Return only assignable permissions (excluding Super Admin only permissions)
+ * Return all assignable permissions
  */
 export function getAssignablePermissions(): PermissionDefinition[] {
   return PERMISSION_DEFINITIONS.filter((p) => !p.isSuperAdminOnly);
@@ -297,29 +315,42 @@ export function isSuperAdminOnlyPermission(key: string): boolean {
 }
 
 /**
+ * Child action to parent view dependency mapping
+ */
+export const PERMISSION_DEPENDENCIES: Record<string, string> = {
+  'orders.update_status': 'orders.view',
+  'orders.cancel': 'orders.view',
+  'orders.refund': 'orders.view',
+  'customers.edit': 'customers.view',
+  'customers.delete': 'customers.view',
+  'coupons.manage': 'coupons.view',
+  'products.create': 'products.view',
+  'products.edit': 'products.view',
+  'products.delete': 'products.view',
+  'categories.manage': 'categories.view',
+  'reviews.approve': 'reviews.view',
+  'reviews.delete': 'reviews.view',
+};
+
+/**
  * Enforces permission dependencies:
- * 1. If any non-view permission in a group is selected, auto-select the group's "view" permission.
- * 2. If a group's "view" permission is unselected, remove all other permissions in that group.
+ * 1. If any sub-action is selected, ensure parent view permission is included.
+ * 2. If a parent view permission is unselected, remove its dependent sub-actions.
  */
 export function enforcePermissionDependencies(selectedKeys: string[]): string[] {
   const set = new Set(selectedKeys.filter((k) => isValidPermission(k) && !isSuperAdminOnlyPermission(k)));
 
-  for (const group of PERMISSION_GROUPS) {
-    if (!group.viewPermissionKey) continue;
+  // 1. If child action is selected, auto-select its parent view permission
+  for (const [child, parent] of Object.entries(PERMISSION_DEPENDENCIES)) {
+    if (set.has(child) && !set.has(parent)) {
+      set.add(parent);
+    }
+  }
 
-    const groupKeys = group.permissions.map((p) => p.key);
-    const viewKey = group.viewPermissionKey;
-    const hasView = set.has(viewKey);
-    const hasAnyOtherInGroup = groupKeys.some((k) => k !== viewKey && set.has(k));
-
-    if (hasAnyOtherInGroup && !hasView) {
-      // Auto-tick view if edit/delete is present
-      set.add(viewKey);
-    } else if (!hasView) {
-      // If view is unticked, untick all others in group
-      for (const k of groupKeys) {
-        set.delete(k);
-      }
+  // 2. If parent view permission is unselected, remove child action permissions
+  for (const [child, parent] of Object.entries(PERMISSION_DEPENDENCIES)) {
+    if (!set.has(parent) && set.has(child)) {
+      set.delete(child);
     }
   }
 
@@ -342,27 +373,33 @@ export const PRESETS: Record<
   'Order Handler': {
     name: 'Order Handler',
     nameBn: 'অর্ডার হ্যান্ডলার ও সেলস',
-    description: 'অর্ডারের বিবরণ দেখা, স্ট্যাটাস পরিবর্তন এবং গ্রাহক তথ্য দেখার অধিকার',
-    permissions: ['orders.view', 'orders.update_status', 'customers.view'],
+    description: 'অর্ডারের বিবরণ দেখা, স্ট্যাটাস পরিবর্তন, ইনকমপ্লিট অর্ডার এবং গ্রাহক তথ্য দেখার অধিকার',
+    permissions: [
+      'orders.view',
+      'orders.update_status',
+      'orders.incomplete',
+      'customers.view',
+    ],
   },
   'Content Editor': {
     name: 'Content Editor',
     nameBn: 'কনটেন্ট ও ব্যানার এডিটর',
-    description: 'পণ্য তৈরি ও এডিট, ক্যাটাগরি এবং ব্যানার/হোমপেজ কনটেন্ট পরিচালনা',
+    description: 'পণ্য তৈরি ও এডিট, ক্যাটাগরি, পেজ এডিটর এবং হোমপেজ কনটেন্ট পরিচালনা',
     permissions: [
       'products.view',
       'products.create',
       'products.edit',
       'categories.view',
       'categories.manage',
-      'banners.view',
-      'banners.manage',
+      'pages.manage',
+      'home.sections',
+      'messages.view',
     ],
   },
   'Catalog Manager': {
     name: 'Catalog Manager',
     nameBn: 'ক্যাটালগ ও স্টক ম্যানেজার',
-    description: 'পণ্য যোগ, সম্পাদনা ও ডিলিট এবং ক্যাটাগরি সম্পূর্ণ পরিচালনা',
+    description: 'পণ্য যোগ, সম্পাদনা ও ডিলিট, ক্যাটাগরি, বান্ডেল এবং ইনভেন্টরি স্টক পরিচালনা',
     permissions: [
       'products.view',
       'products.create',
@@ -370,6 +407,8 @@ export const PRESETS: Record<
       'products.delete',
       'categories.view',
       'categories.manage',
+      'bundles.manage',
+      'stock.manage',
     ],
   },
 };
@@ -378,32 +417,45 @@ export const PRESETS: Record<
  * Mapping of Admin Nav Tabs to their required permission
  */
 export const TAB_PERMISSION_MAP: Record<string, string | null> = {
-  dashboard: 'dashboard.view', // Controlled by Super Admin via dashboard.view permission
-  reports: 'reports.view',
-  expenses: 'reports.view',
+  // 1. OVERVIEW
+  dashboard: 'dashboard.view',
+
+  // 2. SALES
   orders: 'orders.view',
-  'incomplete-orders': 'orders.view',
+  'incomplete-orders': 'orders.incomplete',
   customers: 'customers.view',
   coupons: 'coupons.view',
-  'sms-campaigns': 'settings.view', // Super admin
+  'sms-campaigns': 'campaigns.sms',
+
+  // 3. CATALOG
   products: 'products.view',
   categories: 'categories.view',
-  bundles: 'products.view',
-  stock: 'products.view',
+  bundles: 'bundles.manage',
+  stock: 'stock.manage',
+
+  // 4. SHIPPING
+  'delivery-charges': 'shipping.charges',
+  'block-list': 'customers.blocklist',
+
+  // 5. CONTENT
+  messages: 'messages.view',
+  'page-editor': 'pages.manage',
+  'home-sections': 'home.sections',
+
+  // 6. SYSTEM
+  'site-settings': 'settings.site',
+  staff: 'users.manage',
+  moderators: 'users.manage',
+  'payments-sms': 'settings.payments_sms',
+
+  // Shortcuts & Extras
   steadfast: 'orders.view',
-  'delivery-charges': 'settings.view', // Super admin
   'print-settings': 'orders.view',
-  'block-list': 'customers.edit',
   reviews: 'reviews.view',
-  messages: 'customers.view',
-  'page-editor': 'banners.manage',
-  'home-sections': 'banners.manage',
-  'faq-policies': 'banners.manage',
-  blog: 'banners.manage',
-  'site-settings': 'settings.view', // Super admin
-  staff: 'users.manage', // Super admin
-  moderators: 'users.manage', // Super admin
-  'payments-sms': 'settings.view', // Super admin
+  reports: 'reports.view',
+  expenses: 'reports.view',
+  'faq-policies': 'pages.manage',
+  blog: 'pages.manage',
 };
 
 /**
@@ -420,20 +472,26 @@ export function getFirstAllowedTab(
 
   if (perms.includes('dashboard.view')) return 'dashboard';
 
-  // Candidate tabs in order of priority
+  // Candidate tabs in priority order matching the sidebar
   const candidateTabs = [
     'orders',
     'incomplete-orders',
     'customers',
+    'coupons',
+    'sms-campaigns',
     'products',
     'categories',
     'bundles',
     'stock',
-    'reviews',
+    'delivery-charges',
+    'block-list',
     'messages',
-    'coupons',
     'page-editor',
     'home-sections',
+    'site-settings',
+    'staff',
+    'payments-sms',
+    'reviews',
     'reports',
   ];
 
@@ -446,5 +504,3 @@ export function getFirstAllowedTab(
 
   return 'orders';
 }
-
-

@@ -37,49 +37,49 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   {
     title: 'OVERVIEW',
     items: [
-      { id: 'dashboard', label: 'Dashboard', allowedRoles: ['admin', 'order_handler', 'product_manager'] },
+      { id: 'dashboard', label: 'Dashboard' },
     ],
   },
   {
     title: 'SALES',
     items: [
-      { id: 'orders', label: 'Orders', allowedRoles: ['admin', 'order_handler'] },
-      { id: 'incomplete-orders', label: 'Incomplete orders', allowedRoles: ['admin', 'order_handler'] },
-      { id: 'customers', label: 'Customers', allowedRoles: ['admin', 'order_handler'] },
-      { id: 'coupons', label: 'Coupons', allowedRoles: ['admin'] },
-      { id: 'sms-campaigns', label: 'SMS campaigns', allowedRoles: ['admin'] },
+      { id: 'orders', label: 'Orders' },
+      { id: 'incomplete-orders', label: 'Incomplete orders' },
+      { id: 'customers', label: 'Customers' },
+      { id: 'coupons', label: 'Coupons' },
+      { id: 'sms-campaigns', label: 'SMS campaigns' },
     ],
   },
   {
     title: 'CATALOG',
     items: [
-      { id: 'products', label: 'Products', allowedRoles: ['admin', 'product_manager'] },
-      { id: 'categories', label: 'Categories and attributes', allowedRoles: ['admin', 'product_manager'] },
-      { id: 'bundles', label: 'Bundles', allowedRoles: ['admin', 'product_manager'] },
-      { id: 'stock', label: 'Stock', allowedRoles: ['admin', 'product_manager'] },
+      { id: 'products', label: 'Products' },
+      { id: 'categories', label: 'Categories and attributes' },
+      { id: 'bundles', label: 'Bundles' },
+      { id: 'stock', label: 'Stock' },
     ],
   },
   {
     title: 'SHIPPING',
     items: [
-      { id: 'delivery-charges', label: 'Delivery charges', allowedRoles: ['admin'] },
-      { id: 'block-list', label: 'Block list', allowedRoles: ['admin'] },
+      { id: 'delivery-charges', label: 'Delivery charges' },
+      { id: 'block-list', label: 'Block list' },
     ],
   },
   {
     title: 'CONTENT',
     items: [
-      { id: 'messages', label: 'Messages', allowedRoles: ['admin', 'order_handler'] },
-      { id: 'page-editor', label: 'Page editor', allowedRoles: ['admin'] },
-      { id: 'home-sections', label: 'Home sections', allowedRoles: ['admin'] },
+      { id: 'messages', label: 'Messages' },
+      { id: 'page-editor', label: 'Page editor' },
+      { id: 'home-sections', label: 'Home sections' },
     ],
   },
   {
     title: 'SYSTEM',
     items: [
-      { id: 'site-settings', label: 'Site settings', allowedRoles: ['admin'] },
-      { id: 'staff', label: 'Staff and roles', allowedRoles: ['admin'] },
-      { id: 'payments-sms', label: 'Payments and SMS', allowedRoles: ['admin'] },
+      { id: 'site-settings', label: 'Site settings' },
+      { id: 'staff', label: 'Staff and roles' },
+      { id: 'payments-sms', label: 'Payments and SMS' },
     ],
   },
 ];

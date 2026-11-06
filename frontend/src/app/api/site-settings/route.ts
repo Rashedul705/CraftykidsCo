@@ -153,7 +153,7 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'settings.site');
     if (!auth.authorized) {
       return auth.response;
     }

@@ -9,7 +9,7 @@ import { verifyAdminRequest } from '@/lib/auth';
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'customers.blocklist');
     if (!auth.authorized) {
       return auth.response;
     }
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'customers.blocklist');
     if (!auth.authorized) {
       return auth.response;
     }
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'customers.blocklist');
     if (!auth.authorized) {
       return auth.response;
     }

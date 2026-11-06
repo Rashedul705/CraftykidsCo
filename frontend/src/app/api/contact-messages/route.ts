@@ -12,6 +12,11 @@ import { sendContactNotificationEmail } from '@/lib/mailer';
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req, 'messages.view');
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
 
@@ -136,7 +141,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'messages.view');
     if (!auth.authorized) {
       return auth.response;
     }
@@ -184,7 +189,7 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const auth = await verifyAdminRequest(req);
+    const auth = await verifyAdminRequest(req, 'messages.view');
     if (!auth.authorized) {
       return auth.response;
     }

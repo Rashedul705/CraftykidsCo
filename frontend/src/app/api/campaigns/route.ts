@@ -5,9 +5,15 @@ import {
   calculateSmsParts,
 } from '@/lib/campaigns-store';
 import { getNotificationProvider } from '@/core/notification';
+import { verifyAdminRequest } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req, 'campaigns.sms');
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const provider = getNotificationProvider();
     const balanceInfo = await provider.getBalance();
     const campaigns = getAllCampaigns();
@@ -29,6 +35,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req, 'campaigns.sms');
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const body = await req.json();
     const provider = getNotificationProvider();
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Setting } from '@/models/Setting';
+import { verifyAdminRequest } from '@/lib/auth';
 import {
   getDeliverySettings,
   updateDeliverySettings,
@@ -43,6 +44,11 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   try {
+    const auth = await verifyAdminRequest(req, 'shipping.charges');
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const body = await req.json();
 
     const updates: Partial<DeliverySettings> = {

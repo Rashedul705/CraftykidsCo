@@ -565,9 +565,9 @@ export function StaffRolesManager() {
     showToast(`Staff member "${newStaffItem.name}" created successfully!`);
   };
 
-  // Filter permission groups for customizer modal
+  // Filter permission groups for customizer modal (all modules configurable by Super Admin)
   const assignableGroups = useMemo(() => {
-    return PERMISSION_GROUPS.filter((g) => g.id !== 'settings' && g.id !== 'users');
+    return PERMISSION_GROUPS;
   }, []);
 
   const filteredGroups = useMemo(() => {
@@ -799,60 +799,81 @@ export function StaffRolesManager() {
             </thead>
             <tbody className="divide-y divide-[#EFE9E0] text-[11px]">
               <tr>
-                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">Overview &amp; Dashboard</td>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">OVERVIEW: Dashboard</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">Orders &amp; Steadfast Courier</td>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">SALES: Orders &amp; Courier</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
                 <td className="py-2.5 px-3 text-center text-[#D6403B] font-bold">✕ Hidden</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">Incomplete Orders &amp; Customers</td>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">SALES: Incomplete Orders</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
                 <td className="py-2.5 px-3 text-center text-[#D6403B] font-bold">✕ Hidden</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">Catalog, Variations &amp; Bundles</td>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">SALES: Customers</td>
+                <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
+                <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
+                <td className="py-2.5 px-3 text-center text-[#D6403B] font-bold">✕ Hidden</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">SALES: Coupons &amp; Discounts</td>
+                <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">SALES: SMS Campaigns</td>
+                <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">CATALOG: Products &amp; Categories</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B]">Read Only</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">Stock &amp; Inventory Adjuster</td>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">CATALOG: Bundles &amp; Stock</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B]">Read Only</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">Coupons &amp; Promotional Discounts</td>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">SHIPPING: Rates &amp; Block List</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
-                <td className="py-2.5 px-3 text-center text-[#D6403B] font-bold">✕ Hidden</td>
-                <td className="py-2.5 px-3 text-center text-[#6B6B6B]">Read Only</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">Storefront Content &amp; Pages</td>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">CONTENT: Messages &amp; Page Editor</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
-                <td className="py-2.5 px-3 text-center text-[#D6403B] font-bold">✕ Hidden</td>
-                <td className="py-2.5 px-3 text-center text-[#D6403B] font-bold">✕ Hidden</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
                 <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">Site Settings &amp; Gateway Keys</td>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">SYSTEM: Settings, Roles &amp; Gateways</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
-                <td className="py-2.5 px-3 text-center text-[#D6403B] font-bold">✕ Hidden</td>
-                <td className="py-2.5 px-3 text-center text-[#D6403B] font-bold">✕ Hidden</td>
-                <td className="py-2.5 px-3 text-center text-[#D6403B] font-bold">✕ Hidden</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
               </tr>
             </tbody>
           </table>

@@ -258,7 +258,7 @@ export default function ModeratorsManager() {
 
   // Toggle Global Select All
   const assignableGroups = useMemo(
-    () => PERMISSION_GROUPS.filter((g) => g.id !== 'settings' && g.id !== 'users'),
+    () => PERMISSION_GROUPS,
     []
   );
 
