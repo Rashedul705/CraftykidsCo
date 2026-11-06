@@ -248,7 +248,8 @@ export function AdminShell({
         <div className="flex items-center justify-between pb-5 border-b border-[#EFE9E0]">
           <button
             onClick={() => {
-              onTabChange('dashboard');
+              const defaultTab = visibleSections[0]?.items[0]?.id || 'dashboard';
+              onTabChange(defaultTab);
               setIsMobileMenuOpen(false);
             }}
             className="flex items-center gap-2.5 text-left cursor-pointer"

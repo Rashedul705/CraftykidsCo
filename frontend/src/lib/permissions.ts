@@ -16,6 +16,14 @@ export interface PermissionGroup {
 }
 
 export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
+  // 0. Overview & Dashboard
+  {
+    key: 'dashboard.view',
+    label: 'View Overview & Dashboard',
+    group: 'dashboard',
+    description: 'অ্যাডমিন হোম ড্যাশবোর্ড ওভারভিউ ও দৈনিক বিক্রয় মেট্রিক্স দেখার অনুমতি',
+  },
+
   // 1. Products
   {
     key: 'products.view',
@@ -178,6 +186,14 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
 ];
 
 export const PERMISSION_GROUPS: PermissionGroup[] = [
+  {
+    id: 'dashboard',
+    name: 'Overview & Dashboard',
+    nameBn: 'ওভারভিউ ও ড্যাশবোর্ড',
+    description: 'দৈনিক বিক্রয় সামারি, পেন্ডিং অর্ডার ও অ্যাকশন কার্ড দেখার নিয়ন্ত্রণ',
+    viewPermissionKey: 'dashboard.view',
+    permissions: PERMISSION_DEFINITIONS.filter((p) => p.group === 'dashboard'),
+  },
   {
     id: 'products',
     name: 'Products & Inventory',
@@ -362,7 +378,7 @@ export const PRESETS: Record<
  * Mapping of Admin Nav Tabs to their required permission
  */
 export const TAB_PERMISSION_MAP: Record<string, string | null> = {
-  dashboard: null, // Accessible to all authenticated staff
+  dashboard: 'dashboard.view', // Controlled by Super Admin via dashboard.view permission
   reports: 'reports.view',
   expenses: 'reports.view',
   orders: 'orders.view',
@@ -389,4 +405,46 @@ export const TAB_PERMISSION_MAP: Record<string, string | null> = {
   moderators: 'users.manage', // Super admin
   'payments-sms': 'settings.view', // Super admin
 };
+
+/**
+ * Safely resolves the first allowed tab for a user based on their permissions.
+ * Super Admins default to 'dashboard'.
+ * Moderators with 'dashboard.view' default to 'dashboard'.
+ * Moderators without 'dashboard.view' fallback to their first accessible tab.
+ */
+export function getFirstAllowedTab(
+  user?: { isSuperAdmin?: boolean; permissions?: string[] } | null
+): string {
+  if (!user || user.isSuperAdmin) return 'dashboard';
+  const perms = Array.isArray(user.permissions) ? user.permissions : [];
+
+  if (perms.includes('dashboard.view')) return 'dashboard';
+
+  // Candidate tabs in order of priority
+  const candidateTabs = [
+    'orders',
+    'incomplete-orders',
+    'customers',
+    'products',
+    'categories',
+    'bundles',
+    'stock',
+    'reviews',
+    'messages',
+    'coupons',
+    'page-editor',
+    'home-sections',
+    'reports',
+  ];
+
+  for (const tab of candidateTabs) {
+    const reqPerm = TAB_PERMISSION_MAP[tab];
+    if (reqPerm && perms.includes(reqPerm)) {
+      return tab;
+    }
+  }
+
+  return 'orders';
+}
+
 

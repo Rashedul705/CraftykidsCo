@@ -61,7 +61,7 @@ const DEFAULT_STAFF: StaffMember[] = [
     name: 'Farhana Jaman',
     email: 'orders@craftykidsco.com',
     role: 'order_handler',
-    permissions: PRESETS.order_handler ? PRESETS.order_handler.permissions : [
+    permissions: PRESETS['Order Handler'] ? PRESETS['Order Handler'].permissions : [
       'orders.view',
       'orders.update_status',
       'orders.cancel',
@@ -76,7 +76,7 @@ const DEFAULT_STAFF: StaffMember[] = [
     name: 'Tanvir Ahmed',
     email: 'catalog@craftykidsco.com',
     role: 'product_manager',
-    permissions: PRESETS.catalog_manager ? PRESETS.catalog_manager.permissions : [
+    permissions: PRESETS['Catalog Manager'] ? PRESETS['Catalog Manager'].permissions : [
       'products.view',
       'products.create',
       'products.edit',
@@ -297,7 +297,7 @@ export function StaffRolesManager() {
     }
 
     if (presetKey === 'order_handler') {
-      const perms = PRESETS.order_handler ? PRESETS.order_handler.permissions : [
+      const perms = PRESETS['Order Handler'] ? PRESETS['Order Handler'].permissions : [
         'orders.view',
         'orders.update_status',
         'orders.cancel',
@@ -310,7 +310,7 @@ export function StaffRolesManager() {
     }
 
     if (presetKey === 'product_manager') {
-      const perms = PRESETS.catalog_manager ? PRESETS.catalog_manager.permissions : [
+      const perms = PRESETS['Catalog Manager'] ? PRESETS['Catalog Manager'].permissions : [
         'products.view',
         'products.create',
         'products.edit',
@@ -508,9 +508,22 @@ export function StaffRolesManager() {
     if (newRole === 'admin') {
       initialPerms = ALL_ASSIGNABLE_PERMS;
     } else if (newRole === 'order_handler') {
-      initialPerms = PRESETS.order_handler?.permissions || [];
+      initialPerms = PRESETS['Order Handler']?.permissions || [
+        'orders.view',
+        'orders.update_status',
+        'orders.cancel',
+        'customers.view',
+        'customers.edit',
+      ];
     } else if (newRole === 'product_manager') {
-      initialPerms = PRESETS.catalog_manager?.permissions || [];
+      initialPerms = PRESETS['Catalog Manager']?.permissions || [
+        'products.view',
+        'products.create',
+        'products.edit',
+        'products.delete',
+        'categories.view',
+        'categories.manage',
+      ];
     } else {
       initialPerms = newStaffPermissions;
     }
@@ -785,6 +798,13 @@ export function StaffRolesManager() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EFE9E0] text-[11px]">
+              <tr>
+                <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">Overview &amp; Dashboard</td>
+                <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+                <td className="py-2.5 px-3 text-center text-[#6B6B6B] font-semibold">Configurable</td>
+              </tr>
               <tr>
                 <td className="py-2.5 px-3 font-semibold text-[#2B2B2B]">Orders &amp; Steadfast Courier</td>
                 <td className="py-2.5 px-3 text-center text-[#1F6B43] font-bold">✓ Full</td>

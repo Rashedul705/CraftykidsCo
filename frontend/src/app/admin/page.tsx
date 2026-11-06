@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Clock,
   ShieldCheck,
+  ShieldAlert,
   ChevronRight,
   TrendingUp,
   Upload,
@@ -61,7 +62,7 @@ import { DeliveryChargesManager } from '@/components/admin/DeliveryChargesManage
 import { StaffRolesManager } from '@/components/admin/StaffRolesManager';
 import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
 import { SiteSettingsManager } from '@/components/admin/SiteSettingsManager';
-import { TAB_PERMISSION_MAP } from '@/lib/permissions';
+import { TAB_PERMISSION_MAP, getFirstAllowedTab } from '@/lib/permissions';
 import Can from '@/components/auth/Can';
 import { MessagesManager } from '@/components/admin/MessagesManager';
 import { PagesContentEditor } from '@/components/admin/PagesContentEditor';
@@ -257,11 +258,37 @@ export default function AdminDashboardPage() {
             setUserRole(data.user.role);
           }
           const urlParams = new URLSearchParams(window.location.search);
-          const tabFromUrl = urlParams.get('tab') || 'dashboard';
-          const reqPerm = TAB_PERMISSION_MAP[tabFromUrl];
-          if (!data.user.isSuperAdmin && reqPerm && !data.user.permissions?.includes(reqPerm)) {
-            window.location.href = `/admin/403?required=${encodeURIComponent(reqPerm)}&from=${encodeURIComponent(tabFromUrl)}`;
-            return;
+          const tabFromUrl = urlParams.get('tab');
+          const hashFromUrl = window.location.hash.replace('#', '');
+          const savedTab = typeof window !== 'undefined' ? localStorage.getItem('craftykidsco_admin_tab') : null;
+
+          let targetTab = tabFromUrl || (hashFromUrl && VALID_ADMIN_TABS.includes(hashFromUrl) ? hashFromUrl : savedTab) || 'dashboard';
+          if (targetTab === 'steadfast') targetTab = 'orders';
+          if (targetTab === 'moderators') targetTab = 'staff';
+
+          const reqPerm = TAB_PERMISSION_MAP[targetTab];
+          const hasAccess = Boolean(
+            data.user.isSuperAdmin ||
+            !reqPerm ||
+            (Array.isArray(data.user.permissions) && data.user.permissions.includes(reqPerm))
+          );
+
+          if (!hasAccess) {
+            if (tabFromUrl) {
+              window.location.href = `/admin/403?required=${encodeURIComponent(reqPerm || '')}&from=${encodeURIComponent(targetTab)}`;
+              return;
+            }
+            // Auto fallback for moderator who does not have dashboard.view permission
+            targetTab = getFirstAllowedTab(data.user);
+          }
+
+          if (VALID_ADMIN_TABS.includes(targetTab)) {
+            setActiveNav(targetTab);
+            if (!tabFromUrl && targetTab !== 'dashboard') {
+              const newUrl = new URL(window.location.href);
+              newUrl.searchParams.set('tab', targetTab);
+              window.history.replaceState({ tab: targetTab }, '', newUrl.toString());
+            }
           }
         }
       })
@@ -269,31 +296,6 @@ export default function AdminDashboardPage() {
 
     // 2. Refresh dashboard data
     refreshData();
-
-    // 3. Restore active tab from URL query parameter or localStorage
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tabFromUrl = urlParams.get('tab');
-      const hashFromUrl = window.location.hash.replace('#', '');
-      const savedTab = localStorage.getItem('craftykidsco_admin_tab');
-
-      const targetTab = tabFromUrl || (hashFromUrl && VALID_ADMIN_TABS.includes(hashFromUrl) ? hashFromUrl : savedTab);
-
-      if (targetTab === 'steadfast') {
-        setActiveNav('orders');
-      } else if (targetTab === 'moderators') {
-        setActiveNav('staff');
-      } else if (targetTab && VALID_ADMIN_TABS.includes(targetTab)) {
-        setActiveNav(targetTab);
-        if (!tabFromUrl && targetTab !== 'dashboard') {
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.set('tab', targetTab);
-          window.history.replaceState({ tab: targetTab }, '', newUrl.toString());
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to restore active tab:', err);
-    }
 
     // 4. Handle browser back / forward navigation
     const handlePopState = () => {
@@ -1029,15 +1031,27 @@ export default function AdminDashboardPage() {
             VIEW 1: DASHBOARD (PART B3 SPECIFICATION)
            ===================================================================== */}
         {activeNav === 'dashboard' && (
-          <DashboardView
-            orders={orders}
-            products={products}
-            onNavigateTab={handleNavChange}
-            onSelectOrder={setSelectedOrder}
-            onStatusChange={handleStatusChange}
-            onSendToSteadfast={handleSendToSteadfast}
-            userRole={userRole}
-          />
+          adminUser && !adminUser.isSuperAdmin && !adminUser.permissions?.includes('dashboard.view') ? (
+            <div className="bg-white rounded-2xl border border-red-200 p-8 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-base text-[#2B2B2B]">ড্যাশবোর্ড অ্যাক্সেস সংরক্ষিত</h3>
+              <p className="text-xs text-[#6B6B6B] max-w-md mx-auto">
+                আপনার মডারেটর অ্যাকাউন্টে ড্যাশবোর্ড ওভারভিউ দেখার অনুমতি দেওয়া হয়নি। অনুগ্রহ করে সুপার এডমিনের সাথে যোগাযোগ করুন।
+              </p>
+            </div>
+          ) : (
+            <DashboardView
+              orders={orders}
+              products={products}
+              onNavigateTab={handleNavChange}
+              onSelectOrder={setSelectedOrder}
+              onStatusChange={handleStatusChange}
+              onSendToSteadfast={handleSendToSteadfast}
+              userRole={userRole}
+            />
+          )
         )}
 
         {/* =====================================================================
