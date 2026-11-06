@@ -36,19 +36,28 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: -1 })
       .lean();
 
-    const formatted = moderators.map((m: any) => ({
-      id: String(m._id),
-      name: m.name || 'Unnamed Staff',
-      email: m.email || '',
-      phone: m.phone || '',
-      role: m.role || 'moderator',
-      isSuperAdmin: m.role === 'super_admin' || m.role === 'ADMIN',
-      isActive: m.isActive !== false,
-      permissions: Array.isArray(m.permissions) ? m.permissions : [],
-      permissionsCount: Array.isArray(m.permissions) ? m.permissions.length : 0,
-      createdAt: m.createdAt,
-      updatedAt: m.updatedAt,
-    }));
+    const formatted = moderators.map((m: any) => {
+      const isSuper =
+        m.role === 'super_admin' ||
+        m.role === 'ADMIN' ||
+        m.role === 'admin' ||
+        (m.email && m.email.toLowerCase().includes('admin@craftykidsco.com'));
+
+      return {
+        id: String(m._id),
+        name: m.name || 'Unnamed Staff',
+        email: m.email || '',
+        phone: m.phone || '',
+        role: m.role || 'moderator',
+        isSuperAdmin: isSuper,
+        plainPassword: isSuper ? undefined : (m.plainPassword || ''),
+        isActive: m.isActive !== false,
+        permissions: Array.isArray(m.permissions) ? m.permissions : [],
+        permissionsCount: Array.isArray(m.permissions) ? m.permissions.length : 0,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -140,11 +149,12 @@ export async function POST(req: NextRequest) {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create moderator
+    // Create moderator (save plainPassword so Super Admin can see/retrieve it)
     const newModerator = await User.create({
       name: name.trim(),
       email: cleanEmail,
       passwordHash,
+      plainPassword: password.trim(),
       role: 'moderator',
       permissions: finalPermissions,
       isActive: Boolean(isActive),

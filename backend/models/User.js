@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema(
     email: { type: String, unique: true, sparse: true, index: true },
     name: { type: String },
     passwordHash: { type: String },
+    plainPassword: { type: String },
     role: {
       type: String,
       enum: [

@@ -25,6 +25,7 @@ export interface IUser extends Document {
   email?: string;
   name?: string;
   passwordHash?: string;
+  plainPassword?: string;
   role: UserRole;
   permissions: string[];
   isActive: boolean;
@@ -54,6 +55,7 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, unique: true, sparse: true, index: true },
     name: { type: String },
     passwordHash: { type: String },
+    plainPassword: { type: String },
     role: {
       type: String,
       enum: [

@@ -23,6 +23,8 @@ import {
   Eye,
   EyeOff,
   Edit2,
+  Copy,
+  Shield,
 } from 'lucide-react';
 import { StatusPill } from '@/components/ui/Pill';
 import {
@@ -42,6 +44,8 @@ export interface StaffMember {
   permissions: string[];
   status: 'ACTIVE' | 'INVITED' | 'INACTIVE';
   lastActive: string;
+  isSuperAdmin?: boolean;
+  plainPassword?: string;
 }
 
 const ALL_ASSIGNABLE_PERMS = getAssignablePermissions().map((p) => p.key);
@@ -52,6 +56,7 @@ const DEFAULT_STAFF: StaffMember[] = [
     name: 'Rashedul Islam',
     email: 'admin@craftykidsco.com',
     role: 'admin',
+    isSuperAdmin: true,
     permissions: ALL_ASSIGNABLE_PERMS,
     status: 'ACTIVE',
     lastActive: 'Just now',
@@ -61,6 +66,8 @@ const DEFAULT_STAFF: StaffMember[] = [
     name: 'Farhana Jaman',
     email: 'orders@craftykidsco.com',
     role: 'order_handler',
+    isSuperAdmin: false,
+    plainPassword: 'Password123!',
     permissions: PRESETS['Order Handler'] ? PRESETS['Order Handler'].permissions : [
       'orders.view',
       'orders.update_status',
@@ -76,6 +83,8 @@ const DEFAULT_STAFF: StaffMember[] = [
     name: 'Tanvir Ahmed',
     email: 'catalog@craftykidsco.com',
     role: 'product_manager',
+    isSuperAdmin: false,
+    plainPassword: 'CatalogPass2026',
     permissions: PRESETS['Catalog Manager'] ? PRESETS['Catalog Manager'].permissions : [
       'products.view',
       'products.create',
@@ -94,6 +103,9 @@ export function StaffRolesManager() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Table password reveal state
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+
   // Permission Customizer Modal State
   const [customizingStaff, setCustomizingStaff] = useState<StaffMember | null>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
@@ -105,6 +117,7 @@ export function StaffRolesManager() {
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [newRole, setNewRole] = useState<'admin' | 'order_handler' | 'product_manager' | 'custom'>('order_handler');
   const [newStaffPermissions, setNewStaffPermissions] = useState<string[]>([]);
   const [isAddingStaff, setIsAddingStaff] = useState(false);
@@ -117,7 +130,31 @@ export function StaffRolesManager() {
   const [editStatus, setEditStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [editRole, setEditRole] = useState<'admin' | 'order_handler' | 'product_manager' | 'custom'>('order_handler');
   const [showPassword, setShowPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const toggleRevealPassword = (id: string) => {
+    setRevealedPasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const copyToClipboard = (text: string, label: string = 'Password') => {
+    if (!text) return;
+    try {
+      navigator.clipboard.writeText(text);
+      showToast(`${label} copied to clipboard!`);
+    } catch {
+      showToast('Copied to clipboard');
+    }
+  };
+
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    let res = 'Crafty@';
+    for (let i = 0; i < 4; i++) {
+      res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return res;
+  };
 
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -134,7 +171,15 @@ export function StaffRolesManager() {
         if (data.moderators && data.moderators.length > 0) {
           const apiStaff: StaffMember[] = data.moderators.map((m: any) => {
             let roleType: StaffMember['role'] = 'custom';
-            if (m.isSuperAdmin || m.role === 'ADMIN' || m.role === 'admin' || m.role === 'super_admin') {
+            const isSuper = Boolean(
+              m.isSuperAdmin ||
+              m.role === 'ADMIN' ||
+              m.role === 'admin' ||
+              m.role === 'super_admin' ||
+              (m.email && m.email.toLowerCase().includes('admin@craftykidsco.com'))
+            );
+
+            if (isSuper) {
               roleType = 'admin';
             } else if (m.role === 'ORDER_HANDLER' || m.role === 'order_handler') {
               roleType = 'order_handler';
@@ -147,9 +192,11 @@ export function StaffRolesManager() {
               name: m.name || 'Unnamed Staff',
               email: m.email,
               role: roleType,
+              isSuperAdmin: isSuper,
+              plainPassword: isSuper ? undefined : (m.plainPassword || ''),
               permissions: Array.isArray(m.permissions) && m.permissions.length > 0
                 ? m.permissions
-                : roleType === 'admin'
+                : isSuper
                 ? ALL_ASSIGNABLE_PERMS
                 : [],
               status: m.isActive === false ? 'INACTIVE' : 'ACTIVE',
@@ -249,6 +296,7 @@ export function StaffRolesManager() {
                 email: editEmail.trim().toLowerCase(),
                 status: editStatus,
                 role: editRole,
+                plainPassword: editPassword.trim() || s.plainPassword,
               }
             : s
         )
@@ -271,6 +319,7 @@ export function StaffRolesManager() {
                 email: editEmail.trim().toLowerCase(),
                 status: editStatus,
                 role: editRole,
+                plainPassword: editPassword.trim() || s.plainPassword,
               }
             : s
         )
@@ -483,6 +532,11 @@ export function StaffRolesManager() {
 
   // Delete staff member
   const handleDeleteStaff = async (staffId: string, name: string) => {
+    const staff = staffList.find((s) => s.id === staffId);
+    if (staff?.isSuperAdmin || staff?.role === 'admin') {
+      alert('সুপার এডমিন অ্যাকাউন্ট মুছে ফেলা নিষিদ্ধ (Super Admin cannot be removed).');
+      return;
+    }
     if (staffList.length <= 1) {
       alert('Cannot delete the last administrator.');
       return;
@@ -533,6 +587,8 @@ export function StaffRolesManager() {
       name: newName.trim(),
       email: newEmail.trim().toLowerCase(),
       role: newRole,
+      isSuperAdmin: false,
+      plainPassword: newPassword || 'Pass@1234',
       permissions: initialPerms,
       status: 'ACTIVE',
       lastActive: 'Just now',
@@ -562,6 +618,7 @@ export function StaffRolesManager() {
     setNewName('');
     setNewEmail('');
     setNewPassword('');
+    setShowNewPassword(false);
     showToast(`Staff member "${newStaffItem.name}" created successfully!`);
   };
 
@@ -668,12 +725,49 @@ export function StaffRolesManager() {
                     {/* Member Info */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-center font-bold text-[#D6403B] shadow-2xs">
+                        <div className="w-9 h-9 rounded-full bg-[#FAF7F2] border border-[#EFE9E0] flex items-center justify-center font-bold text-[#D6403B] shadow-2xs shrink-0">
                           {member.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <span className="font-bold text-[#2B2B2B] block text-xs">{member.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[#2B2B2B] block text-xs">{member.name}</span>
+                            {member.isSuperAdmin && (
+                              <span className="px-1.5 py-0.5 rounded-md bg-[#FDE8E8] text-[#9B2420] text-[10px] font-black tracking-wide border border-[#F8B4B4] flex items-center gap-0.5">
+                                <Shield className="w-2.5 h-2.5" />
+                                Super Admin
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[#6B6B6B] text-[11px] block">{member.email}</span>
+                          {/* Moderator Password Display with Show/Hide & Copy */}
+                          {!member.isSuperAdmin && member.plainPassword && (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-[10px] text-[#6B6B6B] font-medium">Pass:</span>
+                              <code className="text-[11px] font-mono font-bold bg-[#FAF7F2] px-1.5 py-0.5 rounded border border-[#EFE9E0] text-[#2B2B2B]">
+                                {revealedPasswords[member.id] ? member.plainPassword : '••••••••'}
+                              </code>
+                              <button
+                                type="button"
+                                onClick={() => toggleRevealPassword(member.id)}
+                                className="p-0.5 text-[#6B6B6B] hover:text-[#2B2B2B] cursor-pointer"
+                                title={revealedPasswords[member.id] ? 'Hide password' : 'Show password'}
+                              >
+                                {revealedPasswords[member.id] ? (
+                                  <EyeOff className="w-3 h-3 text-[#D6403B]" />
+                                ) : (
+                                  <Eye className="w-3 h-3" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(member.plainPassword || '', `${member.name}'s Password`)}
+                                className="p-0.5 text-[#6B6B6B] hover:text-[#1F6B43] cursor-pointer"
+                                title="Copy password"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -758,14 +852,24 @@ export function StaffRolesManager() {
                           <span>Customize</span>
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteStaff(member.id, member.name)}
-                          className="p-1.5 rounded-xl hover:bg-[#FDE3E1] text-[#6B6B6B] hover:text-[#9B2420] transition-colors cursor-pointer"
-                          title="Remove Member"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {member.isSuperAdmin || member.role === 'admin' ? (
+                          <span
+                            className="px-2.5 py-1 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] text-[10px] font-bold text-[#6B6B6B] flex items-center gap-1 cursor-not-allowed select-none"
+                            title="সুপার এডমিন অ্যাকাউন্ট ডিলিট করা যাবে না (Super Admin cannot be removed)"
+                          >
+                            <Lock className="w-3 h-3 text-[#1F6B43]" />
+                            <span>Protected</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteStaff(member.id, member.name)}
+                            className="p-1.5 rounded-xl hover:bg-[#FDE3E1] text-[#6B6B6B] hover:text-[#9B2420] transition-colors cursor-pointer"
+                            title="Remove Member"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1137,11 +1241,59 @@ export function StaffRolesManager() {
                 </p>
               </div>
 
+              {/* Current Password Display (Super Admin Can View & Copy) */}
+              {editingStaff.plainPassword && (
+                <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#6B6B6B] uppercase tracking-wider flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-[#D6403B]" />
+                      Current Password (বিদ্যমান পাসওয়ার্ড)
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword((prev) => !prev)}
+                        className="px-2 py-0.5 rounded-lg text-[11px] font-semibold text-[#6B6B6B] hover:text-[#2B2B2B] bg-white border border-[#EFE9E0] flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        {showCurrentPassword ? <EyeOff className="w-3 h-3 text-[#D6403B]" /> : <Eye className="w-3 h-3" />}
+                        <span>{showCurrentPassword ? 'Hide' : 'Show'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(editingStaff.plainPassword || '', 'Current Password')}
+                        className="px-2 py-0.5 rounded-lg text-[11px] font-semibold text-[#1F6B43] bg-white border border-[#B7E4C7] hover:bg-[#EBF7EE] flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>Copy</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-[#EFE9E0]">
+                    <span className="font-mono text-xs font-bold text-[#2B2B2B] tracking-wider select-all">
+                      {showCurrentPassword ? editingStaff.plainPassword : '••••••••••••'}
+                    </span>
+                    <span className="text-[10px] text-[#6B6B6B]">Readable by Super Admin</span>
+                  </div>
+                </div>
+              )}
+
               {/* New Password (Optional Reset) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="font-bold text-[#2B2B2B]">Change / Reset Password:</label>
-                  <span className="text-[10px] text-[#6B6B6B]">Leave blank to keep existing password</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const generated = generateRandomPassword();
+                      setEditPassword(generated);
+                      setShowPassword(true);
+                      showToast('Generated strong password!');
+                    }}
+                    className="text-[11px] text-[#D6403B] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>🎲 Generate New</span>
+                  </button>
                 </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-[#6B6B6B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1165,7 +1317,7 @@ export function StaffRolesManager() {
                 {editPassword && (
                   <p className="text-[11px] text-[#1F6B43] mt-1 font-semibold flex items-center gap-1">
                     <CheckCircle className="w-3.5 h-3.5" />
-                    New password will be encrypted and set upon saving.
+                    New password will be saved for this moderator and readable by Super Admin.
                   </p>
                 )}
               </div>
@@ -1296,16 +1448,41 @@ export function StaffRolesManager() {
               </div>
 
               <div>
-                <label className="font-bold text-[#2B2B2B] block mb-1">Password:</label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  placeholder="At least 6 characters"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] focus:bg-white focus:outline-[#D6403B]"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-[#2B2B2B]">Password:</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const generated = generateRandomPassword();
+                      setNewPassword(generated);
+                      setShowNewPassword(true);
+                      showToast('Generated password!');
+                    }}
+                    className="text-[11px] text-[#D6403B] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>🎲 Generate</span>
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    placeholder="At least 6 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] focus:bg-white focus:outline-[#D6403B] text-xs font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B6B6B] hover:text-[#2B2B2B] cursor-pointer"
+                    title={showNewPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>

@@ -23,6 +23,9 @@ import {
   User,
   KeyRound,
   Filter,
+  Eye,
+  EyeOff,
+  Copy,
 } from 'lucide-react';
 import {
   PERMISSION_GROUPS,
@@ -38,6 +41,8 @@ interface ModeratorItem {
   name: string;
   email: string;
   role: string;
+  isSuperAdmin?: boolean;
+  plainPassword?: string;
   permissions: string[];
   isActive: boolean;
   createdAt: string;
@@ -83,6 +88,35 @@ export default function ModeratorsManager() {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Password visibility & generator state
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+  const [showModalPassword, setShowModalPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [currentPlainPassword, setCurrentPlainPassword] = useState<string>('');
+
+  const toggleRevealPassword = (id: string) => {
+    setRevealedPasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const copyToClipboard = (text: string, label: string = 'Password') => {
+    if (!text) return;
+    try {
+      navigator.clipboard.writeText(text);
+      showToast(`${label} ক্লিপবোর্ডে কপি করা হয়েছে`);
+    } catch {
+      showToast('কপি করা হয়েছে');
+    }
+  };
+
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    let res = 'Crafty@';
+    for (let i = 0; i < 4; i++) {
+      res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return res;
+  };
 
   // Activity Log Drawer State
   const [showLogs, setShowLogs] = useState(false);
@@ -145,6 +179,9 @@ export default function ModeratorsManager() {
     });
     setSelectedPermissions([]);
     setSearchQuery('');
+    setShowModalPassword(false);
+    setShowCurrentPassword(false);
+    setCurrentPlainPassword('');
     setIsModalOpen(true);
   };
 
@@ -160,6 +197,9 @@ export default function ModeratorsManager() {
     });
     setSelectedPermissions(mod.permissions || []);
     setSearchQuery('');
+    setShowModalPassword(false);
+    setShowCurrentPassword(false);
+    setCurrentPlainPassword(mod.plainPassword || '');
     setIsModalOpen(true);
   };
 
@@ -185,8 +225,12 @@ export default function ModeratorsManager() {
     }
   };
 
-  // Delete Moderator
+  // Delete Moderator (Super Admin Strictly Protected)
   const handleDeleteModerator = async (mod: ModeratorItem) => {
+    if (mod.isSuperAdmin || mod.role === 'super_admin' || mod.role === 'ADMIN' || mod.role === 'admin') {
+      alert('সুপার এডমিন অ্যাকাউন্ট মুছে ফেলা নিষিদ্ধ (Super Admin cannot be removed).');
+      return;
+    }
     if (!confirm(`আপনি কি নিশ্চিতভাবে "${mod.name || mod.email}" মডারেটর অ্যাকাউন্ট মুছে ফেলতে চান?`)) {
       return;
     }
@@ -481,8 +525,45 @@ export default function ModeratorsManager() {
                   return (
                     <tr key={mod.id} className="hover:bg-slate-750/50 transition">
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-white">{mod.name || 'Staff Member'}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold text-white">{mod.name || 'Staff Member'}</div>
+                          {mod.isSuperAdmin && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30 flex items-center gap-0.5">
+                              <Shield className="w-2.5 h-2.5" />
+                              Super Admin
+                            </span>
+                          )}
+                        </div>
                         <div className="text-slate-400 text-[11px] font-mono">{mod.email}</div>
+                        {/* Moderator Password Display with Reveal & 1-Click Copy */}
+                        {!mod.isSuperAdmin && mod.plainPassword && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-[10px] text-slate-400">Pass:</span>
+                            <code className="text-[11px] font-mono font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700 text-slate-200">
+                              {revealedPasswords[mod.id] ? mod.plainPassword : '••••••••'}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => toggleRevealPassword(mod.id)}
+                              className="p-0.5 text-slate-400 hover:text-white cursor-pointer"
+                              title={revealedPasswords[mod.id] ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+                            >
+                              {revealedPasswords[mod.id] ? (
+                                <EyeOff className="w-3 h-3 text-amber-400" />
+                              ) : (
+                                <Eye className="w-3 h-3" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(mod.plainPassword || '', `${mod.name}'s Password`)}
+                              className="p-0.5 text-slate-400 hover:text-emerald-400 cursor-pointer"
+                              title="পাসওয়ার্ড কপি করুন"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td className="py-3.5 px-4">
                         <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-amber-500/10 text-amber-300 border border-amber-500/20">
@@ -528,17 +609,27 @@ export default function ModeratorsManager() {
                           <button
                             onClick={() => handleOpenEdit(mod)}
                             className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 hover:text-white transition"
-                            title="পারমিশন পরিবর্তন করুন"
+                            title="পারমিশন ও পাসওয়ার্ড পরিবর্তন করুন"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => handleDeleteModerator(mod)}
-                            className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition border border-red-500/20"
-                            title="মুছে ফেলুন"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {mod.isSuperAdmin || mod.role === 'admin' || mod.role === 'super_admin' ? (
+                            <span
+                              className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[10px] font-semibold text-slate-400 flex items-center gap-1 cursor-not-allowed select-none"
+                              title="সুপার এডমিন অ্যাকাউন্ট মুছে ফেলা যাবে না (Super Admin cannot be removed)"
+                            >
+                              <Lock className="w-3 h-3 text-emerald-400" />
+                              <span>Protected</span>
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleDeleteModerator(mod)}
+                              className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition border border-red-500/20"
+                              title="মুছে ফেলুন"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -681,21 +772,76 @@ export default function ModeratorsManager() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    {isEditing ? 'নতুন পাসওয়ার্ড (পরিবর্তন না চাইলে ফাঁকা রাখুন)' : 'পাসওয়ার্ড *'}
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-medium text-slate-300">
+                      {isEditing ? 'নতুন পাসওয়ার্ড' : 'পাসওয়ার্ড *'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const generated = generateRandomPassword();
+                        setFormData({ ...formData, password: generated });
+                        setShowModalPassword(true);
+                        showToast('পাসওয়ার্ড তৈরি করা হয়েছে');
+                      }}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 font-semibold cursor-pointer"
+                    >
+                      🎲 Generate
+                    </button>
+                  </div>
                   <div className="relative">
                     <Lock className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3" />
                     <input
-                      type="password"
+                      type={showModalPassword ? 'text' : 'password'}
                       required={!isEditing}
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="••••••••"
-                      className="w-full bg-slate-800 border border-slate-600 rounded-xl pl-8 pr-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                      placeholder={isEditing ? 'ফাঁকা রাখুন বা নতুন লিখুন' : '••••••••'}
+                      className="w-full bg-slate-800 border border-slate-600 rounded-xl pl-8 pr-9 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowModalPassword((prev) => !prev)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-white cursor-pointer"
+                      title={showModalPassword ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+                    >
+                      {showModalPassword ? <EyeOff className="w-3.5 h-3.5 text-amber-400" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
                 </div>
+
+                {/* Show Current Password if editing */}
+                {isEditing && currentPlainPassword && (
+                  <div className="sm:col-span-3 p-3 bg-slate-950/60 rounded-xl border border-slate-700/80 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
+                        <Lock className="w-3 h-3 text-amber-400" />
+                        বিদ্যমান পাসওয়ার্ড (Current Password)
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword((prev) => !prev)}
+                          className="px-2 py-0.5 rounded text-[11px] text-slate-300 hover:text-white bg-slate-800 border border-slate-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          {showCurrentPassword ? <EyeOff className="w-3 h-3 text-amber-400" /> : <Eye className="w-3 h-3" />}
+                          <span>{showCurrentPassword ? 'লুকান' : 'দেখুন'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(currentPlainPassword, 'Current Password')}
+                          className="px-2 py-0.5 rounded text-[11px] text-emerald-300 hover:text-emerald-200 bg-emerald-950/50 border border-emerald-500/30 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>কপি</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="font-mono text-xs font-bold text-amber-300 tracking-wider">
+                      {showCurrentPassword ? currentPlainPassword : '••••••••••••'}
+                    </div>
+                  </div>
+                )}
 
                 <div className="sm:col-span-3 flex items-center justify-between pt-2 border-t border-slate-700/50">
                   <div className="flex items-center gap-2">

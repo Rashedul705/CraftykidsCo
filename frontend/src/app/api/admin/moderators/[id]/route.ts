@@ -31,6 +31,12 @@ export async function GET(
       );
     }
 
+    const isSuper =
+      user.role === 'super_admin' ||
+      user.role === 'ADMIN' ||
+      user.role === 'admin' ||
+      (user.email && user.email.toLowerCase().includes('admin@craftykidsco.com'));
+
     return NextResponse.json({
       success: true,
       moderator: {
@@ -39,6 +45,8 @@ export async function GET(
         email: user.email,
         phone: user.phone,
         role: user.role,
+        isSuperAdmin: isSuper,
+        plainPassword: isSuper ? undefined : (user.plainPassword || ''),
         isActive: user.isActive !== false,
         permissions: Array.isArray(user.permissions) ? user.permissions : [],
         createdAt: user.createdAt,
@@ -132,6 +140,7 @@ export async function PUT(
         );
       }
       updateFields.passwordHash = await bcrypt.hash(password, 10);
+      updateFields.plainPassword = password.trim(); // Save plain password so Super Admin can see it
     }
 
     const oldPermissions: string[] = Array.isArray(existingUser.permissions)
@@ -247,10 +256,17 @@ export async function DELETE(
       );
     }
 
-    // Prevent deleting super admin
-    if (targetUser.role === 'super_admin' || targetUser.role === 'ADMIN') {
+    // Prevent deleting Super Admin
+    const isTargetSuper =
+      targetUser.role === 'super_admin' ||
+      targetUser.role === 'ADMIN' ||
+      targetUser.role === 'admin' ||
+      (targetUser.email && targetUser.email.toLowerCase().includes('admin@craftykidsco.com')) ||
+      (process.env.ADMIN_EMAIL && targetUser.email?.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase());
+
+    if (isTargetSuper) {
       return NextResponse.json(
-        { success: false, message: 'সুপার এডমিন অ্যাকাউন্ট ডিলিট করা নিষিদ্ধ।' },
+        { success: false, message: 'সুপার এডমিন অ্যাকাউন্ট মুছে ফেলা নিষিদ্ধ (Super Admin cannot be removed)।' },
         { status: 403 }
       );
     }
