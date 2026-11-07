@@ -254,8 +254,20 @@ export default function AdminDashboardPage() {
       .then((data) => {
         if (data?.user) {
           setAdminUser(data.user);
-          if (data.user.role === 'order_handler' || data.user.role === 'product_manager') {
-            setUserRole(data.user.role);
+          if (data.user.isSuperAdmin) {
+            setUserRole('admin');
+          } else if (
+            data.user.role === 'order_handler' ||
+            (data.user.permissions?.includes('orders.view') && !data.user.permissions?.includes('products.view'))
+          ) {
+            setUserRole('order_handler');
+          } else if (
+            data.user.role === 'product_manager' ||
+            (data.user.permissions?.includes('products.view') && !data.user.permissions?.includes('orders.view'))
+          ) {
+            setUserRole('product_manager');
+          } else {
+            setUserRole('order_handler');
           }
           const urlParams = new URLSearchParams(window.location.search);
           const tabFromUrl = urlParams.get('tab');
@@ -1004,6 +1016,7 @@ export default function AdminDashboardPage() {
       onSearchChange={setSearchQuery}
       userPermissions={adminUser?.permissions}
       isSuperAdmin={adminUser?.isSuperAdmin}
+      currentUser={adminUser}
       onMainAction={(actionKey) => {
         if (actionKey === 'add_product') {
           handleNavChange('products', 'add');

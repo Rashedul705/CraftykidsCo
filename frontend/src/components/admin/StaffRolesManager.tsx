@@ -30,6 +30,7 @@ import { StatusPill } from '@/components/ui/Pill';
 import {
   PERMISSION_GROUPS,
   PERMISSION_DEFINITIONS,
+  PERMISSION_DEPENDENCIES,
   PRESETS,
   enforcePermissionDependencies,
   getAssignablePermissions,
@@ -373,28 +374,32 @@ export function StaffRolesManager() {
     }
   };
 
-  // Toggle single permission with dependency resolution
-  const handleTogglePermission = (key: string, group: PermissionGroup) => {
+  // Toggle single permission with clean prerequisite handling
+  const handleTogglePermission = (key: string) => {
     const isChecked = selectedPermissions.includes(key);
     let updated: string[];
 
     if (isChecked) {
-      if (group.viewPermissionKey === key) {
-        // Unselecting view removes all other action permissions in this group
-        const groupKeys = new Set(group.permissions.map((p) => p.key));
-        updated = selectedPermissions.filter((k) => !groupKeys.has(k));
-      } else {
-        updated = selectedPermissions.filter((k) => k !== key);
-      }
+      // Unticking this permission:
+      // Remove this key AND remove any sub-action that directly depends on this key
+      const dependentKeys = Object.entries(PERMISSION_DEPENDENCIES)
+        .filter(([_, parent]) => parent === key)
+        .map(([child]) => child);
+
+      const removeSet = new Set([key, ...dependentKeys]);
+      updated = selectedPermissions.filter((k) => !removeSet.has(k));
     } else {
-      updated = [...selectedPermissions, key];
-      // Selecting an action automatically ensures view is checked
-      if (group.viewPermissionKey && !updated.includes(group.viewPermissionKey)) {
-        updated.push(group.viewPermissionKey);
+      // Ticking this permission:
+      // Add this key AND if it has a required parent in PERMISSION_DEPENDENCIES, ensure parent is added
+      const parent = PERMISSION_DEPENDENCIES[key];
+      if (parent && !selectedPermissions.includes(parent)) {
+        updated = [...selectedPermissions, key, parent];
+      } else {
+        updated = [...selectedPermissions, key];
       }
     }
 
-    setSelectedPermissions(enforcePermissionDependencies(updated));
+    setSelectedPermissions(Array.from(new Set(updated)));
   };
 
   // Toggle entire group
@@ -413,7 +418,7 @@ export function StaffRolesManager() {
       updated = Array.from(set);
     }
 
-    setSelectedPermissions(enforcePermissionDependencies(updated));
+    setSelectedPermissions(Array.from(new Set(updated)));
   };
 
   // Save customized permissions for current staff
@@ -421,12 +426,30 @@ export function StaffRolesManager() {
     if (!customizingStaff) return;
 
     setIsSavingPermissions(true);
-    const finalPermissions = enforcePermissionDependencies(selectedPermissions);
+    const finalPermissions = Array.from(new Set(selectedPermissions));
 
     // Determine derived role based on permissions
     let derivedRole: StaffMember['role'] = 'custom';
-    if (finalPermissions.length === ALL_ASSIGNABLE_PERMS.length) {
+    let dbRole = 'moderator';
+
+    if (customizingStaff.isSuperAdmin || finalPermissions.length === ALL_ASSIGNABLE_PERMS.length) {
       derivedRole = 'admin';
+      dbRole = 'super_admin';
+    } else if (
+      finalPermissions.some((p) => p.startsWith('orders.')) &&
+      !finalPermissions.some((p) => p.startsWith('products.'))
+    ) {
+      derivedRole = 'order_handler';
+      dbRole = 'order_handler';
+    } else if (
+      finalPermissions.some((p) => p.startsWith('products.')) &&
+      !finalPermissions.some((p) => p.startsWith('orders.'))
+    ) {
+      derivedRole = 'product_manager';
+      dbRole = 'product_manager';
+    } else {
+      derivedRole = 'custom';
+      dbRole = 'moderator';
     }
 
     try {
@@ -436,10 +459,16 @@ export function StaffRolesManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           permissions: finalPermissions,
+          role: dbRole,
         }),
       });
 
-      // Update local state regardless (works for both live DB users & mock staff)
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to update permissions on server.');
+      }
+
+      // Update local state
       setStaffList((prev) =>
         prev.map((s) =>
           s.id === customizingStaff.id
@@ -450,17 +479,10 @@ export function StaffRolesManager() {
 
       showToast(`Permissions successfully updated for ${customizingStaff.name}!`);
       handleCloseCustomizeModal();
+      fetchStaffFromApi();
     } catch (err: any) {
-      // Fallback local update
-      setStaffList((prev) =>
-        prev.map((s) =>
-          s.id === customizingStaff.id
-            ? { ...s, permissions: finalPermissions, role: derivedRole }
-            : s
-        )
-      );
-      showToast(`Permissions saved for ${customizingStaff.name}!`);
-      handleCloseCustomizeModal();
+      console.error('Save permissions error:', err);
+      showToast(err.message || 'Failed to update permissions.', 'error');
     } finally {
       setIsSavingPermissions(false);
     }
@@ -469,25 +491,32 @@ export function StaffRolesManager() {
   // Quick role change from table dropdown
   const handleQuickRoleChange = async (staffId: string, role: StaffMember['role']) => {
     let newPerms: string[] = [];
+    let dbRole = 'moderator';
+
     if (role === 'admin') {
       newPerms = ALL_ASSIGNABLE_PERMS;
+      dbRole = 'super_admin';
     } else if (role === 'order_handler') {
-      newPerms = PRESETS.order_handler ? PRESETS.order_handler.permissions : [
+      newPerms = PRESETS['Order Handler']?.permissions || [
         'orders.view',
         'orders.update_status',
         'orders.cancel',
         'customers.view',
         'customers.edit',
       ];
+      dbRole = 'order_handler';
     } else if (role === 'product_manager') {
-      newPerms = PRESETS.catalog_manager ? PRESETS.catalog_manager.permissions : [
+      newPerms = PRESETS['Catalog Manager']?.permissions || [
         'products.view',
         'products.create',
         'products.edit',
         'products.delete',
         'categories.view',
         'categories.manage',
+        'bundles.manage',
+        'stock.manage',
       ];
+      dbRole = 'product_manager';
     } else {
       // If switching to custom, keep current perms and open customizer
       const target = staffList.find((s) => s.id === staffId);
@@ -500,16 +529,20 @@ export function StaffRolesManager() {
       prev.map((s) => (s.id === staffId ? { ...s, role, permissions: newPerms } : s))
     );
 
-    // Call API if possible
+    // Call API
     try {
-      await fetch(`/api/admin/moderators/${staffId}`, {
+      const res = await fetch(`/api/admin/moderators/${staffId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ permissions: newPerms }),
+        body: JSON.stringify({ permissions: newPerms, role: dbRole }),
       });
-    } catch {}
-
-    showToast(`Role updated to ${role.replace('_', ' ').toUpperCase()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      showToast(`Role updated to ${role.replace('_', ' ').toUpperCase()}`);
+      fetchStaffFromApi();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update role', 'error');
+    }
   };
 
   // Toggle Staff Active/Inactive status
@@ -774,18 +807,25 @@ export function StaffRolesManager() {
 
                     {/* Quick Role Selector */}
                     <td className="py-3.5 px-4">
-                      <select
-                        value={member.role}
-                        onChange={(e) =>
-                          handleQuickRoleChange(member.id, e.target.value as StaffMember['role'])
-                        }
-                        className="p-2 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] font-semibold text-xs text-[#2B2B2B] focus:outline-[#D6403B] cursor-pointer"
-                      >
-                        <option value="admin">Administrator (Full Access)</option>
-                        <option value="order_handler">Order Handler (Orders &amp; Shipping)</option>
-                        <option value="product_manager">Product Manager (Catalog &amp; Stock)</option>
-                        <option value="custom">Custom Permissions (Customized)</option>
-                      </select>
+                      {member.isSuperAdmin ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#EBF7EE] border border-[#B7E4C7] font-bold text-xs text-[#1F6B43]">
+                          <Shield className="w-3.5 h-3.5" />
+                          <span>Super Admin (Full Access)</span>
+                        </span>
+                      ) : (
+                        <select
+                          value={member.role}
+                          onChange={(e) =>
+                            handleQuickRoleChange(member.id, e.target.value as StaffMember['role'])
+                          }
+                          className="p-2 rounded-xl border border-[#EFE9E0] bg-[#FAF7F2] font-semibold text-xs text-[#2B2B2B] focus:outline-[#D6403B] cursor-pointer"
+                        >
+                          <option value="order_handler">Order Handler (Orders &amp; Shipping)</option>
+                          <option value="product_manager">Product Manager (Catalog &amp; Stock)</option>
+                          <option value="custom">Custom Permissions (Customized)</option>
+                          <option value="admin">Administrator (Full Access)</option>
+                        </select>
+                      )}
                     </td>
 
                     {/* Permissions Badge & Customize Button */}
@@ -1121,7 +1161,7 @@ export function StaffRolesManager() {
                             <input
                               type="checkbox"
                               checked={isChecked}
-                              onChange={() => handleTogglePermission(perm.key, group)}
+                              onChange={() => handleTogglePermission(perm.key)}
                               className="mt-0.5 rounded border-gray-300 text-[#D6403B] focus:ring-[#D6403B] cursor-pointer"
                             />
                             <div className="min-w-0 flex-1">

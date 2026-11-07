@@ -30,6 +30,7 @@ import {
 import {
   PERMISSION_GROUPS,
   PERMISSION_DEFINITIONS,
+  PERMISSION_DEPENDENCIES,
   PRESETS,
   enforcePermissionDependencies,
   PermissionGroup,
@@ -259,29 +260,31 @@ export default function ModeratorsManager() {
   };
 
   // Toggle Single Permission with Dependency Rules
-  const handleTogglePermission = (key: string, group: PermissionGroup) => {
+  const handleTogglePermission = (key: string) => {
     const isCurrentlyChecked = selectedPermissions.includes(key);
-    let next: string[] = [];
+    let next: string[];
 
     if (isCurrentlyChecked) {
-      // Unticking
-      if (group.viewPermissionKey === key) {
-        // Unticking "view" removes all other permissions in this group
-        const groupKeys = new Set(group.permissions.map((p) => p.key));
-        next = selectedPermissions.filter((k) => !groupKeys.has(k));
-      } else {
-        next = selectedPermissions.filter((k) => k !== key);
-      }
+      // Unticking this permission:
+      // Remove this key AND remove any sub-action that directly depends on this key
+      const dependentKeys = Object.entries(PERMISSION_DEPENDENCIES)
+        .filter(([_, parent]) => parent === key)
+        .map(([child]) => child);
+
+      const removeSet = new Set([key, ...dependentKeys]);
+      next = selectedPermissions.filter((k) => !removeSet.has(k));
     } else {
-      // Ticking
-      next = [...selectedPermissions, key];
-      // If ticking edit/delete/manage, automatically ensure "view" in this group is ticked
-      if (group.viewPermissionKey && !next.includes(group.viewPermissionKey)) {
-        next.push(group.viewPermissionKey);
+      // Ticking this permission:
+      // Add this key AND if it has a required parent in PERMISSION_DEPENDENCIES, ensure parent is added
+      const parent = PERMISSION_DEPENDENCIES[key];
+      if (parent && !selectedPermissions.includes(parent)) {
+        next = [...selectedPermissions, key, parent];
+      } else {
+        next = [...selectedPermissions, key];
       }
     }
 
-    setSelectedPermissions(enforcePermissionDependencies(next));
+    setSelectedPermissions(Array.from(new Set(next)));
   };
 
   // Toggle All Permissions in a Group
@@ -369,10 +372,21 @@ export default function ModeratorsManager() {
         throw new Error('ইমেইল ও পাসওয়ার্ড অবশ্যই পূরণ করতে হবে');
       }
 
+      let derivedRole = 'moderator';
+      const perms = selectedPermissions;
+      if (perms.length === allAssignableKeys.length) {
+        derivedRole = 'super_admin';
+      } else if (perms.some((p) => p.startsWith('orders.')) && !perms.some((p) => p.startsWith('products.'))) {
+        derivedRole = 'order_handler';
+      } else if (perms.some((p) => p.startsWith('products.')) && !perms.some((p) => p.startsWith('orders.'))) {
+        derivedRole = 'product_manager';
+      }
+
       const payload: any = {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
-        permissions: enforcePermissionDependencies(selectedPermissions),
+        permissions: Array.from(new Set(selectedPermissions)),
+        role: derivedRole,
         isActive: formData.isActive,
       };
 
@@ -981,7 +995,7 @@ export default function ModeratorsManager() {
                               <input
                                 type="checkbox"
                                 checked={isChecked}
-                                onChange={() => handleTogglePermission(perm.key, group)}
+                                onChange={() => handleTogglePermission(perm.key)}
                                 className="mt-0.5 rounded border-slate-600 text-amber-500 focus:ring-0 focus:ring-offset-0 bg-slate-800 cursor-pointer"
                               />
                               <div className="flex-1">

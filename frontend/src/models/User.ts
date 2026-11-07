@@ -18,6 +18,9 @@ export type UserRole =
   | 'CUSTOMER'
   | 'PRODUCT_MANAGER'
   | 'ORDER_HANDLER'
+  | 'admin'
+  | 'order_handler'
+  | 'product_manager'
   | string;
 
 export interface IUser extends Document {
@@ -66,6 +69,9 @@ const UserSchema = new Schema<IUser>(
         'CUSTOMER',
         'PRODUCT_MANAGER',
         'ORDER_HANDLER',
+        'admin',
+        'order_handler',
+        'product_manager',
       ],
       default: 'customer',
       index: true,

@@ -72,7 +72,7 @@ export async function PUT(
 
     const { id } = await context.params;
     const body = await req.json();
-    const { name, email, permissions, isActive, password } = body;
+    const { name, email, permissions, isActive, password, role } = body;
 
     await connectToDatabase();
 
@@ -84,21 +84,22 @@ export async function PUT(
       );
     }
 
-    // Protect Super Admin from losing Super Admin status or being restricted via moderator route
     const isTargetSuperAdmin =
-      existingUser.role === 'super_admin' || existingUser.role === 'ADMIN';
-
-    if (isTargetSuperAdmin && permissions !== undefined) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'সুপার এডমিনের পারমিশন সীমাবদ্ধ করা সম্ভব নয়। সুপার এডমিনের সর্বদা পূর্ণ প্রবেশাধিকার থাকে।',
-        },
-        { status: 400 }
-      );
-    }
+      existingUser.role === 'super_admin' ||
+      existingUser.role === 'ADMIN' ||
+      existingUser.role === 'admin' ||
+      (existingUser.email && existingUser.email.toLowerCase().includes('admin@craftykidsco.com'));
 
     const updateFields: any = { updatedAt: new Date() };
+
+    // Support updating role
+    if (role && typeof role === 'string' && role.trim()) {
+      const cleanRole = role.trim().toLowerCase();
+      const validRoles = ['moderator', 'order_handler', 'product_manager', 'super_admin', 'admin'];
+      if (validRoles.includes(cleanRole)) {
+        updateFields.role = cleanRole;
+      }
+    }
 
     if (name && typeof name === 'string' && name.trim()) {
       updateFields.name = name.trim();

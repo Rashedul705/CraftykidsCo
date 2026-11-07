@@ -28,8 +28,11 @@ export async function GET(req: NextRequest) {
           'MODERATOR',
           'super_admin',
           'ADMIN',
+          'admin',
           'ORDER_HANDLER',
+          'order_handler',
           'PRODUCT_MANAGER',
+          'product_manager',
         ],
       },
     })

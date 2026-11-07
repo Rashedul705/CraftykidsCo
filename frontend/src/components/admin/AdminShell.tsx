@@ -199,6 +199,14 @@ export interface AdminShellProps {
   onRoleChange?: (role: AdminRole) => void;
   userPermissions?: string[];
   isSuperAdmin?: boolean;
+  currentUser?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    role?: string;
+    isSuperAdmin?: boolean;
+    permissions?: string[];
+  } | null;
   children: React.ReactNode;
 }
 
@@ -213,9 +221,51 @@ export function AdminShell({
   onRoleChange,
   userPermissions,
   isSuperAdmin,
+  currentUser,
   children,
 }: AdminShellProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Determine whether current user is Super Admin
+  const isSuper = Boolean(
+    isSuperAdmin ||
+    currentUser?.isSuperAdmin ||
+    currentUser?.role === 'super_admin' ||
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'ADMIN' ||
+    (currentUser?.email && currentUser.email.toLowerCase().includes('admin@craftykidsco.com'))
+  );
+
+  // Compute dynamic role badge and label for display
+  const effectiveRole = (currentUser?.role || userRole || '').toLowerCase();
+  const effectivePerms = currentUser?.permissions || userPermissions || [];
+
+  let displayRoleBadge = 'Moderator';
+  let badgeClasses = 'bg-[#EDE9FE] text-[#5B21B6] border-[#DDD6FE]';
+  let roleTagline = 'Operational moderator access';
+
+  if (isSuper) {
+    displayRoleBadge = 'Super Admin';
+    badgeClasses = 'bg-[#DDF3E6] text-[#1F6B43] border-[#BDE7CC]';
+    roleTagline = 'Full system & staff control';
+  } else if (
+    effectiveRole === 'order_handler' ||
+    (effectivePerms.includes('orders.view') && !effectivePerms.includes('products.view'))
+  ) {
+    displayRoleBadge = 'Order Handler';
+    badgeClasses = 'bg-[#DDF1FB] text-[#0B5F85] border-[#BAE6FD]';
+    roleTagline = 'Orders, sales & customer operations';
+  } else if (
+    effectiveRole === 'product_manager' ||
+    (effectivePerms.includes('products.view') && !effectivePerms.includes('orders.view'))
+  ) {
+    displayRoleBadge = 'Product Manager';
+    badgeClasses = 'bg-[#FFF3CC] text-[#7A4E00] border-[#FDE68A]';
+    roleTagline = 'Product catalog & inventory stock';
+  }
+
+  const displayName = currentUser?.name || (isSuper ? 'System Admin' : displayRoleBadge);
+  const displayEmail = currentUser?.email || (isSuper ? 'admin@craftykidsco.com' : 'staff@craftykidsco.com');
 
   // Filter navigation items by permission and role
   const visibleSections = ADMIN_NAV_SECTIONS.map((section) => ({
@@ -308,7 +358,7 @@ export function AdminShell({
 
       {/* Role Switcher & User Profile */}
       <div className="pt-4 border-t border-[#EFE9E0] space-y-3 mt-6">
-        {/* Interactive Role Switcher */}
+        {/* Staff Role Widget */}
         <div className="bg-[#FAF7F2] p-2.5 rounded-[12px] border border-[#EFE9E0]">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-bold text-[#6B6B6B] uppercase tracking-wider">
@@ -316,24 +366,18 @@ export function AdminShell({
             </span>
             <span
               className={cn(
-                'text-[10px] px-2 py-0.5 rounded-full font-bold',
-                userRole === 'admin'
-                  ? 'bg-[#DDF3E6] text-[#1F6B43]'
-                  : userRole === 'order_handler'
-                  ? 'bg-[#DDF1FB] text-[#0B5F85]'
-                  : 'bg-[#FFF3CC] text-[#7A4E00]'
+                'text-[10px] px-2 py-0.5 rounded-full font-bold border',
+                badgeClasses
               )}
             >
-              {userRole === 'admin'
-                ? 'Super Admin'
-                : userRole === 'order_handler'
-                ? 'Order Handler'
-                : 'Product Manager'}
+              {displayRoleBadge}
             </span>
           </div>
-          {onRoleChange && (
+
+          {/* Super Admin can simulate different staff roles for testing */}
+          {isSuper && onRoleChange ? (
             <select
-              aria-label="Select staff role"
+              aria-label="Select staff role preview"
               value={userRole}
               onChange={(e) => onRoleChange(e.target.value as AdminRole)}
               className="w-full bg-white border border-[#EFE9E0] text-[#2B2B2B] text-xs rounded-[8px] py-1.5 px-2 outline-none focus:border-[#D6403B] cursor-pointer"
@@ -342,20 +386,18 @@ export function AdminShell({
               <option value="order_handler">Order Handler (Orders & Customers only)</option>
               <option value="product_manager">Product Manager (Catalog & Stock only)</option>
             </select>
+          ) : (
+            <p className="text-[11px] text-[#6B6B6B] px-1 font-medium leading-tight">
+              {roleTagline}
+            </p>
           )}
         </div>
 
         {/* User Card & Logout */}
         <div className="flex items-center justify-between px-1">
           <div className="min-w-0 pr-2">
-            <p className="text-xs font-bold text-[#2B2B2B] truncate">
-              {userRole === 'admin'
-                ? 'System Admin'
-                : userRole === 'order_handler'
-                ? 'Order Specialist'
-                : 'Catalog Manager'}
-            </p>
-            <p className="text-[11px] text-[#6B6B6B] truncate">staff@craftykidsco.com</p>
+            <p className="text-xs font-bold text-[#2B2B2B] truncate">{displayName}</p>
+            <p className="text-[11px] text-[#6B6B6B] truncate font-mono">{displayEmail}</p>
           </div>
           <button
             onClick={onLogout}

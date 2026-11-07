@@ -68,6 +68,7 @@ export default function DedicatedModeratorsPage() {
       onLogout={handleLogout}
       isSuperAdmin={currentUser?.isSuperAdmin}
       userPermissions={currentUser?.permissions}
+      currentUser={currentUser}
     >
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
         <ModeratorsManager />
