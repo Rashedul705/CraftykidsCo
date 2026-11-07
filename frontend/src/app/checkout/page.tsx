@@ -221,6 +221,7 @@ export default function CheckoutPage() {
               variationTitle: i.variationTitle || i.variationTitleBn || '',
               title: i.titleBn || i.title,
               quantity: i.quantity,
+              isBundle: Boolean(i.isBundle),
             })),
           }),
         });
@@ -267,6 +268,9 @@ export default function CheckoutPage() {
           imageUrl: i.imageUrl || '',
           price: Math.round(i.price),
           quantity: i.quantity,
+          isBundle: Boolean(i.isBundle),
+          bundleId: i.isBundle ? i.productId : undefined,
+          bundleItemsSummary: i.bundleItemsSummary || '',
         })),
       };
 

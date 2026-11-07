@@ -63,6 +63,7 @@ export default function CartPage() {
           variationTitle: i.variationTitle || i.variationTitleBn || '',
           title: i.titleBn || i.title,
           quantity: i.quantity,
+          isBundle: Boolean(i.isBundle),
         })),
       }),
     })

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   Gift,
   Sparkles,
@@ -38,6 +39,7 @@ import { sampleProducts, SampleProduct } from '@/lib/sample-data';
 
 export default function BundlesPage() {
   const { addItem } = useCart();
+  const router = useRouter();
 
   // Bundles Data
   const [bundles, setBundles] = useState<BundleRecord[]>([]);
@@ -62,11 +64,29 @@ export default function BundlesPage() {
   // =========================================================================
   // "নিজের সেট নিজে বানান" (CUSTOM BUNDLE BUILDER) STATE
   // =========================================================================
-  const builderPool: SampleProduct[] = useMemo(() => {
-    return sampleProducts.slice(0, 8);
+  const [storeProducts, setStoreProducts] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.products && data.products.length > 0) {
+          setStoreProducts(data.products);
+        } else {
+          setStoreProducts(sampleProducts);
+        }
+      })
+      .catch(() => {
+        setStoreProducts(sampleProducts);
+      });
   }, []);
 
-  const [customSelectedProducts, setCustomSelectedProducts] = useState<SampleProduct[]>([]);
+  const builderPool = useMemo(() => {
+    const list = storeProducts.length > 0 ? storeProducts : sampleProducts;
+    return list.slice(0, 12);
+  }, [storeProducts]);
+
+  const [customSelectedProducts, setCustomSelectedProducts] = useState<any[]>([]);
   const [customGiftWrap, setCustomGiftWrap] = useState(false);
   const [customGiftCard, setCustomGiftCard] = useState(false);
   const [customCardName, setCustomCardName] = useState('');
@@ -174,10 +194,25 @@ export default function BundlesPage() {
     setTimeout(() => setAddedItemKey(null), 2000);
   };
 
+  // Direct Order Bundle -> Adds to Cart & Routes directly to Checkout
+  const handleDirectOrderBundle = (
+    bundle: BundleRecord,
+    withWrap = false,
+    withCard = false,
+    cardTo = '',
+    cardMsg = ''
+  ) => {
+    handleAddBundleToCart(bundle, withWrap, withCard, cardTo, cardMsg);
+    router.push('/checkout');
+  };
+
   // Toggle item in Custom Bundle Builder
-  const handleToggleCustomProduct = (prod: SampleProduct) => {
-    if (customSelectedProducts.some((p) => p.id === prod.id)) {
-      setCustomSelectedProducts(customSelectedProducts.filter((p) => p.id !== prod.id));
+  const handleToggleCustomProduct = (prod: any) => {
+    const prodId = String(prod.id || prod._id || '');
+    if (customSelectedProducts.some((p: any) => String(p.id || p._id || '') === prodId)) {
+      setCustomSelectedProducts(
+        customSelectedProducts.filter((p: any) => String(p.id || p._id || '') !== prodId)
+      );
     } else {
       if (customSelectedProducts.length < 3) {
         setCustomSelectedProducts([...customSelectedProducts, prod]);
@@ -187,7 +222,7 @@ export default function BundlesPage() {
 
   // Compute Custom Bundle Totals
   const customRegularTotal = customSelectedProducts.reduce(
-    (sum, p) => sum + (p.baseSalePrice || p.basePrice),
+    (sum, p: any) => sum + Number(p.baseSalePrice || p.salePrice || p.basePrice || p.price || 500),
     0
   );
   // 15% discount when 3 items picked
@@ -198,11 +233,13 @@ export default function BundlesPage() {
   if (customGiftWrap) customFinalPrice += BRAND_CONFIG.giftWrapPrice;
   if (customGiftCard) customFinalPrice += BRAND_CONFIG.giftCardPrice;
 
-  // Add Custom Bundle to Cart
-  const handleAddCustomBundleToCart = () => {
+  // Add Custom Bundle to Cart or Proceed to Checkout
+  const handleAddCustomBundleToCart = (goToCheckout = false) => {
     if (!isCustomComplete) return;
 
-    const summary = customSelectedProducts.map((p) => p.titleBn).join(' + ');
+    const summary = customSelectedProducts
+      .map((p: any) => p.titleBn || p.title || p.titleEn)
+      .join(' + ');
     const customKey = `custom-bundle-${Date.now()}`;
 
     addItem({
@@ -222,7 +259,10 @@ export default function BundlesPage() {
 
     setAddedItemKey('custom-bundle');
     setTimeout(() => setAddedItemKey(null), 2500);
-    setCustomSelectedProducts([]);
+
+    if (goToCheckout) {
+      router.push('/checkout');
+    }
   };
 
   return (
@@ -429,26 +469,41 @@ export default function BundlesPage() {
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleAddBundleToCart(
-                        featuredBundle,
-                        featuredGiftWrap,
-                        featuredGiftCard,
-                        featuredCardRecipient,
-                        featuredCardMessage
-                      )
-                    }
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#D6403B] hover:bg-[#C23631] text-white text-sm font-bold shadow-sm transition-all cursor-pointer active:scale-95"
-                  >
-                    <ShoppingBag className="w-4 h-4" />
-                    <span>
-                      {addedItemKey === featuredBundle.id
-                        ? 'Added to Cart!'
-                        : 'Order Combo Now'}
-                    </span>
-                  </button>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleAddBundleToCart(
+                          featuredBundle,
+                          featuredGiftWrap,
+                          featuredGiftCard,
+                          featuredCardRecipient,
+                          featuredCardMessage
+                        )
+                      }
+                      className="px-4 py-3 rounded-xl border-2 border-[#D6403B] text-[#D6403B] hover:bg-[#D6403B]/5 text-sm font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                      <span>{addedItemKey === featuredBundle.id ? 'কার্টে যোগ হয়েছে!' : 'কার্টে রাখুন'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleDirectOrderBundle(
+                          featuredBundle,
+                          featuredGiftWrap,
+                          featuredGiftCard,
+                          featuredCardRecipient,
+                          featuredCardMessage
+                        )
+                      }
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#D6403B] hover:bg-[#C23631] text-white text-sm font-bold shadow-sm transition-all cursor-pointer active:scale-95"
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                      <span>Order Combo Now</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -686,12 +741,14 @@ export default function BundlesPage() {
 
           {/* Products Picker Carousel / Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {builderPool.map((prod) => {
-              const isSelected = customSelectedProducts.some((p) => p.id === prod.id);
+            {builderPool.map((prod: any) => {
+              const prodId = String(prod.id || prod._id || '');
+              const isSelected = customSelectedProducts.some((p: any) => String(p.id || p._id || '') === prodId);
+              const displayPrice = Number(prod.baseSalePrice || prod.salePrice || prod.basePrice || prod.price || 0);
 
               return (
                 <div
-                  key={prod.id}
+                  key={prodId || prod.slug}
                   onClick={() => handleToggleCustomProduct(prod)}
                   className={`relative bg-[#FAF7F2] rounded-2xl p-3 border transition-all cursor-pointer flex flex-col justify-between ${
                     isSelected
@@ -704,7 +761,7 @@ export default function BundlesPage() {
                       {prod.imageUrl && prod.imageUrl.trim() ? (
                         <Image
                           src={prod.imageUrl.trim()}
-                          alt={prod.titleBn}
+                          alt={prod.titleBn || prod.title || 'Product'}
                           fill
                           className="object-cover"
                         />
@@ -719,20 +776,24 @@ export default function BundlesPage() {
                     </div>
                     <div>
                       <h4 className="font-bold text-xs text-[#2B2B2B] line-clamp-1">
-                        {prod.titleBn}
+                        {prod.titleBn || prod.title || prod.titleEn}
                       </h4>
                       <span className="font-black font-fredoka text-xs text-[#C23631]">
-                        ৳{prod.baseSalePrice || prod.basePrice}
+                        ৳{displayPrice}
                       </span>
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    className={`mt-2.5 w-full py-1.5 rounded-xl text-[11px] font-bold transition-colors ${
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleCustomProduct(prod);
+                    }}
+                    className={`mt-2.5 w-full py-1.5 rounded-xl text-[11px] font-bold transition-colors cursor-pointer ${
                       isSelected
                         ? 'bg-[#1F6B43] text-white'
-                        : 'bg-white border border-[#EFE9E0] text-[#2B2B2B]'
+                        : 'bg-white border border-[#EFE9E0] text-[#2B2B2B] hover:bg-[#FAF7F2]'
                     }`}
                   >
                     {isSelected ? '✓ বাছাই করা হয়েছে' : '+ সেটে যোগ করুন'}
@@ -747,22 +808,31 @@ export default function BundlesPage() {
             <div className="bg-[#FAF7F2] rounded-2xl p-5 border border-[#EFE9E0] space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h4 className="font-bold text-sm text-[#2B2B2B]">
-                    আপনার কাস্টম গিফট সেট:
-                  </h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    {customSelectedProducts.map((p) => (
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-sm text-[#2B2B2B]">
+                      আপনার কাস্টম গিফট সেট:
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setCustomSelectedProducts([])}
+                      className="text-[11px] text-[#D6403B] hover:underline font-bold"
+                    >
+                      (সব মুছুন)
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    {customSelectedProducts.map((p: any) => (
                       <span
-                        key={p.id}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#EFE9E0] text-xs font-semibold text-[#2B2B2B]"
+                        key={String(p.id || p._id || '')}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-[#EFE9E0] text-xs font-semibold text-[#2B2B2B] shadow-2xs"
                       >
-                        {p.titleBn}
+                        <span className="max-w-[160px] truncate">{p.titleBn || p.title || p.titleEn}</span>
                         <button
                           type="button"
                           onClick={() => handleToggleCustomProduct(p)}
-                          className="text-[#6B6B6B] hover:text-[#DC2626]"
+                          className="text-[#6B6B6B] hover:text-[#DC2626] cursor-pointer"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </span>
                     ))}
@@ -830,11 +900,25 @@ export default function BundlesPage() {
                 </div>
               )}
 
-              <div className="pt-2 flex justify-end">
+              <div className="pt-2 flex items-center justify-end gap-3 flex-wrap">
                 <button
                   type="button"
                   disabled={!isCustomComplete}
-                  onClick={handleAddCustomBundleToCart}
+                  onClick={() => handleAddCustomBundleToCart(false)}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${
+                    isCustomComplete
+                      ? 'border-[#D6403B] text-[#D6403B] hover:bg-[#D6403B]/5 cursor-pointer active:scale-95'
+                      : 'border-[#EFE9E0] text-[#6B6B6B] cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>{addedItemKey === 'custom-bundle' ? 'কার্টে যোগ হয়েছে!' : 'কার্টে যোগ করুন'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!isCustomComplete}
+                  onClick={() => handleAddCustomBundleToCart(true)}
                   className={`px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all ${
                     isCustomComplete
                       ? 'bg-[#D6403B] hover:bg-[#C23631] text-white cursor-pointer active:scale-95'
@@ -843,10 +927,8 @@ export default function BundlesPage() {
                 >
                   <ShoppingBag className="w-4 h-4" />
                   <span>
-                    {addedItemKey === 'custom-bundle'
-                      ? 'কাস্টম বান্ডেল যোগ হয়েছে!'
-                      : isCustomComplete
-                      ? 'কাস্টম সেট কার্টে যোগ করুন'
+                    {isCustomComplete
+                      ? 'কাস্টম সেট এখনই অর্ডার করুন'
                       : `আর ${3 - customSelectedProducts.length}টি পণ্য যোগ করুন`}
                   </span>
                 </button>

@@ -2,6 +2,7 @@ import { OrderRecord, globalOrders, getAllProducts } from './store';
 import { OrderCreateInput } from './validations';
 import { normalizeBDPhone } from './utils';
 import { getDeliverySettings, calculateDelivery } from './delivery-store';
+import { getBundleById, getBundleBySlug } from './bundles-store';
 
 export interface DeliveryCalculationResult {
   deliveryCharge: number;
@@ -128,7 +129,40 @@ export function deductInventoryStock(items: OrderCreateInput['items']): {
   // First pass: verify sufficient stock
   for (const item of items) {
     const product = products.find((p) => p.id === item.productId || p.slug === item.productId);
-    if (product) {
+    if (!product) {
+      if (item.productId === 'custom-bundle') continue;
+      const bundle = getBundleById(item.productId) || getBundleBySlug(item.productId);
+      if (bundle) {
+        for (const cItem of (bundle.items || [])) {
+          const cProd = products.find((p) => p.id === cItem.productId || p.slug === cItem.productId);
+          if (cProd) {
+            const cQty = (cItem.quantity || 1) * item.quantity;
+            if (cProd.variations && cProd.variations.length > 0 && cItem.variationSku) {
+              const variation = cProd.variations.find(
+                (v) => v.sku === cItem.variationSku || v.id === cItem.variationSku
+              );
+              const currentVarStock = variation
+                ? (variation.stock !== undefined ? variation.stock : (variation as any).stockQuantity ?? 0)
+                : 0;
+              if (variation && currentVarStock < cQty) {
+                return {
+                  success: false,
+                  error: `বান্ডেলের অন্তর্গত '${cProd.titleBn} (${variation.titleBn || variation.titleEn})' এর পর্যাপ্ত স্টক নেই (বাকি: ${currentVarStock}টি)`,
+                };
+              }
+            } else {
+              const currentStock = (cProd as any).stock ?? 25;
+              if (currentStock < cQty) {
+                return {
+                  success: false,
+                  error: `বান্ডেলের অন্তর্গত '${cProd.titleBn}' এর পর্যাপ্ত স্টক নেই (বাকি: ${currentStock}টি)`,
+                };
+              }
+            }
+          }
+        }
+      }
+    } else {
       if (product.variations && product.variations.length > 0 && item.variationSku) {
         const variation = product.variations.find(
           (v) => v.sku === item.variationSku || v.id === item.variationSku
@@ -157,7 +191,36 @@ export function deductInventoryStock(items: OrderCreateInput['items']): {
   // Second pass: deduct
   for (const item of items) {
     const product = products.find((p) => p.id === item.productId || p.slug === item.productId);
-    if (product) {
+    if (!product) {
+      if (item.productId === 'custom-bundle') continue;
+      const bundle = getBundleById(item.productId) || getBundleBySlug(item.productId);
+      if (bundle) {
+        for (const cItem of (bundle.items || [])) {
+          const cProd = products.find((p) => p.id === cItem.productId || p.slug === cItem.productId);
+          if (cProd) {
+            const cQty = (cItem.quantity || 1) * item.quantity;
+            if (cProd.variations && cProd.variations.length > 0 && cItem.variationSku) {
+              const variation = cProd.variations.find(
+                (v) => v.sku === cItem.variationSku || v.id === cItem.variationSku
+              );
+              if (variation) {
+                const prevStock = variation.stock !== undefined ? variation.stock : (variation as any).stockQuantity ?? 0;
+                const nextStock = Math.max(0, prevStock - cQty);
+                variation.stock = nextStock;
+                (variation as any).stockQuantity = nextStock;
+              }
+              cProd.stock = cProd.variations.reduce(
+                (sum, v) => sum + (v.stock !== undefined ? v.stock : (v as any).stockQuantity ?? 0),
+                0
+              );
+            } else {
+              const currentStock = (cProd as any).stock ?? 25;
+              (cProd as any).stock = Math.max(0, currentStock - cQty);
+            }
+          }
+        }
+      }
+    } else {
       if (product.variations && product.variations.length > 0 && item.variationSku) {
         const variation = product.variations.find(
           (v) => v.sku === item.variationSku || v.id === item.variationSku
@@ -189,7 +252,36 @@ export function restoreInventoryStock(order: OrderRecord): void {
   const products = getAllProducts();
   for (const item of order.items) {
     const product = products.find((p) => p.id === item.productId || p.slug === item.productId);
-    if (product) {
+    if (!product) {
+      if (item.productId === 'custom-bundle') continue;
+      const bundle = getBundleById(item.productId) || getBundleBySlug(item.productId);
+      if (bundle) {
+        for (const cItem of (bundle.items || [])) {
+          const cProd = products.find((p) => p.id === cItem.productId || p.slug === cItem.productId);
+          if (cProd) {
+            const cQty = (cItem.quantity || 1) * item.quantity;
+            if (cProd.variations && cProd.variations.length > 0 && cItem.variationSku) {
+              const variation = cProd.variations.find(
+                (v) => v.sku === cItem.variationSku || v.id === cItem.variationSku
+              );
+              if (variation) {
+                const prevStock = variation.stock !== undefined ? variation.stock : (variation as any).stockQuantity ?? 0;
+                const nextStock = prevStock + cQty;
+                variation.stock = nextStock;
+                (variation as any).stockQuantity = nextStock;
+              }
+              cProd.stock = cProd.variations.reduce(
+                (sum, v) => sum + (v.stock !== undefined ? v.stock : (v as any).stockQuantity ?? 0),
+                0
+              );
+            } else {
+              const currentStock = (cProd as any).stock ?? 25;
+              (cProd as any).stock = currentStock + cQty;
+            }
+          }
+        }
+      }
+    } else {
       if (product.variations && product.variations.length > 0) {
         const variation = product.variations.find(
           (v) =>

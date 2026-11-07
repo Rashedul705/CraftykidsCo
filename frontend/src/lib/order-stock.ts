@@ -1,7 +1,9 @@
 import mongoose, { ClientSession } from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
+import { Bundle } from '@/models/Bundle';
 import { StockLog, StockLogReason } from '@/models/StockLog';
+import { getBundleById, getBundleBySlug } from '@/lib/bundles-store';
 
 export class OutOfStockError extends Error {
   itemTitle: string;
@@ -72,6 +74,130 @@ export async function deductOrderStockAtomic(
     }).session(session);
 
     if (!product) {
+      // Check if it's a Bundle!
+      let bundleDoc: any = await Bundle.findOne({
+        $or: [
+          ...(isObjectId ? [{ _id: new mongoose.Types.ObjectId(item.productId) }] : []),
+          { id: item.productId },
+          { slug: item.productId },
+        ],
+      }).session(session);
+
+      if (!bundleDoc) {
+        bundleDoc = getBundleById(item.productId) || getBundleBySlug(item.productId);
+      }
+
+      if (bundleDoc) {
+        // Deduct constituent products stock
+        for (const cItem of (bundleDoc.items || [])) {
+          const cQty = Math.round(Number(cItem.quantity || 1) * qty);
+          const isCObjectId = mongoose.Types.ObjectId.isValid(cItem.productId) && cItem.productId.length === 24;
+          const cProduct = await Product.findOne({
+            $or: [
+              ...(isCObjectId ? [{ _id: new mongoose.Types.ObjectId(cItem.productId) }] : []),
+              { id: cItem.productId },
+              { slug: cItem.productId },
+            ],
+          }).session(session);
+
+          if (cProduct) {
+            const isCVariable = Boolean(
+              cProduct.hasVariations || (cProduct.variants && cProduct.variants.length > 0)
+            );
+            if (isCVariable && cItem.variationSku) {
+              const cVariant = cProduct.variants?.find((v: any) => v.sku === cItem.variationSku);
+              if (cVariant) {
+                const varStock = typeof cVariant.stock === 'number' ? cVariant.stock : 0;
+                if (varStock < cQty) {
+                  throw new OutOfStockError(
+                    `বান্ডেলের অন্তর্ভুক্ত '${cProduct.titleBn} (${cVariant.optionValue || cVariant.sku})' এর পর্যাপ্ত স্টক নেই (বাকি আছে: ${varStock}টি)`,
+                    cProduct.titleBn,
+                    cVariant.optionValue,
+                    varStock
+                  );
+                }
+                const updateRes = await Product.updateOne(
+                  {
+                    _id: cProduct._id,
+                    variants: {
+                      $elemMatch: {
+                        _id: cVariant._id,
+                        isActive: { $ne: false },
+                        stock: { $gte: cQty },
+                      },
+                    },
+                  },
+                  { $inc: { 'variants.$.stock': -cQty } },
+                  { session }
+                );
+                if (updateRes.modifiedCount === 0) {
+                  throw new OutOfStockError(
+                    `বান্ডেলের অন্তর্ভুক্ত '${cProduct.titleBn} (${cVariant.optionValue || cVariant.sku})' এর স্টক পরিবর্তন ব্যর্থ হয়েছে`,
+                    cProduct.titleBn
+                  );
+                }
+                await StockLog.create(
+                  [
+                    {
+                      productId: cProduct._id,
+                      variantId: cVariant._id,
+                      change: -cQty,
+                      stockBefore: varStock,
+                      stockAfter: varStock - cQty,
+                      reason: 'order' as StockLogReason,
+                      orderId: orderNumber,
+                      note: `Order ${orderNumber} - Bundle '${bundleDoc.titleBn}' (${cVariant.optionValue || cVariant.sku})`,
+                    },
+                  ],
+                  { session }
+                );
+              }
+            } else {
+              const currentStock = typeof cProduct.stock === 'number' ? cProduct.stock : 0;
+              if (currentStock < cQty) {
+                throw new OutOfStockError(
+                  `বান্ডেলের অন্তর্ভুক্ত '${cProduct.titleBn}' এর পর্যাপ্ত স্টক নেই (বাকি আছে: ${currentStock}টি)`,
+                  cProduct.titleBn,
+                  undefined,
+                  currentStock
+                );
+              }
+              const updateRes = await Product.updateOne(
+                { _id: cProduct._id, stock: { $gte: cQty } },
+                { $inc: { stock: -cQty } },
+                { session }
+              );
+              if (updateRes.modifiedCount === 0) {
+                throw new OutOfStockError(
+                  `বান্ডেলের অন্তর্ভুক্ত '${cProduct.titleBn}' এর স্টক পরিবর্তন ব্যর্থ হয়েছে`,
+                  cProduct.titleBn
+                );
+              }
+              await StockLog.create(
+                [
+                  {
+                    productId: cProduct._id,
+                    change: -cQty,
+                    stockBefore: currentStock,
+                    stockAfter: currentStock - cQty,
+                    reason: 'order' as StockLogReason,
+                    orderId: orderNumber,
+                    note: `Order ${orderNumber} - Bundle '${bundleDoc.titleBn}'`,
+                  },
+                ],
+                { session }
+              );
+            }
+          }
+        }
+        continue; // Bundle constituent stocks deducted successfully!
+      }
+
+      if (item.productId === 'custom-bundle') {
+        // Custom bundle handled cleanly
+        continue;
+      }
+
       throw new OutOfStockError(
         `পণ্য '${item.title}' পাওয়া যায়নি (Product not found)`,
         item.title
@@ -275,7 +401,57 @@ export async function restoreOrderStockAtomic(
         ],
       }).session(session);
 
-      if (!product) continue;
+      if (!product) {
+        // If it was a bundle, restore constituent product stocks
+        let bundleDoc: any = await Bundle.findOne({
+          $or: [
+            ...(isObjectId ? [{ _id: new mongoose.Types.ObjectId(item.productId) }] : []),
+            { id: item.productId },
+            { slug: item.productId },
+          ],
+        }).session(session);
+
+        if (!bundleDoc) {
+          bundleDoc = getBundleById(item.productId) || getBundleBySlug(item.productId);
+        }
+
+        if (bundleDoc) {
+          for (const cItem of (bundleDoc.items || [])) {
+            const cQty = Math.round(Number(cItem.quantity || 1) * qty);
+            const isCObjectId = mongoose.Types.ObjectId.isValid(cItem.productId) && cItem.productId.length === 24;
+            const cProduct = await Product.findOne({
+              $or: [
+                ...(isCObjectId ? [{ _id: new mongoose.Types.ObjectId(cItem.productId) }] : []),
+                { id: cItem.productId },
+                { slug: cItem.productId },
+              ],
+            }).session(session);
+
+            if (cProduct) {
+              const isCVariable = Boolean(
+                cProduct.hasVariations || (cProduct.variants && cProduct.variants.length > 0)
+              );
+              if (isCVariable && cItem.variationSku) {
+                const cVariant = cProduct.variants?.find((v: any) => v.sku === cItem.variationSku);
+                if (cVariant) {
+                  await Product.updateOne(
+                    { _id: cProduct._id, 'variants._id': cVariant._id },
+                    { $inc: { 'variants.$.stock': cQty } },
+                    { session }
+                  );
+                }
+              } else {
+                await Product.updateOne(
+                  { _id: cProduct._id },
+                  { $inc: { stock: cQty } },
+                  { session }
+                );
+              }
+            }
+          }
+        }
+        continue;
+      }
 
       const isVariable = Boolean(
         product.hasVariations || (product.variants && product.variants.length > 0)
