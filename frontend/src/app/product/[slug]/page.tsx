@@ -34,6 +34,7 @@ import {
   ChevronRight,
   PackageCheck,
   Heart,
+  Package,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -48,6 +49,7 @@ import { formatBDT, toBanglaDigits } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { trackViewContent, trackAddToCart, trackInitiateCheckout } from '@/lib/analytics';
 import ProductReviewsSection from '@/components/product/ProductReviewsSection';
+import { BundleRecord } from '@/lib/bundles-store';
 
 // Helper to extract clean short name and included description from variation titles
 // Rule from Part A1: "Do not repeat the product name inside each option. Show only what is different (for example '১২ পিস সেট')"
@@ -160,6 +162,20 @@ function ProductContent() {
       .then((data) => {
         if (data.success && data.settings) {
           setDeliverySettings(data.settings);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Bundles for relevant combo offers
+  const [bundles, setBundles] = useState<BundleRecord[]>([]);
+
+  useEffect(() => {
+    fetch('/api/bundles')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data?.bundles) {
+          setBundles(data.bundles);
         }
       })
       .catch(() => {});
@@ -689,6 +705,61 @@ function ProductContent() {
       .filter((p) => p.slug !== product.slug)
       .slice(0, 4);
   }, [allProducts, product?.slug]);
+
+  // Relevant bundles containing this product or active bundles
+  const relevantBundles = useMemo(() => {
+    if (!product || bundles.length === 0) return [];
+
+    const prodId = String(product._id || product.id || '');
+    const prodSlug = String(product.slug || '').toLowerCase();
+    const prodTitleBn = String(product.titleBn || '').toLowerCase();
+    const prodTitleEn = String(product.titleEn || '').toLowerCase();
+
+    // 1. Direct matches containing this product
+    const directMatches = bundles.filter((b) => {
+      if (b.status !== 'active') return false;
+      return b.items.some((item) => {
+        const itemId = String(item.productId || '');
+        const itemTitleBn = String(item.productTitleBn || '').toLowerCase();
+        const itemTitleEn = String(item.productTitleEn || '').toLowerCase();
+
+        return (
+          (prodId && itemId === prodId) ||
+          (prodSlug && (itemId.includes(prodSlug) || prodSlug.includes(itemId))) ||
+          (prodTitleBn && (itemTitleBn.includes(prodTitleBn) || prodTitleBn.includes(itemTitleBn))) ||
+          (prodTitleEn && (itemTitleEn.includes(prodTitleEn) || prodTitleEn.includes(itemTitleEn)))
+        );
+      });
+    });
+
+    if (directMatches.length > 0) {
+      return directMatches;
+    }
+
+    // 2. Active featured/popular bundles fallback
+    return bundles.filter((b) => b.status === 'active').slice(0, 2);
+  }, [product, bundles]);
+
+  const handleAddBundleToCart = (bundle: BundleRecord) => {
+    const bundleSummary = bundle.items
+      .map((i) => `${i.productTitleBn} (${i.quantity}টি)`)
+      .join(' + ');
+
+    addItem({
+      id: `bundle-${bundle.id}`,
+      productId: bundle.id,
+      productSlug: bundle.slug,
+      title: bundle.titleEn,
+      titleBn: bundle.titleBn,
+      imageUrl: bundle.imageUrl,
+      price: bundle.bundlePrice,
+      quantity: 1,
+      isBundle: true,
+      bundleItemsSummary: bundleSummary,
+    });
+
+    toast.success(`'${bundle.titleBn}' সফলভাবে কার্টে যোগ হয়েছে!`);
+  };
 
   // Selected variation short name for live total
   const selectedParsed = useMemo(() => {
@@ -1448,6 +1519,33 @@ function ProductContent() {
                 </div>
               </div>
             </div>
+
+            {/* 10. Relevant Bundle Quick Upsell Strip */}
+            {relevantBundles.length > 0 && (
+              <div className="bg-gradient-to-r from-[#FFF5EE] to-[#FFF0E8] border border-[#FFD9C7] rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-[#D6403B]/10 text-[#D6403B] flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-extrabold text-[#D6403B] text-xs block truncate">
+                      🔥 কম্বো অফারে ৳{toBanglaDigits(relevantBundles[0].savingsAmount || 200)} সাশ্রয় করুন!
+                    </span>
+                    <span className="text-[11px] text-[#6B6B6B] block truncate font-medium">
+                      {relevantBundles[0].titleBn}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAddBundleToCart(relevantBundles[0])}
+                  className="px-3.5 py-2 rounded-xl bg-[#D6403B] text-white text-xs font-bold hover:bg-[#B93834] active:scale-95 transition-all shrink-0 cursor-pointer shadow-xs flex items-center gap-1"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>বান্ডেল নিন</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1685,6 +1783,140 @@ function ProductContent() {
             </div>
           )}
         </div>
+
+        {/* =====================================================================
+            RELEVANT BUNDLE OFFERS (কম্বো বান্ডেল অফার — একসাথে কিনুন ও সাশ্রয় করুন)
+           ===================================================================== */}
+        {relevantBundles.length > 0 && (
+          <div className="bg-gradient-to-br from-[#FFF9F5] via-[#FFF5ED] to-white rounded-3xl border-2 border-[#FFD9C7] p-5 sm:p-7 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#D6403B] text-white flex items-center justify-center shadow-sm shrink-0">
+                  <Gift className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[#D6403B] bg-[#FDE8E7] px-2.5 py-0.5 rounded-full">
+                      কম্বো সেভার
+                    </span>
+                    <span className="text-xs text-[#6B6B6B] font-medium">বিশেষ প্যাকেজ অফার</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-heading font-black text-[#2B2B2B] mt-0.5">
+                    একসাথে কিনুন ও সাশ্রয় করুন (Combo Bundle Offer)
+                  </h3>
+                </div>
+              </div>
+
+              <Link
+                href="/bundles"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D6403B] hover:text-[#B02824] bg-white px-3.5 py-2 rounded-xl border border-[#FFD9C7] shadow-2xs hover:shadow-xs transition-all self-start sm:self-auto cursor-pointer"
+              >
+                <span>সকল বান্ডেল দেখুন</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {relevantBundles.map((b) => (
+                <div
+                  key={b.id || b.slug}
+                  className="bg-white rounded-2xl border border-[#EFE9E0] p-4 sm:p-5 flex flex-col justify-between hover:shadow-md transition-all duration-300 relative group"
+                >
+                  {/* Badge */}
+                  {b.badge && (
+                    <div className="absolute top-3 right-3 bg-[#D6403B] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-2xs">
+                      {b.badge}
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    {/* Header */}
+                    <div className="pr-16">
+                      <h4 className="font-heading font-black text-base sm:text-lg text-[#2B2B2B] group-hover:text-[#D6403B] transition-colors line-clamp-1">
+                        {b.titleBn}
+                      </h4>
+                      <p className="text-[11px] text-[#6B6B6B] line-clamp-1">
+                        {b.titleEn}
+                      </p>
+                    </div>
+
+                    {/* Constituent Items List */}
+                    <div className="bg-[#FAF7F2] rounded-xl p-3 border border-[#EFE9E0] space-y-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B6B6B] block">
+                        প্যাকেজে অন্তর্ভুক্ত পণ্যসমূহ:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {b.items.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-[#EFE9E0] text-xs shadow-2xs"
+                          >
+                            <div className="relative w-7 h-7 rounded-md overflow-hidden bg-[#FAF7F2] shrink-0 border border-black/5">
+                              {item.imageUrl ? (
+                                <Image
+                                  src={item.imageUrl}
+                                  alt={item.productTitleBn}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <Package className="w-3.5 h-3.5 text-[#6B6B6B] m-auto" />
+                              )}
+                            </div>
+                            <span className="font-semibold text-[#2B2B2B] max-w-[140px] truncate text-[11px]">
+                              {item.productTitleBn}
+                            </span>
+                            <span className="text-[10px] text-[#D6403B] font-bold">
+                              ×{item.quantity}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing and Action */}
+                  <div className="mt-4 pt-3 border-t border-[#EFE9E0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xl sm:text-2xl font-black text-[#D6403B]">
+                          ৳{toBanglaDigits(b.bundlePrice)}
+                        </span>
+                        {b.originalPrice > b.bundlePrice && (
+                          <span className="text-xs text-[#9E9E9E] line-through font-medium">
+                            ৳{toBanglaDigits(b.originalPrice)}
+                          </span>
+                        )}
+                      </div>
+                      {b.savingsAmount > 0 && (
+                        <span className="text-[11px] font-bold text-[#1F6B43]">
+                          সাশ্রয়: ৳{toBanglaDigits(b.savingsAmount)} ({toBanglaDigits(b.discountPercent)}%)
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/bundles`}
+                        className="px-3 py-2 rounded-xl border border-[#EFE9E0] text-xs font-bold text-[#6B6B6B] hover:text-[#2B2B2B] hover:bg-[#FAF7F2] transition-colors"
+                      >
+                        বিস্তারিত
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleAddBundleToCart(b)}
+                        className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#D6403B] hover:bg-[#B93834] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs active:scale-[0.98] transition-all cursor-pointer"
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                        <span>বান্ডেল কার্টে নিন</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* =====================================================================
             RELATED PRODUCTS (4)

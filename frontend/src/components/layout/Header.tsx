@@ -29,9 +29,10 @@ export interface HeaderProps {
 
 const fallbackNavItems = [
   { id: 'nav-home', labelBn: 'Home', labelEn: 'Home', href: '/' },
+  { id: 'nav-shop', labelBn: 'Shop', labelEn: 'Shop', href: '/shop' },
+  { id: 'nav-bundles', labelBn: 'কম্বো অফার', labelEn: 'Bundles', href: '/bundles' },
   { id: 'nav-about', labelBn: 'About', labelEn: 'About', href: '/about' },
   { id: 'nav-contact', labelBn: 'Contact', labelEn: 'Contact', href: '/contact' },
-  { id: 'nav-shop', labelBn: 'Shop', labelEn: 'Shop', href: '/shop' },
 ];
 
 function HeaderContent({

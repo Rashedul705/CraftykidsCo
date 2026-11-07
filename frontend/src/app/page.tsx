@@ -441,8 +441,8 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* 5 Prominent Pastel Category Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 lg:gap-5">
+          {/* 6 Prominent Pastel Category Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 sm:gap-4 lg:gap-5">
             {[
               {
                 slug: 'art-kits',
@@ -461,6 +461,16 @@ export default function HomePage() {
                 cardBg: 'bg-[#FFEAE4]',
                 circleBg: 'bg-[#FFAAA4]',
                 icon: <Pencil className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />,
+              },
+              {
+                slug: 'bundles',
+                href: '/bundles',
+                titleBn: 'কম্বো ও বান্ডেল',
+                titleEn: 'Combo & Bundles',
+                cardBg: 'bg-[#FFEFEA]',
+                circleBg: 'bg-[#FFBD9B]',
+                badge: isBn ? 'সাশ্রয়ী অফার' : 'Save More',
+                icon: <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-[#D6403B]" strokeWidth={2} />,
               },
               {
                 slug: 'wooden-toys',
@@ -507,8 +517,13 @@ export default function HomePage() {
               <Link
                 key={item.slug}
                 href={item.href}
-                className={`group rounded-[24px] sm:rounded-[28px] ${item.cardBg} p-5 sm:p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1.5 hover:shadow-md cursor-pointer border border-black/[0.03]`}
+                className={`relative group rounded-[24px] sm:rounded-[28px] ${item.cardBg} p-5 sm:p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1.5 hover:shadow-md cursor-pointer border border-black/[0.03]`}
               >
+                {(item as any).badge && (
+                  <span className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 bg-[#D6403B] text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs uppercase tracking-wide">
+                    {(item as any).badge}
+                  </span>
+                )}
                 {/* Circular Icon with soft white glow ring */}
                 <div className="p-1.5 sm:p-2 rounded-full bg-white/70 shadow-2xs mb-3 sm:mb-3.5 transition-transform duration-300 group-hover:scale-105">
                   <div

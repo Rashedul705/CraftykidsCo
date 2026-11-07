@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
+import { connectToDatabase } from '@/lib/mongodb';
+import { Bundle } from '@/models/Bundle';
 import {
   getAllBundles,
   getBundleById,
@@ -9,7 +12,28 @@ import {
   calculateBundleStock,
   computeBundleFinancials,
   BundleRecord,
+  globalBundles,
 } from '@/lib/bundles-store';
+
+/**
+ * Seed initial sample bundles into MongoDB if collection is empty
+ */
+async function seedBundlesIfEmpty() {
+  try {
+    const count = await Bundle.countDocuments();
+    if (count === 0 && globalBundles && globalBundles.length > 0) {
+      await Bundle.insertMany(
+        globalBundles.map((b) => ({
+          ...b,
+          _id: mongoose.Types.ObjectId.isValid(b.id) ? new mongoose.Types.ObjectId(b.id) : undefined,
+        }))
+      );
+      console.log('Seeded initial bundles into MongoDB');
+    }
+  } catch (err) {
+    console.warn('Could not auto-seed bundles into MongoDB:', err);
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,40 +42,109 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search');
     const featured = searchParams.get('featured');
 
-    let bundles = getAllBundles();
+    let bundles: BundleRecord[] = [];
+    let isFromMongo = false;
 
-    if (featured === 'true') {
-      bundles = bundles.filter((b) => b.isFeatured);
+    // 1. Try fetching from MongoDB Atlas
+    try {
+      await connectToDatabase();
+      await seedBundlesIfEmpty();
+
+      const mongoQuery: any = {};
+      if (featured === 'true') {
+        mongoQuery.isFeatured = true;
+      }
+      if (status && status !== 'all' && status !== 'low-stock' && status !== 'out-of-stock') {
+        mongoQuery.status = status;
+      }
+      if (search) {
+        const regex = new RegExp(search, 'i');
+        mongoQuery.$or = [
+          { titleBn: regex },
+          { titleEn: regex },
+          { slug: regex },
+          { 'items.productTitleBn': regex },
+          { 'items.productTitleEn': regex },
+        ];
+      }
+
+      const dbBundles = await Bundle.find(mongoQuery).sort({ createdAt: -1 }).lean();
+      if (dbBundles && dbBundles.length > 0) {
+        bundles = dbBundles.map((b: any) => ({
+          id: b.id || b._id.toString(),
+          slug: b.slug,
+          titleBn: b.titleBn,
+          titleEn: b.titleEn,
+          descriptionBn: b.descriptionBn || '',
+          descriptionEn: b.descriptionEn || '',
+          imageUrl: b.imageUrl || '',
+          galleryImages: b.galleryImages || [],
+          items: b.items || [],
+          pricingMode: b.pricingMode || 'fixed',
+          pricingValue: b.pricingValue || b.bundlePrice || 0,
+          bundlePrice: b.bundlePrice || 0,
+          originalPrice: b.originalPrice || 0,
+          discountPercent: b.discountPercent || 0,
+          savingsAmount: b.savingsAmount || 0,
+          totalCost: b.totalCost || 0,
+          profitMargin: b.profitMargin || 0,
+          profitMarginPercent: b.profitMarginPercent || 0,
+          status: b.status || 'active',
+          startDate: b.startDate,
+          endDate: b.endDate,
+          suitableAge: b.suitableAge || '২-৬ বছর',
+          occasion: b.occasion || 'everyday',
+          badge: b.badge || '',
+          displayLocations: b.displayLocations || ['bundles', 'home', 'product-pages'],
+          hideWhenOutOfStock: b.hideWhenOutOfStock ?? true,
+          isFeatured: !!b.isFeatured,
+          createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
+          updatedAt: b.updatedAt ? new Date(b.updatedAt).toISOString() : new Date().toISOString(),
+        }));
+        isFromMongo = true;
+      }
+    } catch (mongoErr) {
+      console.warn('MongoDB error in GET /api/bundles (falling back to memory store):', mongoErr);
     }
 
-    if (status && status !== 'all') {
-      if (status === 'low-stock') {
-        bundles = bundles.filter((b) => {
-          const { setsAvailable } = calculateBundleStock(b.items);
-          return setsAvailable > 0 && setsAvailable <= 10;
-        });
-      } else if (status === 'out-of-stock') {
-        bundles = bundles.filter((b) => {
-          const { setsAvailable } = calculateBundleStock(b.items);
-          return setsAvailable === 0;
-        });
-      } else {
+    // Fallback to in-memory bundles if MongoDB did not return results
+    if (!isFromMongo) {
+      bundles = getAllBundles();
+
+      if (featured === 'true') {
+        bundles = bundles.filter((b) => b.isFeatured);
+      }
+
+      if (status && status !== 'all' && status !== 'low-stock' && status !== 'out-of-stock') {
         bundles = bundles.filter((b) => b.status === status);
+      }
+
+      if (search) {
+        const q = search.toLowerCase();
+        bundles = bundles.filter(
+          (b) =>
+            b.titleBn.toLowerCase().includes(q) ||
+            b.titleEn.toLowerCase().includes(q) ||
+            b.slug.toLowerCase().includes(q) ||
+            b.items.some((item) =>
+              item.productTitleBn.toLowerCase().includes(q) ||
+              item.productTitleEn.toLowerCase().includes(q)
+            )
+        );
       }
     }
 
-    if (search) {
-      const q = search.toLowerCase();
-      bundles = bundles.filter(
-        (b) =>
-          b.titleBn.toLowerCase().includes(q) ||
-          b.titleEn.toLowerCase().includes(q) ||
-          b.slug.toLowerCase().includes(q) ||
-          b.items.some((item) =>
-            item.productTitleBn.toLowerCase().includes(q) ||
-            item.productTitleEn.toLowerCase().includes(q)
-          )
-      );
+    // Low stock / out of stock filters
+    if (status === 'low-stock') {
+      bundles = bundles.filter((b) => {
+        const { setsAvailable } = calculateBundleStock(b.items);
+        return setsAvailable > 0 && setsAvailable <= 10;
+      });
+    } else if (status === 'out-of-stock') {
+      bundles = bundles.filter((b) => {
+        const { setsAvailable } = calculateBundleStock(b.items);
+        return setsAvailable === 0;
+      });
     }
 
     // Attach computed stock status dynamically
@@ -74,6 +167,7 @@ export async function GET(req: NextRequest) {
       success: true,
       count: enrichedBundles.length,
       bundles: enrichedBundles,
+      source: isFromMongo ? 'mongodb' : 'memory',
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -115,7 +209,10 @@ export async function POST(req: NextRequest) {
         .replace(/^-+|-+$/g, '') ||
       `bundle-${Date.now()}`;
 
-    const newBundle = createBundle({
+    const bundleId = body.id || `bundle-${Date.now()}`;
+
+    const bundleData: any = {
+      id: bundleId,
       slug,
       titleBn: body.titleBn,
       titleEn: body.titleEn,
@@ -142,11 +239,29 @@ export async function POST(req: NextRequest) {
       displayLocations: body.displayLocations || ['bundles', 'home', 'product-pages'],
       hideWhenOutOfStock: body.hideWhenOutOfStock ?? true,
       isFeatured: !!body.isFeatured,
-    });
+    };
+
+    // 1. Save to MongoDB
+    let savedInMongo = false;
+    let savedDoc: any = null;
+    try {
+      await connectToDatabase();
+      savedDoc = await Bundle.create(bundleData);
+      if (savedDoc) {
+        bundleData.id = savedDoc.id || savedDoc._id.toString();
+        savedInMongo = true;
+      }
+    } catch (dbErr) {
+      console.warn('Could not save bundle to MongoDB (saving to memory store):', dbErr);
+    }
+
+    // 2. Also keep in-memory store in sync
+    createBundle(bundleData);
 
     return NextResponse.json({
       success: true,
-      bundle: newBundle,
+      bundle: bundleData,
+      source: savedInMongo ? 'mongodb' : 'memory',
       message: 'Bundle created successfully',
     });
   } catch (error: any) {
@@ -169,14 +284,42 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    let isMongoConnected = false;
+    try {
+      await connectToDatabase();
+      isMongoConnected = true;
+    } catch (err) {
+      console.warn('MongoDB connection failed in PUT /api/bundles:', err);
+    }
+
     if (action === 'toggle-active') {
-      const updated = toggleBundleActive(id);
+      let updated: any = null;
+      if (isMongoConnected) {
+        const query: any = { $or: [{ id: id }, { slug: id }] };
+        if (mongoose.Types.ObjectId.isValid(id)) {
+          query.$or.push({ _id: new mongoose.Types.ObjectId(id) });
+        }
+        const existing = await Bundle.findOne(query);
+        if (existing) {
+          existing.status = existing.status === 'active' ? 'draft' : 'active';
+          await existing.save();
+          updated = existing.toObject();
+          updated.id = updated.id || updated._id.toString();
+        }
+      }
+
+      const memUpdated = toggleBundleActive(id);
+      if (!updated && memUpdated) {
+        updated = memUpdated;
+      }
+
       if (!updated) {
         return NextResponse.json(
           { success: false, error: 'Bundle not found' },
           { status: 404 }
         );
       }
+
       return NextResponse.json({
         success: true,
         bundle: updated,
@@ -203,8 +346,22 @@ export async function PUT(req: NextRequest) {
       });
     }
 
-    const updated = updateBundle(id, updates);
-    if (!updated) {
+    let updatedDoc: any = null;
+    if (isMongoConnected) {
+      const query: any = { $or: [{ id: id }, { slug: id }] };
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        query.$or.push({ _id: new mongoose.Types.ObjectId(id) });
+      }
+      updatedDoc = await Bundle.findOneAndUpdate(query, updates, { new: true }).lean();
+      if (updatedDoc) {
+        updatedDoc.id = updatedDoc.id || updatedDoc._id.toString();
+      }
+    }
+
+    const memUpdated = updateBundle(id, updates);
+    const finalBundle = updatedDoc || memUpdated;
+
+    if (!finalBundle) {
       return NextResponse.json(
         { success: false, error: 'Bundle not found' },
         { status: 404 }
@@ -213,7 +370,7 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      bundle: updated,
+      bundle: finalBundle,
       message: 'Bundle updated successfully',
     });
   } catch (error: any) {
@@ -236,8 +393,22 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const deleted = deleteBundle(id);
-    if (!deleted) {
+    let deletedFromMongo = false;
+    try {
+      await connectToDatabase();
+      const query: any = { $or: [{ id: id }, { slug: id }] };
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        query.$or.push({ _id: new mongoose.Types.ObjectId(id) });
+      }
+      const res = await Bundle.findOneAndDelete(query);
+      if (res) deletedFromMongo = true;
+    } catch (err) {
+      console.warn('MongoDB delete failed in DELETE /api/bundles:', err);
+    }
+
+    const deletedFromMem = deleteBundle(id);
+
+    if (!deletedFromMongo && !deletedFromMem) {
       return NextResponse.json(
         { success: false, error: 'Bundle not found' },
         { status: 404 }

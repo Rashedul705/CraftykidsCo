@@ -1,52 +1,102 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IBundleItem {
-  productId: mongoose.Types.ObjectId;
+  productId: string;
+  productTitleBn: string;
+  productTitleEn: string;
   variationSku?: string;
+  variationTitle?: string;
   quantity: number;
+  unitPrice: number;
+  costPrice: number;
+  stock: number;
+  imageUrl: string;
 }
 
 export interface IBundle extends Document {
+  id: string;
+  slug: string;
   titleBn: string;
   titleEn: string;
-  slug: string;
-  descriptionBn?: string;
-  descriptionEn?: string;
-  price: number; // Integer BDT
-  originalPrice: number; // Integer BDT
-  discountPercent?: number;
-  imageUrl?: string;
+  descriptionBn: string;
+  descriptionEn: string;
+  imageUrl: string;
+  galleryImages: string[];
   items: IBundleItem[];
-  isActive: boolean;
+  pricingMode: 'fixed' | 'percent' | 'amount';
+  pricingValue: number;
+  bundlePrice: number;
+  originalPrice: number;
+  discountPercent: number;
+  savingsAmount: number;
+  totalCost: number;
+  profitMargin: number;
+  profitMarginPercent: number;
+  status: 'active' | 'draft' | 'scheduled';
+  startDate?: string;
+  endDate?: string;
+  suitableAge: string;
+  occasion: string;
+  badge: string;
+  displayLocations: string[];
+  hideWhenOutOfStock: boolean;
+  isFeatured: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const BundleItemSchema = new Schema<IBundleItem>(
   {
-    productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
-    variationSku: { type: String },
+    productId: { type: String, required: true },
+    productTitleBn: { type: String, default: '' },
+    productTitleEn: { type: String, default: '' },
+    variationSku: { type: String, default: '' },
+    variationTitle: { type: String, default: '' },
     quantity: { type: Number, default: 1, min: 1 },
+    unitPrice: { type: Number, default: 0 },
+    costPrice: { type: Number, default: 0 },
+    stock: { type: Number, default: 0 },
+    imageUrl: { type: String, default: '' },
   },
   { _id: false }
 );
 
 const BundleSchema = new Schema<IBundle>(
   {
+    id: { type: String, index: true },
+    slug: { type: String, required: true, unique: true, index: true },
     titleBn: { type: String, required: true },
     titleEn: { type: String, required: true },
-    slug: { type: String, required: true, unique: true, index: true },
-    descriptionBn: { type: String },
-    descriptionEn: { type: String },
-    price: { type: Number, required: true },
-    originalPrice: { type: Number, required: true },
-    discountPercent: { type: Number },
-    imageUrl: { type: String },
+    descriptionBn: { type: String, default: '' },
+    descriptionEn: { type: String, default: '' },
+    imageUrl: { type: String, default: '' },
+    galleryImages: [{ type: String }],
     items: [BundleItemSchema],
-    isActive: { type: Boolean, default: true, index: true },
+    pricingMode: { type: String, enum: ['fixed', 'percent', 'amount'], default: 'fixed' },
+    pricingValue: { type: Number, default: 0 },
+    bundlePrice: { type: Number, required: true },
+    originalPrice: { type: Number, required: true },
+    discountPercent: { type: Number, default: 0 },
+    savingsAmount: { type: Number, default: 0 },
+    totalCost: { type: Number, default: 0 },
+    profitMargin: { type: Number, default: 0 },
+    profitMarginPercent: { type: Number, default: 0 },
+    status: { type: String, enum: ['active', 'draft', 'scheduled'], default: 'active', index: true },
+    startDate: { type: String },
+    endDate: { type: String },
+    suitableAge: { type: String, default: '২-৬ বছর' },
+    occasion: { type: String, default: 'everyday' },
+    badge: { type: String, default: 'স্পেশাল কম্বো' },
+    displayLocations: [{ type: String, default: 'bundles' }],
+    hideWhenOutOfStock: { type: Boolean, default: true },
+    isFeatured: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+if (process.env.NODE_ENV !== 'production' && mongoose.models && (mongoose.models as any).Bundle) {
+  delete (mongoose.models as any).Bundle;
+}
 
 export const Bundle: Model<IBundle> =
   mongoose.models.Bundle || mongoose.model<IBundle>('Bundle', BundleSchema);

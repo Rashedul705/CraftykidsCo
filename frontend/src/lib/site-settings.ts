@@ -775,9 +775,10 @@ export const defaultSiteSettings: SiteSettings = {
     whatsapp: '01731-376498',
     menuItems: [
       { id: 'nav-home', labelBn: 'Home', labelEn: 'Home', href: '/', enabled: true },
+      { id: 'nav-shop', labelBn: 'Shop', labelEn: 'Shop', href: '/shop', enabled: true },
+      { id: 'nav-bundles', labelBn: 'কম্বো অফার', labelEn: 'Bundles', href: '/bundles', enabled: true },
       { id: 'nav-about', labelBn: 'About', labelEn: 'About', href: '/about', enabled: true },
       { id: 'nav-contact', labelBn: 'Contact', labelEn: 'Contact', href: '/contact', enabled: true },
-      { id: 'nav-shop', labelBn: 'Shop', labelEn: 'Shop', href: '/shop', enabled: true },
     ],
     logoUrl: '',
   },
