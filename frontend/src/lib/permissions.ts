@@ -303,7 +303,10 @@ export function getAssignablePermissions(): PermissionDefinition[] {
  * Check if a permission key is registered in the system
  */
 export function isValidPermission(key: string): boolean {
-  return PERMISSION_DEFINITIONS.some((p) => p.key === key);
+  if (!key || typeof key !== 'string') return false;
+  const clean = key.trim();
+  if (clean === '*') return true;
+  return PERMISSION_DEFINITIONS.some((p) => p.key === clean);
 }
 
 /**

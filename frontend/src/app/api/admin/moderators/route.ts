@@ -116,8 +116,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const cleanPermissions = permissions
+      .map((p) => (typeof p === 'string' ? p.trim() : ''))
+      .filter(Boolean);
+
     // 2. Validate permission keys & reject unknown or super-admin only keys
-    for (const key of permissions) {
+    for (const key of cleanPermissions) {
       if (!isValidPermission(key)) {
         return NextResponse.json(
           { success: false, message: `অকার্যকর পারমিশন কি: '${key}'` },
@@ -136,7 +140,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Apply dependency rules (e.g. edit requires view)
-    const finalPermissions = enforcePermissionDependencies(permissions);
+    const finalPermissions = enforcePermissionDependencies(cleanPermissions);
 
     await connectToDatabase();
 

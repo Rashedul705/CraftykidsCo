@@ -8,6 +8,7 @@ import {
   isValidPermission,
   isSuperAdminOnlyPermission,
   enforcePermissionDependencies,
+  getAssignablePermissions,
 } from '@/lib/permissions';
 
 export async function GET(
@@ -150,9 +151,17 @@ export async function PUT(
 
     let newPermissions: string[] = oldPermissions;
 
-    if (Array.isArray(permissions)) {
+    if (isTargetSuperAdmin) {
+      updateFields.role = 'super_admin';
+      updateFields.permissions = getAssignablePermissions().map((p) => p.key);
+      newPermissions = updateFields.permissions;
+    } else if (Array.isArray(permissions)) {
+      const cleanKeys = permissions
+        .map((p) => (typeof p === 'string' ? p.trim() : ''))
+        .filter(Boolean);
+
       // Validate permission keys & reject unknown or super admin only keys
-      for (const key of permissions) {
+      for (const key of cleanKeys) {
         if (!isValidPermission(key)) {
           return NextResponse.json(
             { success: false, message: `অকার্যকর পারমিশন কি: '${key}'` },
@@ -171,7 +180,7 @@ export async function PUT(
       }
 
       // Enforce dependency rules (ticking edit auto-ticks view, unticking view unticks edit/delete)
-      newPermissions = enforcePermissionDependencies(permissions);
+      newPermissions = enforcePermissionDependencies(cleanKeys);
       updateFields.permissions = newPermissions;
     }
 
