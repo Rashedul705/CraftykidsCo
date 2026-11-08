@@ -38,9 +38,61 @@ import { useToast } from '@/components/ui/Toast';
 import { isProductOutOfStock, sortProductsByStockAndRecency } from '@/lib/product-utils';
 import { useCart } from '@/context/CartContext';
 
+const PASTEL_THEMES = [
+  { cardBg: 'bg-[#FFF5DC]', circleBg: 'bg-[#FFD269]' },
+  { cardBg: 'bg-[#FFEAE4]', circleBg: 'bg-[#FFAAA4]' },
+  { cardBg: 'bg-[#FFEFEA]', circleBg: 'bg-[#FFBD9B]' },
+  { cardBg: 'bg-[#EAF6EB]', circleBg: 'bg-[#A0E3B2]' },
+  { cardBg: 'bg-[#EBF2FD]', circleBg: 'bg-[#A7CBFD]' },
+  { cardBg: 'bg-[#FCEBF5]', circleBg: 'bg-[#F7BFDF]' },
+  { cardBg: 'bg-[#F3E8FF]', circleBg: 'bg-[#D8B4FE]' },
+  { cardBg: 'bg-[#ECFDF5]', circleBg: 'bg-[#6EE7B7]' },
+];
+
+const getCategoryIcon = (slug?: string) => {
+  const s = (slug || '').toLowerCase();
+  if (s.includes('art') || s.includes('paint')) {
+    return <Palette className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />;
+  }
+  if (s.includes('crayon') || s.includes('pencil') || s.includes('wax') || s.includes('color')) {
+    return <Pencil className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />;
+  }
+  if (s.includes('bundle') || s.includes('combo')) {
+    return <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-[#D6403B]" strokeWidth={2} />;
+  }
+  if (s.includes('wood') || s.includes('toy')) {
+    return (
+      <svg
+        className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="8.5" y="3" width="7" height="7" rx="1.5" />
+        <rect x="3.5" y="14" width="7" height="7" rx="1.5" />
+        <rect x="13.5" y="14" width="7" height="7" rx="1.5" />
+      </svg>
+    );
+  }
+  if (s.includes('edu') || s.includes('book') || s.includes('learn')) {
+    return <BookOpen className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />;
+  }
+  if (s.includes('gift')) {
+    return <Gift className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />;
+  }
+  if (s.includes('clay') || s.includes('dough')) {
+    return <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />;
+  }
+  return <ShoppingBag className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />;
+};
+
 export default function HomePage() {
   const { addItem } = useCart();
   const [locale, setLocale] = useState<'bn' | 'en'>('bn');
+  const isBn = locale === 'bn';
   const toast = useToast();
   const [couponCopied, setCouponCopied] = useState(false);
   const [subscriberInput, setSubscriberInput] = useState('');
@@ -130,11 +182,11 @@ export default function HomePage() {
 
     const fetchCategories = async () => {
       try {
-        const res = await fetch('/api/categories');
+        const res = await fetch('/api/categories', { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           const items = Array.isArray(data) ? data : (data.categories || data.data || []);
-          if (items.length > 0) {
+          if (Array.isArray(items)) {
             setCategories(items);
           }
         }
@@ -213,6 +265,35 @@ export default function HomePage() {
     return sortProductsByStockAndRecency(products);
   }, [products]);
 
+  // Dynamic categories for "Choose by Category"
+  const homeCategories = useMemo(() => {
+    // Only include active categories from the database / API
+    const list: any[] = categories
+      .filter((c: any) => c.isActive !== false)
+      .map((c: any) => ({
+        ...c,
+        href: c.slug === 'bundles' ? '/bundles' : `/category/${c.slug}`,
+        titleBn: c.nameBn || c.name,
+        titleEn: c.nameEn || c.name,
+        badge: c.slug === 'bundles' ? (isBn ? 'সাশ্রয়ী অফার' : 'Save More') : c.badge,
+      }));
+
+    // If 'bundles' is not defined in DB, insert it so combos are accessible
+    const hasBundles = list.some((c) => c.slug === 'bundles');
+    if (!hasBundles) {
+      const insertIdx = list.length >= 2 ? 2 : list.length;
+      list.splice(insertIdx, 0, {
+        slug: 'bundles',
+        href: '/bundles',
+        titleBn: 'কম্বো ও বান্ডেল',
+        titleEn: 'Combo & Bundles',
+        badge: isBn ? 'সাশ্রয়ী অফার' : 'Save More',
+      });
+    }
+
+    return list;
+  }, [categories, isBn]);
+
   // 1. New Arrival Products (4 cards)
   const newArrivalProducts = useMemo(() => {
     const filtered = sortedProducts.filter((p) => p.isNewArrival || p.badge === 'New');
@@ -290,8 +371,6 @@ export default function HomePage() {
       })
       .filter((item) => item.products.length > 0);
   }, [categories, sortedProducts]);
-
-  const isBn = locale === 'bn';
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#2B2B2B]">
@@ -486,110 +565,59 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* 6 Prominent Pastel Category Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 sm:gap-4 lg:gap-5">
-            {[
-              {
-                slug: 'art-kits',
-                href: '/category/art-kits',
-                titleBn: 'আর্ট কিট',
-                titleEn: 'Art Kits',
-                cardBg: 'bg-[#FFF5DC]',
-                circleBg: 'bg-[#FFD269]',
-                icon: <Palette className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />,
-              },
-              {
-                slug: 'wax-crayons',
-                href: '/category/wax-crayons',
-                titleBn: 'মোমের রঙ',
-                titleEn: 'Wax Crayons',
-                cardBg: 'bg-[#FFEAE4]',
-                circleBg: 'bg-[#FFAAA4]',
-                icon: <Pencil className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />,
-              },
-              {
-                slug: 'bundles',
-                href: '/bundles',
-                titleBn: 'কম্বো ও বান্ডেল',
-                titleEn: 'Combo & Bundles',
-                cardBg: 'bg-[#FFEFEA]',
-                circleBg: 'bg-[#FFBD9B]',
-                badge: isBn ? 'সাশ্রয়ী অফার' : 'Save More',
-                icon: <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-[#D6403B]" strokeWidth={2} />,
-              },
-              {
-                slug: 'wooden-toys',
-                href: '/category/wooden-toys',
-                titleBn: 'কাঠের খেলনা',
-                titleEn: 'Wooden Toys',
-                cardBg: 'bg-[#EAF6EB]',
-                circleBg: 'bg-[#A0E3B2]',
-                icon: (
-                  <svg
-                    className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="8.5" y="3" width="7" height="7" rx="1.5" />
-                    <rect x="3.5" y="14" width="7" height="7" rx="1.5" />
-                    <rect x="13.5" y="14" width="7" height="7" rx="1.5" />
-                  </svg>
-                ),
-              },
-              {
-                slug: 'educational-toys',
-                href: '/category/educational-toys',
-                titleBn: 'শিক্ষামূলক',
-                titleEn: 'Educational',
-                cardBg: 'bg-[#EBF2FD]',
-                circleBg: 'bg-[#A7CBFD]',
-                icon: <BookOpen className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />,
-              },
-              {
-                slug: 'gift-sets',
-                href: '/category/gift-sets',
-                titleBn: 'উপহার সেট',
-                titleEn: 'Gift Sets',
-                cardBg: 'bg-[#FCEBF5]',
-                circleBg: 'bg-[#F7BFDF]',
-                icon: <Gift className="w-7 h-7 sm:w-8 sm:h-8 text-[#2B2B2B]" strokeWidth={2} />,
-              },
-            ].map((item) => (
-              <Link
-                key={item.slug}
-                href={item.href}
-                className={`relative group rounded-[24px] sm:rounded-[28px] ${item.cardBg} p-5 sm:p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1.5 hover:shadow-md cursor-pointer border border-black/[0.03]`}
-              >
-                {(item as any).badge && (
-                  <span className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 bg-[#D6403B] text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs uppercase tracking-wide">
-                    {(item as any).badge}
-                  </span>
-                )}
-                {/* Circular Icon with soft white glow ring */}
-                <div className="p-1.5 sm:p-2 rounded-full bg-white/70 shadow-2xs mb-3 sm:mb-3.5 transition-transform duration-300 group-hover:scale-105">
-                  <div
-                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full ${item.circleBg} flex items-center justify-center shadow-inner`}
-                  >
-                    {item.icon}
+          {/* Dynamic Pastel Category Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4 lg:gap-5">
+            {homeCategories.map((item, idx) => {
+              const theme = PASTEL_THEMES[idx % PASTEL_THEMES.length];
+              const title = isBn ? (item.titleBn || item.titleEn) : (item.titleEn || item.titleBn);
+              const hasCustomImage =
+                item.imageUrl &&
+                (item.imageUrl.startsWith('/uploads/') ||
+                  (item.imageUrl.includes('i.ibb.co') &&
+                    !item.imageUrl.includes('craftykidsco-little-bug-adventure.jpg')));
+
+              return (
+                <Link
+                  key={item.slug || item._id || idx}
+                  href={item.href}
+                  className={`relative group rounded-[24px] sm:rounded-[28px] ${theme.cardBg} p-5 sm:p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:-translate-y-1.5 hover:shadow-md cursor-pointer border border-black/[0.03]`}
+                >
+                  {item.badge && (
+                    <span className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 bg-[#D6403B] text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs uppercase tracking-wide">
+                      {item.badge}
+                    </span>
+                  )}
+
+                  {/* Circular Icon / Image with soft white glow ring */}
+                  <div className="p-1.5 sm:p-2 rounded-full bg-white/70 shadow-2xs mb-3 sm:mb-3.5 transition-transform duration-300 group-hover:scale-105">
+                    <div
+                      className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full ${theme.circleBg} flex items-center justify-center shadow-inner overflow-hidden`}
+                    >
+                      {hasCustomImage ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={title}
+                          className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-full"
+                        />
+                      ) : (
+                        getCategoryIcon(item.slug)
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Category Title */}
-                <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#2B2B2B] tracking-tight group-hover:text-[#8B1E19] transition-colors">
-                  {isBn ? item.titleBn : item.titleEn}
-                </h3>
+                  {/* Category Title */}
+                  <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#2B2B2B] tracking-tight group-hover:text-[#8B1E19] transition-colors line-clamp-1">
+                    {title}
+                  </h3>
 
-                {/* Action link: দেখুন → */}
-                <div className="mt-2 flex items-center gap-1 text-xs font-bold text-[#8B1E19] group-hover:translate-x-0.5 transition-transform">
-                  <span>{isBn ? 'দেখুন' : 'View'}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-[#8B1E19]" />
-                </div>
-              </Link>
-            ))}
+                  {/* Action link: দেখুন → */}
+                  <div className="mt-2 flex items-center gap-1 text-xs font-bold text-[#8B1E19] group-hover:translate-x-0.5 transition-transform">
+                    <span>{isBn ? 'দেখুন' : 'View'}</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-[#8B1E19]" />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
 

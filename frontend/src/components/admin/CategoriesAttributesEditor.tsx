@@ -90,7 +90,7 @@ export default function CategoriesAttributesEditor({
   const fetchCategories = async () => {
     try {
       setLoadingCategories(true);
-      const res = await fetch('/api/categories');
+      const res = await fetch('/api/categories', { cache: 'no-store' });
       const data = await res.json();
       if (data.success && data.categories) {
         setCategories(data.categories);
@@ -244,7 +244,8 @@ export default function CategoriesAttributesEditor({
       let res;
       if (editingCategory) {
         // Edit mode (PUT)
-        res = await fetch(`/api/categories/${editingCategory.slug || (editingCategory as any)._id}`, {
+        const targetId = (editingCategory as any)._id || editingCategory.slug;
+        res = await fetch(`/api/categories/${targetId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -280,11 +281,11 @@ export default function CategoriesAttributesEditor({
 
   const handleDeleteCategory = async () => {
     if (!categoryToDelete) return;
-    const targetSlug = categoryToDelete.slug || (categoryToDelete as any)._id;
+    const targetId = (categoryToDelete as any)._id || categoryToDelete.slug;
 
     try {
       setIsSaving(true);
-      const res = await fetch(`/api/categories/${targetSlug}`, {
+      const res = await fetch(`/api/categories/${targetId}`, {
         method: 'DELETE',
       });
       const data = await res.json();

@@ -36,6 +36,19 @@ function ShopContent() {
   );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showMobileFilters, setShowMobileFilters] = useState<boolean>(false);
+  const [categories, setCategories] = useState<any[]>(sampleCategories);
+
+  useEffect(() => {
+    fetch('/api/categories', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        const items = Array.isArray(data) ? data : (data.categories || data.data || []);
+        if (Array.isArray(items) && items.length > 0) {
+          setCategories(items.filter((c: any) => c.isActive !== false));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Sync state if URL query params change (e.g. user clicked age pill from home)
   useEffect(() => {
@@ -157,7 +170,7 @@ function ShopContent() {
           >
             {locale === 'bn' ? 'সব ক্যাটাগরি (All)' : 'All Categories'}
           </button>
-          {sampleCategories.map((c) => (
+          {categories.map((c) => (
             <button
               key={c.slug}
               onClick={() => setSelectedCategory(c.slug)}

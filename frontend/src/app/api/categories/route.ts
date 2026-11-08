@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import {
   getAllCategories as getMemoryCategories,
   addCategory as addMemoryCategory,
@@ -15,7 +16,7 @@ export async function GET() {
     try {
       await connectToDatabase();
       const dbCategories = await Category.find().sort({ order: 1, displayOrder: 1 }).lean();
-      if (dbCategories && dbCategories.length > 0) {
+      if (dbCategories) {
         return NextResponse.json({
           success: true,
           count: dbCategories.length,
@@ -113,16 +114,16 @@ export async function PUT(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const body = await req.json();
-    const slug = searchParams.get('slug') || body.slug || body.id;
+    const slug = searchParams.get('slug') || body.slug || body.id || body._id;
 
     if (!slug) {
       return NextResponse.json(
-        { success: false, message: 'Category slug is required' },
+        { success: false, message: 'Category slug or id is required' },
         { status: 400 }
       );
     }
 
-    const updates = {
+    const updates: any = {
       name: body.nameEn || body.name,
       nameBn: body.nameBn,
       nameEn: body.nameEn,
@@ -133,14 +134,23 @@ export async function PUT(req: NextRequest) {
       attributes: body.attributes,
     };
 
+    if (body.slug) {
+      updates.slug = body.slug;
+    }
+
     // Clean undefined values
     Object.keys(updates).forEach((k) => (updates as any)[k] === undefined && delete (updates as any)[k]);
 
     let updatedDoc: any = null;
     try {
       await connectToDatabase();
+      const isHex = /^[0-9a-fA-F]{24}$/.test(slug);
+      const filter = isHex
+        ? { $or: [{ _id: new mongoose.Types.ObjectId(slug) }, { slug }] }
+        : { slug };
+
       updatedDoc = await Category.findOneAndUpdate(
-        { $or: [{ slug }, { _id: slug.match(/^[0-9a-fA-F]{24}$/) ? slug : null }] },
+        filter,
         { $set: updates },
         { new: true }
       ).lean();
@@ -182,9 +192,12 @@ export async function DELETE(req: NextRequest) {
 
     try {
       await connectToDatabase();
-      await Category.deleteOne({
-        $or: [{ slug }, { _id: slug.match(/^[0-9a-fA-F]{24}$/) ? slug : null }],
-      });
+      const isHex = /^[0-9a-fA-F]{24}$/.test(slug);
+      const filter = isHex
+        ? { $or: [{ _id: new mongoose.Types.ObjectId(slug) }, { slug }] }
+        : { slug };
+
+      await Category.deleteOne(filter);
     } catch (dbErr: any) {
       console.warn('MongoDB error in DELETE /api/categories:', dbErr.message);
     }

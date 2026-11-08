@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import {
   updateCategory as updateMemoryCategory,
   deleteCategory as deleteMemoryCategory,
@@ -19,16 +20,18 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     try {
       await connectToDatabase();
-      foundCategory = await Category.findOne({
-        $or: [{ slug: id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }],
-      }).lean();
+      const isHex = /^[0-9a-fA-F]{24}$/.test(id);
+      const filter = isHex
+        ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { slug: id }] }
+        : { slug: id };
+      foundCategory = await Category.findOne(filter).lean();
     } catch (dbErr) {
       console.warn('MongoDB error in GET /api/categories/[id]:', dbErr);
     }
 
     if (!foundCategory) {
       const memoryCats = getMemoryCategories();
-      foundCategory = memoryCats.find((c) => c.slug === id || (c as any).id === id);
+      foundCategory = memoryCats.find((c) => c.slug === id || (c as any).id === id || (c as any)._id === id);
     }
 
     if (!foundCategory) {
@@ -51,7 +54,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const body = await req.json();
 
-    const updates = {
+    const updates: any = {
       name: body.nameEn || body.name,
       nameBn: body.nameBn,
       nameEn: body.nameEn,
@@ -62,13 +65,22 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       attributes: body.attributes,
     };
 
-    Object.keys(updates).forEach((k) => (updates as any)[k] === undefined && delete (updates as any)[k]);
+    if (body.slug) {
+      updates.slug = body.slug;
+    }
+
+    Object.keys(updates).forEach((k) => updates[k] === undefined && delete updates[k]);
 
     let updatedDoc: any = null;
     try {
       await connectToDatabase();
+      const isHex = /^[0-9a-fA-F]{24}$/.test(id);
+      const filter = isHex
+        ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { slug: id }] }
+        : { slug: id };
+
       updatedDoc = await Category.findOneAndUpdate(
-        { $or: [{ slug: id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }] },
+        filter,
         { $set: updates },
         { new: true }
       ).lean();
@@ -99,9 +111,12 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     try {
       await connectToDatabase();
-      await Category.deleteOne({
-        $or: [{ slug: id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }],
-      });
+      const isHex = /^[0-9a-fA-F]{24}$/.test(id);
+      const filter = isHex
+        ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { slug: id }] }
+        : { slug: id };
+
+      await Category.deleteOne(filter);
     } catch (dbErr: any) {
       console.warn('MongoDB error in DELETE /api/categories/[id]:', dbErr.message);
     }

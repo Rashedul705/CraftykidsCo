@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Sparkles } from 'lucide-react';
@@ -18,8 +18,43 @@ function CategoryContent() {
   const { addItem } = useCart();
   const [locale, setLocale] = useState<'bn' | 'en'>('bn');
 
-  const currentCategory = sampleCategories.find((c) => c.slug === slug) || sampleCategories[0];
-  const products = getProductsByCategory(slug);
+  const [currentCategory, setCurrentCategory] = useState<any>(
+    sampleCategories.find((c) => c.slug === slug) || {
+      slug,
+      nameBn: slug,
+      nameEn: slug,
+      description: '',
+    }
+  );
+  const [products, setProducts] = useState<any[]>(getProductsByCategory(slug));
+
+  useEffect(() => {
+    fetch(`/api/categories/${slug}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.category) {
+          setCurrentCategory(data.category);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/products', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        const items = Array.isArray(data) ? data : (data.products || data.data || []);
+        if (Array.isArray(items) && items.length > 0) {
+          const catProducts = items.filter(
+            (p: any) =>
+              p.categorySlug === slug ||
+              p.primaryCategorySlug === slug ||
+              p.category === slug ||
+              (p.categories && Array.isArray(p.categories) && p.categories.includes(slug))
+          );
+          setProducts(catProducts);
+        }
+      })
+      .catch(() => {});
+  }, [slug]);
 
   const handleQuickAdd = (productId: string) => {
     const product = products.find((p) => p.slug === productId || p.id === productId);
@@ -66,7 +101,7 @@ function CategoryContent() {
         {/* Subcategories (if any) */}
         {currentCategory.children && currentCategory.children.length > 0 && (
           <div className="flex flex-wrap gap-2 justify-center">
-            {currentCategory.children.map((sub) => (
+            {currentCategory.children.map((sub: any) => (
               <span
                 key={sub.slug}
                 className="px-3.5 py-1.5 rounded-full bg-white border border-[#EFE9E0] text-xs font-bold text-[#2B2B2B] shadow-sm hover:border-[#FF6B6B] cursor-pointer"
