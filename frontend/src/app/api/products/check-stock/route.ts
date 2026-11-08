@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
 import { Bundle } from '@/models/Bundle';
+import { GiftItem } from '@/models/GiftItem';
 import { getProductBySlug } from '@/lib/store';
 import { getBundleById, getBundleBySlug } from '@/lib/bundles-store';
 
@@ -14,6 +15,10 @@ interface CheckStockItem {
   title?: string;
   quantity: number;
   isBundle?: boolean;
+  isGiftPackage?: boolean;
+  giftItemId?: string;
+  bundleType?: string;
+  bundleGroupId?: string;
 }
 
 function getProductMongoQuery(id: string) {
@@ -119,6 +124,32 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // 1.5 Handle Gift Package Items
+      if (item.isGiftPackage || item.giftItemId) {
+        const gId = item.giftItemId || item.productId;
+        const isObjectId = mongoose.Types.ObjectId.isValid(gId);
+        const giftItem = await GiftItem.findOne(
+          isObjectId ? { $or: [{ _id: gId }, { id: gId }] } : { id: gId }
+        ).lean();
+
+        if (giftItem) {
+          if (giftItem.stock < reqQty) {
+            shortages.push({
+              productId: item.productId,
+              title: item.title || giftItem.name,
+              requestedQuantity: reqQty,
+              availableStock: giftItem.stock,
+              isOutOfStock: giftItem.stock <= 0,
+              message:
+                giftItem.stock <= 0
+                  ? `"${giftItem.name}" এর স্টক শেষ হয়ে গেছে।`
+                  : `"${giftItem.name}" এর পর্যাপ্ত স্টক নেই (অনুরোধ: ${reqQty}টি, স্টকে আছে: ${giftItem.stock}টি)।`,
+            });
+          }
+          continue;
+        }
+      }
+
       // 2. Regular Product Lookup
       let dbProduct = await Product.findOne(getProductMongoQuery(item.productId)).lean();
 
@@ -162,6 +193,29 @@ export async function POST(req: NextRequest) {
               message: availableSets <= 0
                 ? `"${fallbackBundle.titleBn}" এর অন্তর্গত '${limitingItemName}' এর স্টক শেষ হয়ে গেছে।`
                 : `"${fallbackBundle.titleBn}" এর পর্যাপ্ত স্টক নেই (অনুরোধ: ${reqQty}টি, স্টকে আছে: ${availableSets}টি)।`,
+            });
+          }
+          continue;
+        }
+
+        const gId = item.giftItemId || item.productId;
+        const isObjectId = mongoose.Types.ObjectId.isValid(gId);
+        let fallbackGift: any = await GiftItem.findOne(
+          isObjectId ? { $or: [{ _id: gId }, { id: gId }] } : { id: gId }
+        ).lean();
+
+        if (fallbackGift) {
+          if (fallbackGift.stock < reqQty) {
+            shortages.push({
+              productId: item.productId,
+              title: itemTitle || fallbackGift.name,
+              requestedQuantity: reqQty,
+              availableStock: fallbackGift.stock,
+              isOutOfStock: fallbackGift.stock <= 0,
+              message:
+                fallbackGift.stock <= 0
+                  ? `"${fallbackGift.name}" এর স্টক শেষ হয়ে গেছে।`
+                  : `"${fallbackGift.name}" এর পর্যাপ্ত স্টক নেই (অনুরোধ: ${reqQty}টি, স্টকে আছে: ${fallbackGift.stock}টি)।`,
             });
           }
           continue;

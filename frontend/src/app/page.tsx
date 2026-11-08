@@ -24,6 +24,7 @@ import {
   Pencil,
   BookOpen,
   Gift,
+  ShoppingBag,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -35,8 +36,10 @@ import { BRAND_CONFIG } from '@/lib/brand';
 import { SiteSettings, defaultSiteSettings, HeroSlide } from '@/lib/site-settings';
 import { useToast } from '@/components/ui/Toast';
 import { isProductOutOfStock, sortProductsByStockAndRecency } from '@/lib/product-utils';
+import { useCart } from '@/context/CartContext';
 
 export default function HomePage() {
+  const { addItem } = useCart();
   const [locale, setLocale] = useState<'bn' | 'en'>('bn');
   const toast = useToast();
   const [couponCopied, setCouponCopied] = useState(false);
@@ -44,6 +47,7 @@ export default function HomePage() {
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
   const [categories, setCategories] = useState<SampleCategory[]>(sampleCategories);
   const [products, setProducts] = useState<any[]>(sampleProducts);
+  const [homeBundles, setHomeBundles] = useState<any[]>([]);
   const [, setIsLoading] = useState<boolean>(true);
 
   const heroSlides: HeroSlide[] =
@@ -156,10 +160,51 @@ export default function HomePage() {
       }
     };
 
+    const fetchHomeBundles = async () => {
+      try {
+        const res = await fetch('/api/bundles?home=true');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.bundles) {
+            setHomeBundles(data.bundles.filter((b: any) => b.status === 'active'));
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch home bundles:', err);
+      }
+    };
+
     fetchSettings();
     fetchCategories();
     fetchProducts();
+    fetchHomeBundles();
   }, []);
+
+  const handleAddHomeBundleToCart = (bundle: any) => {
+    const bundleSummary = (bundle.items || [])
+      .map((i: any) => `${i.productTitleBn || i.productTitleEn} (${i.quantity}টি)`)
+      .join(' + ');
+
+    addItem({
+      id: `bundle-${bundle.id}`,
+      productId: bundle.id,
+      productSlug: bundle.slug,
+      title: bundle.titleEn || bundle.titleBn,
+      titleBn: bundle.titleBn,
+      imageUrl: bundle.imageUrl,
+      price: bundle.bundlePrice,
+      quantity: 1,
+      isBundle: true,
+      bundleItemsSummary: bundleSummary,
+      bundleType: 'curated',
+      bundleGroupId: `bundle-${bundle.id}`,
+      originalUnitPrice: bundle.originalPrice,
+      discountAmount: bundle.savingsAmount,
+      finalPrice: bundle.bundlePrice,
+    });
+
+    toast.success(`'${bundle.titleBn}' সফলভাবে কার্টে যোগ হয়েছে!`);
+  };
 
   // Sorted Products Rule:
   // 1. In-stock products first, stock out products last
@@ -655,6 +700,149 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+
+        {/* ========================================================================= */}
+        {/* 4.5 COMBO & BUNDLE SECTION (Feature 1: Flagged for Home)                 */}
+        {/* ========================================================================= */}
+        {homeBundles.length > 0 && (
+          <section className="space-y-4 pt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-[#FFF0E6] flex items-center justify-center text-[#D6403B]">
+                  <Gift className="w-4 h-4 text-[#D6403B]" />
+                </div>
+                <div>
+                  <h2 className="font-heading font-black text-xl sm:text-2xl text-[#2B2B2B]">
+                    {isBn ? 'কম্বো ও স্পেশাল বান্ডেল' : 'Combos & Special Bundles'}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[#6B6B6B]">
+                    {isBn
+                      ? 'একসাথে একাধিক পণ্য কিনুন এবং উপভোগ করুন আকর্ষণীয় সাশ্রয়'
+                      : 'Buy together, save more with our hand-picked combo sets'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/build-your-bundle"
+                  className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-[#D6403B] bg-[#FFF5F5] border border-[#FED7D7] px-3.5 py-1.5 rounded-full hover:bg-[#D6403B] hover:text-white transition-all cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Build Your Bundle</span>
+                </Link>
+                <Link
+                  href="/bundles"
+                  className="text-xs sm:text-sm font-bold text-[#D6403B] hover:text-[#BF3430] flex items-center gap-1 border border-[#EFE9E0] px-3.5 py-1.5 rounded-full hover:bg-white transition-colors cursor-pointer"
+                >
+                  <span>{isBn ? 'সব দেখুন' : 'View All'}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5">
+              {homeBundles.map((b) => {
+                const isOOS = b.setsAvailable !== undefined && b.setsAvailable <= 0;
+                return (
+                  <div
+                    key={b.id || b.slug}
+                    className={`bg-white rounded-3xl border p-5 flex flex-col justify-between transition-all duration-300 relative group ${
+                      isOOS ? 'border-[#E5E5E5] opacity-75' : 'border-[#EFE9E0] hover:shadow-md hover:border-[#D6403B]/30'
+                    }`}
+                  >
+                    {b.badge && (
+                      <div className="absolute top-4 right-4 bg-[#D6403B] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-2xs z-10">
+                        {b.badge}
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {/* Image */}
+                      <div className="aspect-[4/3] rounded-2xl bg-[#FAF7F2] overflow-hidden relative border border-[#EFE9E0]/60">
+                        {b.imageUrl ? (
+                          <Image src={b.imageUrl} alt={b.titleBn || b.titleEn} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                        ) : (
+                          <Gift className="w-12 h-12 text-[#C4BFB7] m-auto mt-10" />
+                        )}
+                        {isOOS && (
+                          <div className="absolute inset-0 bg-white/70 backdrop-blur-2xs flex items-center justify-center">
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#FDE3E1] text-[#9B2420]">
+                              স্টক আউট (Unavailable)
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Title & Desc */}
+                      <div>
+                        <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#2B2B2B] group-hover:text-[#D6403B] transition-colors line-clamp-1">
+                          {isBn ? b.titleBn : b.titleEn}
+                        </h3>
+                        <p className="text-xs text-[#6B6B6B] line-clamp-1 mt-0.5">
+                          {isBn ? b.titleEn : b.descriptionBn}
+                        </p>
+                      </div>
+
+                      {/* Items Preview */}
+                      {b.items && b.items.length > 0 && (
+                        <div className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#EFE9E0] text-[11px] text-[#6B6B6B] space-y-1">
+                          <span className="font-bold text-[#2B2B2B] block">অন্তর্ভুক্ত পণ্যসমূহ:</span>
+                          <ul className="list-disc list-inside space-y-0.5 text-[10px]">
+                            {b.items.map((it: any, i: number) => (
+                              <li key={i} className="truncate">
+                                {it.productTitleBn || it.productTitleEn} ({it.quantity}টি)
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pricing & CTA */}
+                    <div className="mt-4 pt-3 border-t border-[#EFE9E0] flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-base text-[#D6403B]">
+                            ৳{b.bundlePrice}
+                          </span>
+                          {b.originalPrice > b.bundlePrice && (
+                            <span className="text-xs text-[#8C8C8C] line-through">
+                              ৳{b.originalPrice}
+                            </span>
+                          )}
+                        </div>
+                        {b.savingsAmount > 0 && (
+                          <span className="text-[10px] font-bold text-[#1F6B43] block">
+                            ৳{b.savingsAmount} সাশ্রয়
+                          </span>
+                        )}
+                      </div>
+
+                      {isOOS ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="px-3.5 py-2 rounded-xl bg-[#E5E5E5] text-[#8C8C8C] text-xs font-bold cursor-not-allowed"
+                        >
+                          Unavailable
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleAddHomeBundleToCart(b)}
+                          className="px-4 py-2 rounded-xl bg-[#D6403B] hover:bg-[#B93834] text-white text-xs font-bold transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer flex items-center gap-1"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>অর্ডার কম্বো</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* ========================================================================= */}
         {/* 5. CATEGORY BASE PRODUCTS - SHOW ALL CATEGORIES WHICH HAVE PRODUCT         */}

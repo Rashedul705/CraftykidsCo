@@ -47,8 +47,16 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
     const subtotal = Number(searchParams.get('subtotal') || '0');
+    const hasBundle = searchParams.get('hasBundle') === 'true' || searchParams.get('cartHasBundle') === 'true';
 
     if (code) {
+      if (hasBundle) {
+        return NextResponse.json({
+          success: false,
+          valid: false,
+          message: 'Coupons cannot be applied to carts containing bundle discounts.',
+        });
+      }
       const result = validateCoupon(code, subtotal);
       return NextResponse.json({ success: true, ...result });
     }

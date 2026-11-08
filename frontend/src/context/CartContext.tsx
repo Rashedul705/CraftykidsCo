@@ -10,6 +10,7 @@ interface CartContextType {
   couponCode: string;
   discountAmount: number;
   appliedCoupon: string | null;
+  hasBundleDiscount: boolean;
   addItem: (item: CartItemData) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
@@ -58,15 +59,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
+  const hasBundleDiscount = items.some(
+    (it: any) =>
+      it.bundleType === 'custom' ||
+      it.bundleType === 'curated' ||
+      it.isBundle ||
+      it.bundleId ||
+      (it.productId && (String(it.productId).startsWith('bundle-') || it.productId === 'custom-bundle'))
+  );
+
+  // Clear coupon if cart contains bundle discounts
+  useEffect(() => {
+    if (hasBundleDiscount && appliedCoupon) {
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+    }
+  }, [hasBundleDiscount, appliedCoupon]);
+
   // Recalculate discount if items change or re-verify active status with server
   useEffect(() => {
-    if (!appliedCoupon) {
+    if (!appliedCoupon || hasBundleDiscount) {
       setDiscountAmount(0);
       return;
     }
 
     let isMounted = true;
-    fetch(`/api/coupons?code=${encodeURIComponent(appliedCoupon)}&subtotal=${subtotal}`)
+    fetch(`/api/coupons?code=${encodeURIComponent(appliedCoupon)}&subtotal=${subtotal}&hasBundle=${hasBundleDiscount}`)
       .then((res) => res.json())
       .then((data) => {
         if (!isMounted) return;
@@ -83,7 +101,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [subtotal, appliedCoupon]);
+  }, [subtotal, appliedCoupon, hasBundleDiscount]);
 
   const addItem = (newItem: CartItemData) => {
     setItems((prev) => {
@@ -135,8 +153,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: 'অনুগ্রহ করে কুপন কোড লিখুন।' };
     }
 
+    if (hasBundleDiscount) {
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+      return {
+        success: false,
+        message: 'Coupons cannot be applied to carts containing bundle discounts.',
+      };
+    }
+
     try {
-      const res = await fetch(`/api/coupons?code=${encodeURIComponent(clean)}&subtotal=${subtotal}`);
+      const res = await fetch(`/api/coupons?code=${encodeURIComponent(clean)}&subtotal=${subtotal}&hasBundle=${hasBundleDiscount}`);
       const data = await res.json();
       if (data.success && data.valid) {
         setAppliedCoupon(clean);
@@ -170,6 +197,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         couponCode: appliedCoupon || '',
         discountAmount,
         appliedCoupon,
+        hasBundleDiscount,
         addItem,
         removeItem,
         updateQuantity,

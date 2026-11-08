@@ -434,6 +434,7 @@ export const TAB_PERMISSION_MAP: Record<string, string | null> = {
   products: 'products.view',
   categories: 'categories.view',
   bundles: 'bundles.manage',
+  'gift-packages': 'bundles.manage',
   stock: 'stock.manage',
 
   // 4. SHIPPING

@@ -48,6 +48,7 @@ export async function validateAndSanitizeProduct(
   const sanitized: any = { ...data };
   sanitized.hasVariations = hasVariations;
   sanitized.isVariable = hasVariations;
+  sanitized.bundleEligible = data.bundleEligible !== false;
   sanitized.titleBn = data.titleBn?.trim();
   sanitized.titleEn = data.titleEn?.trim();
   sanitized.title = sanitized.titleEn;

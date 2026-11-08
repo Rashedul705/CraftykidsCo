@@ -52,6 +52,7 @@ import CategoriesAttributesEditor from '@/components/admin/CategoriesAttributesE
 import AddProductForm from '@/components/admin/AddProductForm';
 import OrdersManager from '@/components/admin/OrdersManager';
 import { BundlesManager } from '@/components/admin/BundlesManager';
+import { GiftPackagesManager } from '@/components/admin/GiftPackagesManager';
 import { DashboardView } from '@/components/admin/DashboardView';
 import { SmsCampaignsManager } from '@/components/admin/SmsCampaignsManager';
 import { IncompleteOrdersManager } from '@/components/admin/IncompleteOrdersManager';
@@ -79,6 +80,7 @@ const VALID_ADMIN_TABS = [
   'products',
   'categories',
   'bundles',
+  'gift-packages',
   'stock',
   'delivery-charges',
   'block-list',
@@ -1701,6 +1703,13 @@ export default function AdminDashboardPage() {
             userRole={userRole}
             onNavigateTab={handleNavChange}
           />
+        )}
+
+        {/* =====================================================================
+            VIEW: CUSTOM GIFT PACKAGES (FEATURE 2)
+           ===================================================================== */}
+        {activeNav === 'gift-packages' && (
+          <GiftPackagesManager />
         )}
 
         {/* VIEW 6: HOME SECTIONS & STOREFRONT CUSTOMIZER */}

@@ -756,6 +756,11 @@ function ProductContent() {
       quantity: 1,
       isBundle: true,
       bundleItemsSummary: bundleSummary,
+      bundleType: 'curated',
+      bundleGroupId: `bundle-${bundle.id}`,
+      originalUnitPrice: bundle.originalPrice,
+      discountAmount: bundle.savingsAmount,
+      finalPrice: bundle.bundlePrice,
     });
 
     toast.success(`'${bundle.titleBn}' সফলভাবে কার্টে যোগ হয়েছে!`);
@@ -1450,6 +1455,37 @@ function ProductContent() {
               </div>
             </div>
 
+            {/* Customize Gift Builder Callout */}
+            <div className="bg-gradient-to-r from-[#FFF5F2] via-[#FFF9F5] to-[#FFF0EC] border-2 border-[#FFD9C7] rounded-2xl p-4 sm:p-4.5 flex flex-col sm:flex-row items-center justify-between gap-3.5 shadow-2xs hover:shadow-xs transition-all">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#D6403B] to-[#B93834] text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Gift className="w-5 h-5 text-[#FFD166]" />
+                </div>
+                <div className="space-y-0.5 min-w-0 text-center sm:text-left">
+                  <div className="flex items-center gap-2 justify-center sm:justify-start">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#D6403B] bg-[#FDE8E7] px-2 py-0.5 rounded-full shrink-0">
+                      কাস্টম উপহার
+                    </span>
+                    <span className="text-xs font-bold text-[#2B2B2B]">
+                      উপহার হিসেবে দিতে চান?
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                    পছন্দের গিফট বক্স, রিবন ও কার্ড বেছে নিজের মতো পারফেক্ট উপহার প্যাকেজ তৈরি করুন
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/gift-builder"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#B93834] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs hover:shadow transition-all shrink-0 cursor-pointer active:scale-[0.98]"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#FFD166]" />
+                <span>Customize Gift Builder</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
             {/* 8. "কথা বলে অর্ডার করতে চান?" strip with WhatsApp and Call buttons */}
             <div className="bg-[#DDF3E6] border border-[#BDE6CE] rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
               <div className="space-y-0.5 text-center sm:text-left">
@@ -1902,14 +1938,24 @@ function ProductContent() {
                       >
                         বিস্তারিত
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleAddBundleToCart(b)}
-                        className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#D6403B] hover:bg-[#B93834] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs active:scale-[0.98] transition-all cursor-pointer"
-                      >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>বান্ডেল কার্টে নিন</span>
-                      </button>
+                      {b.setsAvailable !== undefined && b.setsAvailable <= 0 ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#E5E5E5] text-[#8C8C8C] text-xs font-bold cursor-not-allowed"
+                        >
+                          স্টক শেষ (Unavailable)
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleAddBundleToCart(b)}
+                          className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#D6403B] hover:bg-[#B93834] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs active:scale-[0.98] transition-all cursor-pointer"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>বান্ডেল কার্টে নিন</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

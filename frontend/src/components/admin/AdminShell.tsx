@@ -56,6 +56,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
       { id: 'products', label: 'Products' },
       { id: 'categories', label: 'Categories and attributes' },
       { id: 'bundles', label: 'Bundles' },
+      { id: 'gift-packages', label: 'Gift packages' },
       { id: 'stock', label: 'Stock' },
     ],
   },
@@ -127,6 +128,10 @@ export const TAB_METADATA: Record<string, { title: string; helper: string; mainA
     title: 'Bundles',
     helper: 'Manage multi-item gift sets and automated bundle stock limits',
     mainAction: { label: '+ Create bundle', action: 'create_bundle' },
+  },
+  'gift-packages': {
+    title: 'Gift Packages',
+    helper: 'Manage custom gift package inventory, compulsory items, and suggestions',
   },
   stock: {
     title: 'Stock',

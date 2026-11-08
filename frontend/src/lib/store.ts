@@ -18,6 +18,16 @@ export interface CartItemData {
   bundleItemsSummary?: string;
   giftWrap?: boolean;
   giftMessage?: string;
+  originalUnitPrice?: number;
+  discountAmount?: number;
+  finalPrice?: number;
+  bundleType?: 'custom' | 'curated' | 'none';
+  bundleGroupId?: string;
+  tierPercentApplied?: number;
+  isGiftPackage?: boolean;
+  packageGroupId?: string;
+  giftItemId?: string;
+  giftItemName?: string;
 }
 
 export interface OrderItemRecord {

@@ -41,6 +41,9 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status');
     const search = searchParams.get('search');
     const featured = searchParams.get('featured');
+    const home = searchParams.get('home');
+    const productId = searchParams.get('productId');
+    const productPage = searchParams.get('productPage');
 
     let bundles: BundleRecord[] = [];
     let isFromMongo = false;
@@ -54,21 +57,36 @@ export async function GET(req: NextRequest) {
       if (featured === 'true') {
         mongoQuery.isFeatured = true;
       }
+      if (home === 'true') {
+        mongoQuery.$or = [{ showOnHome: true }, { displayLocations: 'home' }];
+      }
+      if (productPage === 'true') {
+        mongoQuery.$or = [{ showOnProductPage: true }, { displayLocations: 'product-pages' }];
+      }
+      if (productId) {
+        mongoQuery['items.productId'] = productId;
+      }
       if (status && status !== 'all' && status !== 'low-stock' && status !== 'out-of-stock') {
         mongoQuery.status = status;
       }
       if (search) {
         const regex = new RegExp(search, 'i');
-        mongoQuery.$or = [
+        const searchOr = [
           { titleBn: regex },
           { titleEn: regex },
           { slug: regex },
           { 'items.productTitleBn': regex },
           { 'items.productTitleEn': regex },
         ];
+        if (mongoQuery.$or) {
+          mongoQuery.$and = [{ $or: mongoQuery.$or }, { $or: searchOr }];
+          delete mongoQuery.$or;
+        } else {
+          mongoQuery.$or = searchOr;
+        }
       }
 
-      const dbBundles = await Bundle.find(mongoQuery).sort({ createdAt: -1 }).lean();
+      const dbBundles = await Bundle.find(mongoQuery).sort({ sortOrder: 1, createdAt: -1 }).lean();
       if (dbBundles && dbBundles.length > 0) {
         bundles = dbBundles.map((b: any) => ({
           id: b.id || b._id.toString(),
@@ -98,6 +116,9 @@ export async function GET(req: NextRequest) {
           displayLocations: b.displayLocations || ['bundles', 'home', 'product-pages'],
           hideWhenOutOfStock: b.hideWhenOutOfStock ?? true,
           isFeatured: !!b.isFeatured,
+          showOnHome: b.showOnHome !== undefined ? !!b.showOnHome : (b.displayLocations?.includes('home') ?? false),
+          showOnProductPage: b.showOnProductPage !== undefined ? !!b.showOnProductPage : (b.displayLocations?.includes('product-pages') ?? false),
+          sortOrder: b.sortOrder || 0,
           createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
           updatedAt: b.updatedAt ? new Date(b.updatedAt).toISOString() : new Date().toISOString(),
         }));
@@ -237,6 +258,9 @@ export async function POST(req: NextRequest) {
       occasion: body.occasion || 'everyday',
       badge: body.badge || (financials.discountPercent > 0 ? `${financials.discountPercent}% সাশ্রয়` : 'স্পেশাল কম্বো'),
       displayLocations: body.displayLocations || ['bundles', 'home', 'product-pages'],
+      showOnHome: body.showOnHome !== undefined ? Boolean(body.showOnHome) : (body.displayLocations ? body.displayLocations.includes('home') : false),
+      showOnProductPage: body.showOnProductPage !== undefined ? Boolean(body.showOnProductPage) : (body.displayLocations ? body.displayLocations.includes('product-pages') : false),
+      sortOrder: Number(body.sortOrder) || 0,
       hideWhenOutOfStock: body.hideWhenOutOfStock ?? true,
       isFeatured: !!body.isFeatured,
     };
@@ -328,6 +352,14 @@ export async function PUT(req: NextRequest) {
     }
 
     // Recompute financials if items or pricing changed
+    if (updates.displayLocations) {
+      if (updates.showOnHome === undefined) {
+        updates.showOnHome = updates.displayLocations.includes('home');
+      }
+      if (updates.showOnProductPage === undefined) {
+        updates.showOnProductPage = updates.displayLocations.includes('product-pages');
+      }
+    }
     if (updates.items || updates.pricingMode || updates.pricingValue) {
       const existing = getBundleById(id);
       const items = updates.items || existing?.items || [];

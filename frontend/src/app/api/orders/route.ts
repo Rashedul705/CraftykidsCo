@@ -202,9 +202,28 @@ export async function POST(req: NextRequest) {
     // 2. Compute subtotal from items
     const subtotal = data.items.reduce((sum, it) => sum + it.price * it.quantity, 0);
 
+    // 2.5 Check if cart contains any bundle items (custom or curated)
+    const hasBundleInCart = data.items.some((it: any) =>
+      it.bundleType === 'custom' ||
+      it.bundleType === 'curated' ||
+      it.isBundle ||
+      it.bundleId ||
+      (it.productId && (String(it.productId).startsWith('bundle-') || it.productId === 'custom-bundle'))
+    );
+
     // 3. Validate coupon if provided
     let discountAmount = 0;
     if (data.couponCode) {
+      if (hasBundleInCart) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Coupons cannot be applied to carts containing bundle discounts.',
+          },
+          { status: 400 }
+        );
+      }
+
       const couponRes = validateAndApplyCoupon(data.couponCode, subtotal);
       if (couponRes.valid) {
         discountAmount = couponRes.discountAmount;
@@ -280,10 +299,20 @@ export async function POST(req: NextRequest) {
         variationTitleBn: (it as any).variationTitleBn || it.variationTitle || (it as any).bundleItemsSummary || '',
         imageUrl: it.imageUrl || '',
         price: it.price,
-        unitPrice: it.price,
+        unitPrice: (it as any).originalUnitPrice ?? it.price,
         quantity: it.quantity,
         total: it.price * it.quantity,
         totalPrice: it.price * it.quantity,
+        originalUnitPrice: (it as any).originalUnitPrice ?? it.price,
+        discountAmount: (it as any).discountAmount ?? ((it as any).discountPerUnit ? (it as any).discountPerUnit * it.quantity : 0),
+        finalPrice: (it as any).finalPrice ?? it.price,
+        bundleType: (it as any).bundleType || ((it as any).isBundle || (it as any).bundleId ? 'curated' : 'none'),
+        bundleGroupId: (it as any).bundleGroupId || (it as any).bundleId || undefined,
+        tierPercentApplied: (it as any).tierPercentApplied || 0,
+        isGiftPackage: Boolean((it as any).isGiftPackage),
+        packageGroupId: (it as any).packageGroupId || undefined,
+        giftItemId: (it as any).giftItemId || undefined,
+        giftItemName: (it as any).giftItemName || ((it as any).isGiftPackage ? it.title : undefined),
       })),
       timeline: [
         {

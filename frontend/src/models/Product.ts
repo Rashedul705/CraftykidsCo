@@ -91,6 +91,7 @@ export interface IProduct extends Document {
   tagColor?: string;
   isVariable?: boolean;
   isFeatured?: boolean;
+  bundleEligible?: boolean;
   isBestSeller?: boolean;
   isNewArrival?: boolean;
   targetAge?: string;
@@ -190,6 +191,7 @@ const ProductSchema = new Schema<IProduct>(
     tagColor: { type: String },
     isVariable: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false, index: true },
+    bundleEligible: { type: Boolean, default: true, index: true },
     isBestSeller: { type: Boolean, default: false, index: true },
     isNewArrival: { type: Boolean, default: false, index: true },
     targetAge: { type: String },

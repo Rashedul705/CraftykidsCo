@@ -1,5 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/auth';
+import fs from 'fs';
+import path from 'path';
+
+function saveToLocalUploads(base64Image: string, imageName: string): string {
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  const ext = base64Image.startsWith('/9j/')
+    ? '.jpg'
+    : base64Image.startsWith('iVBORw')
+    ? '.png'
+    : base64Image.startsWith('R0lGOD')
+    ? '.gif'
+    : '.png';
+  const cleanName = imageName.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50) || 'upload';
+  const fileName = `${Date.now()}_${cleanName}${ext}`;
+  const filePath = path.join(uploadsDir, fileName);
+  fs.writeFileSync(filePath, Buffer.from(base64Image, 'base64'));
+  return `/uploads/${fileName}`;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,12 +30,6 @@ export async function POST(req: NextRequest) {
     }
 
     const apiKey = process.env.IMGBB_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { success: false, message: 'IMGBB_API_KEY is not configured on the server' },
-        { status: 500 }
-      );
-    }
     
     let base64Image = '';
     let imageName = 'craftykidsco_upload';
@@ -49,43 +64,52 @@ export async function POST(req: NextRequest) {
       base64Image = base64Image.split('base64,')[1];
     }
 
-    const formBody = new URLSearchParams();
-    formBody.append('image', base64Image);
-    formBody.append('name', imageName);
+    // 1. Try ImgBB if API key is provided
+    if (apiKey) {
+      try {
+        const formBody = new URLSearchParams();
+        formBody.append('image', base64Image);
+        formBody.append('name', imageName);
 
-    const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-      method: 'POST',
-      body: formBody,
-    });
+        const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+          method: 'POST',
+          body: formBody,
+        });
 
-    const data = await imgbbRes.json();
+        const data = await imgbbRes.json();
 
-    if (data.success) {
-      return NextResponse.json({
-        success: true,
-        url: data.data.url,
-        display_url: data.data.display_url,
-        delete_url: data.data.delete_url,
-        thumb: data.data.thumb?.url,
-        data: data.data,
-      });
-    } else {
-      return NextResponse.json(
-        {
-          success: false,
-          message: data.error?.message || 'Failed to upload image to ImgBB',
-          error: data.error,
-        },
-        { status: 400 }
-      );
+        if (data.success && data.data?.url) {
+          return NextResponse.json({
+            success: true,
+            url: data.data.url,
+            display_url: data.data.display_url,
+            delete_url: data.data.delete_url,
+            thumb: data.data.thumb?.url,
+            data: data.data,
+          });
+        }
+
+        console.warn('ImgBB upload rejected or unavailable:', data.error?.message, '- falling back to local storage.');
+      } catch (imgbbErr: any) {
+        console.warn('ImgBB fetch threw an error:', imgbbErr.message, '- falling back to local storage.');
+      }
     }
+
+    // 2. Reliable Local Storage Fallback
+    const localUrl = saveToLocalUploads(base64Image, imageName);
+    return NextResponse.json({
+      success: true,
+      url: localUrl,
+      display_url: localUrl,
+      thumb: localUrl,
+      source: 'local_storage',
+    });
   } catch (error: any) {
-    console.error('Frontend ImgBB upload error:', error);
-    const isProd = process.env.NODE_ENV === 'production';
+    console.error('Upload handler error:', error);
     return NextResponse.json(
       {
         success: false,
-        message: isProd ? 'Internal server error during upload' : (error.message || 'Internal server error during upload'),
+        message: error.message || 'Internal server error during upload',
       },
       { status: 500 }
     );

@@ -45,6 +45,7 @@ export interface BundleRecord {
   displayLocations: ('bundles' | 'home' | 'product-pages')[];
   hideWhenOutOfStock: boolean;
   isFeatured?: boolean;
+  setsAvailable?: number;
   createdAt: string;
   updatedAt: string;
 }

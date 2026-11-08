@@ -14,6 +14,7 @@ import {
   CreditCard,
   AlertCircle,
   Tag,
+  Info,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -41,6 +42,7 @@ export default function CheckoutPage() {
     subtotal,
     discountAmount,
     couponCode,
+    hasBundleDiscount,
     applyCouponCode,
     applyCouponAsync,
     removeCoupon,
@@ -647,7 +649,15 @@ export default function CheckoutPage() {
                   <span>কুপন ও ছাড় কোড (Coupon Code)</span>
                 </div>
 
-                {couponCode ? (
+                {hasBundleDiscount ? (
+                  <div className="p-3 rounded-2xl bg-[#FFF8E7] border border-[#FFE8A3] text-xs text-[#8F5B00] flex items-start gap-2">
+                    <Info className="w-4 h-4 text-[#E68A00] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold block text-[#704600]">কুপন প্রযোজ্য নয় (Coupons disabled)</span>
+                      কার্টে বান্ডেল বা কম্বো অন্তর্ভুক্ত থাকায় কুপন ডিসকাউন্ট ব্যবহার করা যাবে না।
+                    </div>
+                  </div>
+                ) : couponCode ? (
                   <div className="flex items-center justify-between p-3 rounded-2xl bg-[#EBF8EE] border border-[#C4EDCD] text-xs transition-all">
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 rounded-full bg-[#2D7A3E] text-white flex items-center justify-center font-bold text-[10px]">

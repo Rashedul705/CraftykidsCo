@@ -2,6 +2,7 @@ import mongoose, { ClientSession } from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
 import { Bundle } from '@/models/Bundle';
+import { GiftItem } from '@/models/GiftItem';
 import { StockLog, StockLogReason } from '@/models/StockLog';
 import { getBundleById, getBundleBySlug } from '@/lib/bundles-store';
 
@@ -27,6 +28,8 @@ export interface OrderItemToDeduct {
   variationSku?: string;
   variationTitle?: string;
   variationTitleBn?: string;
+  isGiftPackage?: boolean;
+  giftItemId?: string;
 }
 
 let collectionsReady = false;
@@ -195,6 +198,43 @@ export async function deductOrderStockAtomic(
 
       if (item.productId === 'custom-bundle') {
         // Custom bundle handled cleanly
+        continue;
+      }
+
+      // Check GiftItem inventory
+      const isGiftObjectId = (mongoose.Types.ObjectId.isValid(item.productId) && item.productId.length === 24) ||
+        (item.giftItemId && mongoose.Types.ObjectId.isValid(item.giftItemId) && item.giftItemId.length === 24);
+      const giftQueryId = item.giftItemId || item.productId;
+      const giftDoc = await GiftItem.findOne({
+        $or: [
+          ...(isGiftObjectId ? [{ _id: new mongoose.Types.ObjectId(giftQueryId) }] : []),
+          { id: giftQueryId },
+        ],
+      }).session(session);
+
+      if (giftDoc) {
+        const currentStock = typeof giftDoc.stock === 'number' ? giftDoc.stock : 0;
+        if (currentStock < qty) {
+          throw new OutOfStockError(
+            `উপহার আইটেম '${giftDoc.name}' এর পর্যাপ্ত স্টক নেই (বাকি আছে: ${currentStock}টি)`,
+            giftDoc.name,
+            undefined,
+            currentStock
+          );
+        }
+        const updateRes = await GiftItem.updateOne(
+          { _id: giftDoc._id, stock: { $gte: qty } },
+          { $inc: { stock: -qty } },
+          { session }
+        );
+        if (updateRes.modifiedCount === 0) {
+          throw new OutOfStockError(
+            `উপহার আইটেম '${giftDoc.name}' এর স্টক পরিবর্তন ব্যর্থ হয়েছে (স্টক শেষ)`,
+            giftDoc.name,
+            undefined,
+            0
+          );
+        }
         continue;
       }
 
@@ -449,7 +489,29 @@ export async function restoreOrderStockAtomic(
               }
             }
           }
+          continue;
         }
+
+        // Check if it was a gift package item
+        const isGiftObjectId = (mongoose.Types.ObjectId.isValid(item.productId) && item.productId.toString().length === 24) ||
+          ((item as any).giftItemId && mongoose.Types.ObjectId.isValid((item as any).giftItemId) && (item as any).giftItemId.length === 24);
+        const giftQueryId = (item as any).giftItemId || item.productId;
+        const giftDoc = await GiftItem.findOne({
+          $or: [
+            ...(isGiftObjectId ? [{ _id: new mongoose.Types.ObjectId(giftQueryId) }] : []),
+            { id: giftQueryId },
+          ],
+        }).session(session);
+
+        if (giftDoc) {
+          await GiftItem.updateOne(
+            { _id: giftDoc._id },
+            { $inc: { stock: qty } },
+            { session }
+          );
+          continue;
+        }
+
         continue;
       }
 

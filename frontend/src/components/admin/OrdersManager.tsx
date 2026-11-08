@@ -2957,6 +2957,23 @@ export default function OrdersManager({
                                 {item.title}
                               </span>
 
+                              {/* Bundle / Gift Package Snapshot Badges */}
+                              {((item as any).bundleType === 'custom' || (item as any).tierPercentApplied > 0) && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF0E6] text-[#A04000] border border-[#F0D5BE] mt-0.5">
+                                  Custom Bundle ({(item as any).tierPercentApplied}% Off)
+                                </span>
+                              )}
+                              {((item as any).bundleType === 'curated' || (item as any).bundleId) && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#EBF8EE] text-[#1F6B43] border border-[#C4EDCD] mt-0.5">
+                                  Curated Combo
+                                </span>
+                              )}
+                              {(item as any).isGiftPackage && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F3E8FF] text-[#6B21A8] border border-[#E9D5FF] mt-0.5">
+                                  Gift Package
+                                </span>
+                              )}
+
                               {/* Variation Pill */}
                               {resolvedVarTitle ? (
                                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -2978,6 +2995,11 @@ export default function OrdersManager({
 
                               <span className="text-xs text-[#6B6B6B] mt-0.5 block">
                                 Qty: <strong className="text-[#2B2B2B]">{item.quantity}</strong> &times; ৳{item.price.toLocaleString()}
+                                {(item as any).originalUnitPrice && (item as any).originalUnitPrice !== item.price && (
+                                  <span className="text-[11px] text-[#8C8C8C] ml-1 line-through">
+                                    ৳{(item as any).originalUnitPrice}
+                                  </span>
+                                )}
                               </span>
                             </div>
                           </div>

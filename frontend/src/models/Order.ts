@@ -18,6 +18,16 @@ export interface IOrderItemSnapshot {
   total?: number;
   totalPrice?: number; // Integer BDT snapshot
   imageUrl?: string;
+  originalUnitPrice?: number;
+  discountAmount?: number;
+  finalPrice?: number;
+  bundleType?: 'custom' | 'curated' | 'none';
+  bundleGroupId?: string;
+  tierPercentApplied?: number;
+  isGiftPackage?: boolean;
+  packageGroupId?: string;
+  giftItemId?: string;
+  giftItemName?: string;
 }
 
 export interface IOrderStatusHistory {
@@ -111,6 +121,16 @@ const OrderItemSnapshotSchema = new Schema<IOrderItemSnapshot>(
     total: { type: Number },
     totalPrice: { type: Number },
     imageUrl: { type: String },
+    originalUnitPrice: { type: Number },
+    discountAmount: { type: Number },
+    finalPrice: { type: Number },
+    bundleType: { type: String, enum: ['custom', 'curated', 'none'], default: 'none' },
+    bundleGroupId: { type: String },
+    tierPercentApplied: { type: Number, default: 0 },
+    isGiftPackage: { type: Boolean, default: false },
+    packageGroupId: { type: String },
+    giftItemId: { type: String },
+    giftItemName: { type: String },
   },
   { _id: true }
 );

@@ -69,6 +69,170 @@ export function BundlesManager({ products, userRole = 'admin', onNavigateTab }: 
   const [hideWhenOutOfStock, setHideWhenOutOfStock] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
 
+  // Section Navigation
+  const [activeSection, setActiveSection] = useState<'curated' | 'tiers'>('curated');
+
+  // Custom Bundle Tiers & Settings State
+  const [tiers, setTiers] = useState<any[]>([]);
+  const [loadingTiers, setLoadingTiers] = useState(false);
+  const [maxDiscountPercent, setMaxDiscountPercent] = useState<number>(20);
+  const [showOutOfStockMode, setShowOutOfStockMode] = useState<'greyed' | 'hidden'>('greyed');
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  // Tier modal
+  const [isTierModalOpen, setIsTierModalOpen] = useState(false);
+  const [editingTier, setEditingTier] = useState<any | null>(null);
+  const [deletingTier, setDeletingTier] = useState<any | null>(null);
+  const [tierMinQuantity, setTierMinQuantity] = useState<number>(2);
+  const [tierDiscountPercent, setTierDiscountPercent] = useState<number>(5);
+  const [tierIsActive, setTierIsActive] = useState<boolean>(true);
+  const [tierSortOrder, setTierSortOrder] = useState<number>(1);
+  const [isSavingTier, setIsSavingTier] = useState(false);
+
+  const fetchTiersAndSettings = async () => {
+    setLoadingTiers(true);
+    try {
+      const [tiersRes, settingsRes] = await Promise.all([
+        fetch('/api/bundle-tiers'),
+        fetch('/api/bundle-settings'),
+      ]);
+      const tiersData = await tiersRes.json();
+      const settingsData = await settingsRes.json();
+      if (tiersData.success && tiersData.tiers) {
+        setTiers(tiersData.tiers);
+      }
+      if (settingsData.success && settingsData.setting) {
+        setMaxDiscountPercent(settingsData.setting.maxDiscountPercent ?? 20);
+        setShowOutOfStockMode(settingsData.setting.showOutOfStockMode ?? 'greyed');
+      }
+    } catch (err) {
+      console.error('Failed to load tiers & settings:', err);
+    } finally {
+      setLoadingTiers(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (maxDiscountPercent < 0 || maxDiscountPercent > 100) {
+      showFeedback('Max discount must be between 0 and 100%', 'error');
+      return;
+    }
+    setSavingSettings(true);
+    try {
+      const res = await fetch('/api/bundle-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxDiscountPercent, showOutOfStockMode }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('Bundle settings saved successfully!');
+      } else {
+        showFeedback(data.message || 'Failed to save settings', 'error');
+      }
+    } catch (err: any) {
+      showFeedback(err.message || 'Error saving settings', 'error');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleOpenCreateTier = () => {
+    setEditingTier(null);
+    setTierMinQuantity(tiers.length > 0 ? Math.max(...tiers.map((t) => t.minQuantity)) + 1 : 2);
+    setTierDiscountPercent(Math.min(5, maxDiscountPercent));
+    setTierIsActive(true);
+    setTierSortOrder(tiers.length + 1);
+    setIsTierModalOpen(true);
+  };
+
+  const handleOpenEditTier = (tier: any) => {
+    setEditingTier(tier);
+    setTierMinQuantity(tier.minQuantity);
+    setTierDiscountPercent(tier.discountPercent);
+    setTierIsActive(tier.isActive !== false);
+    setTierSortOrder(tier.sortOrder || 0);
+    setIsTierModalOpen(true);
+  };
+
+  const handleSaveTier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (tierDiscountPercent > maxDiscountPercent) {
+      showFeedback(`Discount (${tierDiscountPercent}%) cannot exceed Max Discount (${maxDiscountPercent}%)`, 'error');
+      return;
+    }
+    setIsSavingTier(true);
+    try {
+      const method = editingTier ? 'PUT' : 'POST';
+      const body: any = {
+        minQuantity: tierMinQuantity,
+        discountPercent: tierDiscountPercent,
+        isActive: tierIsActive,
+        sortOrder: tierSortOrder,
+      };
+      if (editingTier) {
+        body.id = editingTier._id || editingTier.id;
+      }
+      const res = await fetch('/api/bundle-tiers', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback(editingTier ? 'Tier updated successfully!' : 'Tier created successfully!');
+        setIsTierModalOpen(false);
+        setEditingTier(null);
+        fetchTiersAndSettings();
+      } else {
+        showFeedback(data.message || 'Failed to save tier', 'error');
+      }
+    } catch (err: any) {
+      showFeedback(err.message || 'Error saving tier', 'error');
+    } finally {
+      setIsSavingTier(false);
+    }
+  };
+
+  const handleDeleteTier = async () => {
+    if (!deletingTier) return;
+    try {
+      const res = await fetch(`/api/bundle-tiers?id=${deletingTier._id || deletingTier.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('Tier deleted successfully');
+        setDeletingTier(null);
+        fetchTiersAndSettings();
+      } else {
+        showFeedback(data.message || 'Failed to delete tier', 'error');
+      }
+    } catch (err: any) {
+      showFeedback(err.message || 'Error deleting tier', 'error');
+    }
+  };
+
+  const handleToggleTier = async (tier: any) => {
+    try {
+      const res = await fetch('/api/bundle-tiers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: tier._id || tier.id,
+          isActive: !tier.isActive,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback(`Tier ${!tier.isActive ? 'activated' : 'deactivated'}`);
+        fetchTiersAndSettings();
+      }
+    } catch (err: any) {
+      showFeedback(err.message || 'Error updating tier', 'error');
+    }
+  };
+
   // Bundle Items Form Rows
   const [formItems, setFormItems] = useState<BundleItem[]>([]);
 
@@ -96,6 +260,7 @@ export function BundlesManager({ products, userRole = 'admin', onNavigateTab }: 
 
   useEffect(() => {
     fetchBundles();
+    fetchTiersAndSettings();
   }, []);
 
   // Compute live financials for form
@@ -424,20 +589,62 @@ export function BundlesManager({ products, userRole = 'admin', onNavigateTab }: 
             Bundles & Gift Sets
           </h2>
           <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">
-            Manage multi-item gift sets, savings rates, and automated component stock limits.
+            Manage multi-item gift sets, savings rates, and custom tiered discounts.
           </p>
         </div>
 
+        {activeSection === 'curated' ? (
+          <button
+            type="button"
+            onClick={handleOpenCreate}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#C23631] text-white text-sm font-bold shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Create bundle</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleOpenCreateTier}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#C23631] text-white text-sm font-bold shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Add discount tier</span>
+          </button>
+        )}
+      </div>
+
+      {/* Sub-tab Navigation */}
+      <div className="flex border-b border-[#EFE9E0] gap-6">
         <button
           type="button"
-          onClick={handleOpenCreate}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#D6403B] hover:bg-[#C23631] text-white text-sm font-bold shadow-sm transition-all cursor-pointer"
+          onClick={() => setActiveSection('curated')}
+          className={`pb-3 px-1 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeSection === 'curated'
+              ? 'border-[#D6403B] text-[#D6403B]'
+              : 'border-transparent text-[#6B6B6B] hover:text-[#2B2B2B]'
+          }`}
         >
-          <Plus className="w-4 h-4" />
-          <span>+ Create bundle</span>
+          Curated Combos &amp; Bundles ({totalBundlesCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveSection('tiers');
+            fetchTiersAndSettings();
+          }}
+          className={`pb-3 px-1 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeSection === 'tiers'
+              ? 'border-[#D6403B] text-[#D6403B]'
+              : 'border-transparent text-[#6B6B6B] hover:text-[#2B2B2B]'
+          }`}
+        >
+          Custom Bundle Tiers &amp; Rules ({tiers.length} Tiers)
         </button>
       </div>
 
+      {activeSection === 'curated' ? (
+        <>
       {/* Four Small Number Cards on Top */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         <div className="bg-white rounded-2xl border border-[#EFE9E0] p-4 shadow-xs">
@@ -780,6 +987,170 @@ export function BundlesManager({ products, userRole = 'admin', onNavigateTab }: 
           )}
         </div>
       </div>
+      </>
+      ) : (
+        <div className="space-y-6">
+          {/* Global Bundle Settings Form */}
+          <div className="bg-white rounded-2xl border border-[#EFE9E0] p-5 shadow-xs">
+            <h3 className="text-base font-bold text-[#2B2B2B] mb-1">Global Bundle Settings</h3>
+            <p className="text-xs text-[#6B6B6B] mb-4">
+              Configure universal rules for custom bundle calculations.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="font-bold text-xs text-[#2B2B2B] block mb-1">
+                  Global Max Discount (%) *
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={maxDiscountPercent}
+                    onChange={(e) => setMaxDiscountPercent(Number(e.target.value))}
+                    className="w-32 px-3 py-2 text-xs rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] font-bold text-[#2B2B2B] focus:outline-none focus:border-[#D6403B]"
+                  />
+                  <span className="text-xs text-[#6B6B6B] font-semibold">%</span>
+                </div>
+                <p className="text-[11px] text-[#8C8C8C] mt-1">
+                  No tier can exceed this discount limit. Validation is enforced frontend &amp; backend.
+                </p>
+              </div>
+
+              <div>
+                <label className="font-bold text-xs text-[#2B2B2B] block mb-1">
+                  Out of Stock Display Mode
+                </label>
+                <select
+                  value={showOutOfStockMode}
+                  onChange={(e) => setShowOutOfStockMode(e.target.value as any)}
+                  className="w-full md:w-64 px-3 py-2 text-xs rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] font-semibold text-[#2B2B2B] focus:outline-none focus:border-[#D6403B]"
+                >
+                  <option value="greyed">Greyed out with label (unselectable)</option>
+                  <option value="hidden">Hide completely from builder</option>
+                </select>
+                <p className="text-[11px] text-[#8C8C8C] mt-1">
+                  Controls how out of stock products appear on the "Build Your Bundle" page.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-[#EFE9E0] flex justify-end">
+              <button
+                type="button"
+                disabled={savingSettings}
+                onClick={handleSaveSettings}
+                className="px-5 py-2 rounded-xl bg-[#D6403B] hover:bg-[#C23631] text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-2"
+              >
+                {savingSettings && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Save Settings</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tiers Table */}
+          <div className="bg-white rounded-2xl border border-[#EFE9E0] overflow-hidden shadow-xs">
+            <div className="p-4 border-b border-[#EFE9E0] flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm text-[#2B2B2B]">Tiered Quantity Discounts</h3>
+                <p className="text-xs text-[#6B6B6B]">
+                  Tier discounts apply automatically based on total units selected by the customer.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenCreateTier}
+                className="px-4 py-2 rounded-xl bg-[#D6403B] hover:bg-[#C23631] text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Add Tier</span>
+              </button>
+            </div>
+
+            {loadingTiers ? (
+              <div className="p-12 text-center text-[#6B6B6B] flex items-center justify-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-[#D6403B]" />
+                <span>Loading tiers...</span>
+              </div>
+            ) : tiers.length === 0 ? (
+              <div className="p-12 text-center text-[#6B6B6B]">
+                <Layers className="w-10 h-10 text-[#C4BFB7] mx-auto mb-2" />
+                <p className="font-semibold text-sm">No tiers configured</p>
+                <p className="text-xs text-[#8C8C8C] mt-1">
+                  Click "+ Add Tier" to define quantity-based discount tiers (e.g. 2 items = 5%).
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-[#EFE9E0] bg-[#FAF7F2] text-[#6B6B6B] font-bold uppercase tracking-wider">
+                      <th className="py-3 px-4">Min Quantity</th>
+                      <th className="py-3 px-4">Discount (%)</th>
+                      <th className="py-3 px-4">Example Rule</th>
+                      <th className="py-3 px-4">Sort Order</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE9E0]">
+                    {tiers.map((tier) => (
+                      <tr key={tier._id || tier.id} className="hover:bg-[#FAF7F2]/40 transition-colors">
+                        <td className="py-3 px-4 font-bold text-[#2B2B2B]">
+                          {tier.minQuantity} items
+                        </td>
+                        <td className="py-3 px-4 font-bold text-[#D6403B]">
+                          {tier.discountPercent}% off
+                        </td>
+                        <td className="py-3 px-4 text-[#6B6B6B]">
+                          Customer buys {tier.minQuantity}+ items → gets {tier.discountPercent}% discount
+                        </td>
+                        <td className="py-3 px-4 text-[#6B6B6B]">
+                          {tier.sortOrder ?? tier.minQuantity}
+                        </td>
+                        <td className="py-3 px-4">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleTier(tier)}
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
+                              tier.isActive
+                                ? 'bg-[#DDF3E6] text-[#1F6B43] border-[#1F6B43]/20'
+                                : 'bg-[#F2F2F2] text-[#6B6B6B] border-[#D9D9D9]'
+                            }`}
+                          >
+                            {tier.isActive ? 'Active' : 'Disabled'}
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditTier(tier)}
+                              className="p-1.5 rounded-lg text-[#6B6B6B] hover:text-[#2B2B2B] hover:bg-[#FAF7F2] transition-colors cursor-pointer"
+                              title="Edit Tier"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingTier(tier)}
+                              className="p-1.5 rounded-lg text-[#D6403B] hover:text-[#9B2420] hover:bg-[#FFF0F0] transition-colors cursor-pointer"
+                              title="Delete Tier"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* =========================================================================
           CREATE / EDIT BUNDLE MODAL (TWO COLUMNS AS PER B6 SPEC)
@@ -1341,6 +1712,152 @@ export function BundlesManager({ products, userRole = 'admin', onNavigateTab }: 
                 className="px-5 py-2 rounded-xl bg-[#DC2626] text-white text-xs font-bold hover:bg-[#B91C1C]"
               >
                 Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* =========================================================================
+          TIER CREATE / EDIT MODAL
+         ========================================================================= */}
+      {isTierModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-[#EFE9E0] max-w-sm w-full p-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsTierModalOpen(false)}
+              className="absolute top-4 right-4 text-[#8C8C8C] hover:text-[#2B2B2B] cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-bold font-fredoka text-[#2B2B2B] mb-4">
+              {editingTier ? 'Edit Bundle Tier' : 'Add Bundle Tier'}
+            </h3>
+
+            <form onSubmit={handleSaveTier} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-[#2B2B2B] block mb-1">
+                  Minimum Quantity (Items / Units) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={tierMinQuantity}
+                  onChange={(e) => setTierMinQuantity(parseInt(e.target.value, 10) || 1)}
+                  className="w-full px-3 py-2 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] focus:outline-none focus:border-[#D6403B]"
+                />
+                <p className="text-[11px] text-[#8C8C8C] mt-1">
+                  E.g. customer must select at least this many units to qualify.
+                </p>
+              </div>
+
+              <div>
+                <label className="font-bold text-[#2B2B2B] block mb-1">
+                  Discount Percentage (%) *
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max={maxDiscountPercent}
+                    step="0.5"
+                    required
+                    value={tierDiscountPercent}
+                    onChange={(e) => setTierDiscountPercent(parseFloat(e.target.value) || 0)}
+                    className={`w-full px-3 py-2 rounded-xl bg-[#FAF7F2] border focus:outline-none ${
+                      tierDiscountPercent > maxDiscountPercent
+                        ? 'border-[#DC2626] text-[#DC2626]'
+                        : 'border-[#EFE9E0] focus:border-[#D6403B]'
+                    }`}
+                  />
+                  <span className="font-bold text-sm text-[#2B2B2B]">%</span>
+                </div>
+                {tierDiscountPercent > maxDiscountPercent ? (
+                  <p className="text-[11px] text-[#DC2626] font-semibold mt-1">
+                    Cannot exceed global max discount ({maxDiscountPercent}%).
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-[#8C8C8C] mt-1">
+                    Global max limit is {maxDiscountPercent}%.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="font-bold text-[#2B2B2B] block mb-1">
+                  Sort Order
+                </label>
+                <input
+                  type="number"
+                  value={tierSortOrder}
+                  onChange={(e) => setTierSortOrder(parseInt(e.target.value, 10) || 0)}
+                  className="w-full px-3 py-2 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] focus:outline-none focus:border-[#D6403B]"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="tierIsActive"
+                  checked={tierIsActive}
+                  onChange={(e) => setTierIsActive(e.target.checked)}
+                  className="rounded text-[#D6403B] focus:ring-[#D6403B]"
+                />
+                <label htmlFor="tierIsActive" className="font-bold text-[#2B2B2B] cursor-pointer">
+                  Tier Active
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-[#EFE9E0]">
+                <button
+                  type="button"
+                  onClick={() => setIsTierModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-[#F2F2F2] hover:bg-[#E5E5E5] text-[#2B2B2B] font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingTier || tierDiscountPercent > maxDiscountPercent}
+                  className="px-5 py-2 rounded-xl bg-[#D6403B] hover:bg-[#C23631] disabled:opacity-50 text-white font-bold cursor-pointer flex items-center gap-2"
+                >
+                  {isSavingTier && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{editingTier ? 'Save Changes' : 'Create Tier'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TIER DELETE CONFIRMATION MODAL
+         ========================================================================= */}
+      {deletingTier && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-[#EFE9E0] max-w-sm w-full p-6 shadow-2xl text-center">
+            <div className="w-12 h-12 rounded-full bg-[#FFF0F0] text-[#D6403B] flex items-center justify-center mx-auto mb-3">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h4 className="font-bold text-base text-[#2B2B2B]">Delete Tier?</h4>
+            <p className="text-xs text-[#6B6B6B] mt-1 mb-5">
+              Are you sure you want to delete the <strong>{deletingTier.minQuantity} items ({deletingTier.discountPercent}%)</strong> tier?
+            </p>
+            <div className="flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setDeletingTier(null)}
+                className="px-4 py-2 rounded-xl bg-[#F2F2F2] hover:bg-[#E5E5E5] text-[#2B2B2B] text-xs font-bold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteTier}
+                className="px-4 py-2 rounded-xl bg-[#D6403B] hover:bg-[#C23631] text-white text-xs font-bold cursor-pointer"
+              >
+                Delete
               </button>
             </div>
           </div>

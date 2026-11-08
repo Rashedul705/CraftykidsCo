@@ -13,6 +13,7 @@ import {
   MessageCircle,
   X,
   Menu,
+  Gift,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { formatBDT } from '@/lib/utils';
@@ -30,7 +31,9 @@ export interface HeaderProps {
 const fallbackNavItems = [
   { id: 'nav-home', labelBn: 'Home', labelEn: 'Home', href: '/' },
   { id: 'nav-shop', labelBn: 'Shop', labelEn: 'Shop', href: '/shop' },
-  { id: 'nav-bundles', labelBn: 'কম্বো অফার', labelEn: 'Bundles', href: '/bundles' },
+  { id: 'nav-bundles', labelBn: 'কম্বো ও বান্ডেল', labelEn: 'Bundles', href: '/bundles' },
+  { id: 'nav-build-bundle', labelBn: 'বান্ডেল বিল্ডার', labelEn: 'Build Bundle', href: '/build-your-bundle' },
+  { id: 'nav-gift-builder', labelBn: 'গিফট বিল্ডার', labelEn: 'Gift Builder', href: '/gift-builder' },
   { id: 'nav-about', labelBn: 'About', labelEn: 'About', href: '/about' },
   { id: 'nav-contact', labelBn: 'Contact', labelEn: 'Contact', href: '/contact' },
 ];
@@ -192,8 +195,19 @@ function HeaderContent({
               </a>
             </div>
 
-            {/* Right: Track Order */}
-            <div className="flex items-center gap-2.5 sm:gap-3 text-xs text-[#CCCCCC] shrink-0">
+            {/* Right: Customize Gift Builder & Track Order */}
+            <div className="flex items-center gap-2 sm:gap-3 text-xs text-[#CCCCCC] shrink-0">
+              <Link
+                href="/gift-builder"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#D6403B] hover:bg-[#B93834] text-white font-bold text-[11px] sm:text-xs shadow-2xs hover:shadow-xs transition-all border border-white/20 cursor-pointer"
+                title="Customize Gift Builder"
+              >
+                <Gift className="w-3.5 h-3.5 text-[#FFD166]" />
+                <span>{isBn ? 'কাস্টমাইজ গিফট বিল্ডার' : 'Customize Gift Builder'}</span>
+              </Link>
+
+              <span className="hidden sm:inline text-white/20">|</span>
+
               {showTrackOrder && (
                 <Link
                   href="/track"
@@ -398,6 +412,14 @@ function HeaderContent({
               >
                 <User className="w-4 h-4" />
                 <span>{isBn ? 'লগইন / অ্যাকাউন্ট' : 'Account'}</span>
+              </Link>
+              <Link
+                href="/gift-builder"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-1.5 text-[#D6403B] hover:text-[#B93834] py-1 font-bold"
+              >
+                <Gift className="w-4 h-4 text-[#D6403B]" />
+                <span>{isBn ? 'গিফট বিল্ডার' : 'Gift Builder'}</span>
               </Link>
               <Link
                 href="/track"

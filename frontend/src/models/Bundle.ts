@@ -41,6 +41,9 @@ export interface IBundle extends Document {
   displayLocations: string[];
   hideWhenOutOfStock: boolean;
   isFeatured: boolean;
+  showOnHome?: boolean;
+  showOnProductPage?: boolean;
+  sortOrder?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -90,6 +93,9 @@ const BundleSchema = new Schema<IBundle>(
     displayLocations: [{ type: String, default: 'bundles' }],
     hideWhenOutOfStock: { type: Boolean, default: true },
     isFeatured: { type: Boolean, default: false },
+    showOnHome: { type: Boolean, default: false, index: true },
+    showOnProductPage: { type: Boolean, default: false, index: true },
+    sortOrder: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -100,4 +106,7 @@ if (process.env.NODE_ENV !== 'production' && mongoose.models && (mongoose.models
 
 export const Bundle: Model<IBundle> =
   mongoose.models.Bundle || mongoose.model<IBundle>('Bundle', BundleSchema);
+
+export const CuratedBundle = Bundle;
+export type ICuratedBundle = IBundle;
 export default Bundle;

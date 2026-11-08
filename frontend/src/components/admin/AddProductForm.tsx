@@ -374,6 +374,7 @@ export default function AddProductForm({
   const [featureInTrending, setFeatureInTrending] = useState(() => initialProduct?.isBestSeller ?? true);
   const [allowCashOnDelivery, setAllowCashOnDelivery] = useState(() => initialProduct?.allowCashOnDelivery ?? true);
   const [showStockLeft, setShowStockLeft] = useState(() => initialProduct?.showStockLeft ?? true);
+  const [bundleEligible, setBundleEligible] = useState(() => (initialProduct as any)?.bundleEligible ?? true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -1112,6 +1113,7 @@ export default function AddProductForm({
       isBestSeller: featureInTrending,
       allowCashOnDelivery,
       showStockLeft,
+      bundleEligible,
       isActive: submitStatus === 'Published',
     };
 
@@ -3235,6 +3237,22 @@ export default function AddProductForm({
                   checked={showStockLeft}
                   onChange={(e) => {
                     setShowStockLeft(e.target.checked);
+                    markDirty();
+                  }}
+                  className="rounded-[4px] accent-[#D6403B] cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer pt-1">
+                <div>
+                  <span className="font-medium text-[#2B2B2B]">Eligible for custom bundle</span>
+                  <p className="text-xs text-[#7A7A7A]">Allow inclusion in Build Your Bundle</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={bundleEligible}
+                  onChange={(e) => {
+                    setBundleEligible(e.target.checked);
                     markDirty();
                   }}
                   className="rounded-[4px] accent-[#D6403B] cursor-pointer"
