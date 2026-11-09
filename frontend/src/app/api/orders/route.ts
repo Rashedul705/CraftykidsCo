@@ -398,14 +398,42 @@ export async function POST(req: NextRequest) {
 
     const finalOrder = savedOrder || memoryOrder;
 
-    // 8. SMS Notification Mock
+    // 8. Instant SMS Notifications (Customer Confirmation + Admin Alert)
     try {
       const notification = getNotificationProvider();
-      await notification.sendSms({
-        toPhone: finalOrder.customerPhone,
-        message: `CraftyKidsCo: প্রিয় গ্রাহক, আপনার অর্ডার #${finalOrder.orderNumber} সফলভাবে গৃহীত হয়েছে। মোট বিল: ৳${finalOrder.totalAmount}। ধন্যবাদ!`,
-        templateKey: 'ORDER_PLACED',
-      });
+      const adminPhone = process.env.ADMIN_PHONE || '01731376498';
+
+      // Customer message
+      const customerMsg = `CraftyKidsCo: প্রিয় ${finalOrder.customerName || 'গ্রাহক'}, আপনার অর্ডার #${finalOrder.orderNumber} সফলভাবে গৃহীত হয়েছে। মোট বিল: ৳${finalOrder.totalAmount}। আমাদের সাথে থাকার জন্য ধন্যবাদ!`;
+
+      // Admin immediate alert
+      const adminMsg = `CraftyKidsCo New Order Alert! #${finalOrder.orderNumber}, Customer: ${finalOrder.customerName} (${finalOrder.customerPhone}), Total: Tk ${finalOrder.totalAmount}, District: ${finalOrder.district || 'N/A'}. Check admin panel to process.`;
+
+      // Send both immediately and concurrently
+      const [customerRes, adminRes] = await Promise.allSettled([
+        notification.sendSms({
+          toPhone: finalOrder.customerPhone,
+          message: customerMsg,
+          templateKey: 'ORDER_PLACED',
+        }),
+        notification.sendSms({
+          toPhone: adminPhone,
+          message: adminMsg,
+          templateKey: 'ORDER_PLACED',
+        }),
+      ]);
+
+      if (customerRes.status === 'fulfilled') {
+        console.log(`[SMS Customer] Sent for #${finalOrder.orderNumber}:`, customerRes.value?.status);
+      } else {
+        console.warn(`[SMS Customer Failed] for #${finalOrder.orderNumber}:`, customerRes.reason);
+      }
+
+      if (adminRes.status === 'fulfilled') {
+        console.log(`[SMS Admin Alert] Sent to ${adminPhone} for #${finalOrder.orderNumber}:`, adminRes.value?.status);
+      } else {
+        console.warn(`[SMS Admin Alert Failed] to ${adminPhone}:`, adminRes.reason);
+      }
     } catch (notifErr) {
       console.warn('[Notification Error]:', notifErr);
     }

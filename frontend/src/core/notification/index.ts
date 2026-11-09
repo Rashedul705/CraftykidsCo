@@ -33,67 +33,192 @@ export interface INotificationProvider {
   getBalance(): Promise<{ balance: number; currency: string }>;
 }
 
+/**
+ * Normalizes Bangladesh phone number(s) to gateway format (e.g. 88017XXXXXXXX)
+ * Accepts single numbers or comma-separated numbers.
+ */
+export function formatBdPhoneForGateway(phone: string): string {
+  if (!phone) return '';
+  const parts = phone.split(',').map((p) => {
+    let clean = p.trim().replace(/[^0-9]/g, '');
+    if (clean.startsWith('880')) {
+      return clean;
+    }
+    if (clean.startsWith('01')) {
+      return '88' + clean;
+    }
+    if (clean.startsWith('1') && clean.length === 10) {
+      return '880' + clean;
+    }
+    return clean;
+  }).filter((p) => p.length >= 11);
+  return parts.join(',');
+}
+
+async function recordNotificationLog(
+  recipient: string,
+  event: string,
+  message: string,
+  status: 'SENT' | 'FAILED',
+  rawResponse?: any
+) {
+  try {
+    const { NotificationLog } = await import('@/models/Notification');
+    const { connectToDatabase } = await import('@/lib/mongodb');
+    await connectToDatabase();
+    await NotificationLog.create({
+      recipient,
+      channel: 'SMS',
+      event,
+      message,
+      status,
+      responsePayload: rawResponse,
+      createdAt: new Date(),
+    });
+  } catch {
+    // Non-blocking log persistence
+  }
+}
+
 export class BulkSmsBdProvider implements INotificationProvider {
   name = 'BulkSMSBD';
   private apiKey: string;
   private senderId: string;
-  private apiUrl = 'http://bulksmsbd.net/api/smsapi';
+  private apiUrl = 'https://bulksmsbd.net/api/smsapi';
 
-  constructor(apiKey: string, senderId = 'CraftyKids') {
+  constructor(apiKey: string, senderId = '8809617644359') {
     this.apiKey = apiKey;
     this.senderId = senderId;
   }
 
   async sendSms(payload: SendSmsPayload): Promise<SmsSendResult> {
     try {
-      const url = new URL(this.apiUrl);
-      url.searchParams.set('api_key', this.apiKey);
-      url.searchParams.set('type', 'text');
-      url.searchParams.set('number', payload.toPhone);
-      url.searchParams.set('senderid', this.senderId);
-      url.searchParams.set('message', payload.message);
-
-      const response = await fetch(url.toString(), { method: 'POST' });
-      const data = await response.json();
-
-      if (data.response_code === 202 || data.success) {
-        return {
-          success: true,
-          messageId: data.message_id || `BSMS-${Date.now()}`,
-          recipient: payload.toPhone,
-          status: 'SENT',
-          rawResponse: data,
-        };
-      } else {
+      const formattedPhone = formatBdPhoneForGateway(payload.toPhone);
+      if (!formattedPhone) {
         return {
           success: false,
           messageId: '',
           recipient: payload.toPhone,
           status: 'FAILED',
-          error: data.error_message || 'BulkSMSBD API error',
-          rawResponse: data,
+          error: 'সঠিক বাংলাদেশি মোবাইল নম্বর নয় (Invalid phone number)',
         };
       }
+
+      const params = new URLSearchParams();
+      params.append('api_key', this.apiKey);
+      params.append('type', 'text');
+      params.append('number', formattedPhone);
+      params.append('senderid', this.senderId);
+      params.append('message', payload.message);
+
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      });
+
+      const text = await response.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error_message: text || `HTTP ${response.status}` };
+      }
+
+      const isSuccess = data.response_code === 202 || Boolean(data.success_message) || Boolean(data.success);
+
+      const result: SmsSendResult = {
+        success: isSuccess,
+        messageId: data.message_id ? String(data.message_id) : `BSMS-${Date.now()}`,
+        recipient: formattedPhone,
+        status: isSuccess ? 'SENT' : 'FAILED',
+        error: isSuccess ? undefined : (data.error_message || data.msg || 'BulkSMSBD API error'),
+        rawResponse: data,
+      };
+
+      // Asynchronously log notification event
+      recordNotificationLog(
+        formattedPhone,
+        payload.templateKey || (payload.isMarketing ? 'MARKETING_PROMO' : 'TRANSACTIONAL_SMS'),
+        payload.message,
+        result.status,
+        data
+      );
+
+      return result;
     } catch (err: any) {
-      return {
+      const result: SmsSendResult = {
         success: false,
         messageId: '',
         recipient: payload.toPhone,
         status: 'FAILED',
         error: err.message || 'Network error',
       };
+
+      recordNotificationLog(
+        payload.toPhone,
+        payload.templateKey || 'SMS_ERROR',
+        payload.message,
+        'FAILED',
+        { error: err.message }
+      );
+
+      return result;
     }
   }
 
   async sendBatch(payloads: SendSmsPayload[]): Promise<SmsSendResult[]> {
+    if (!payloads.length) return [];
+
+    // Check if all messages are identical (e.g. bulk promotional SMS)
+    const firstMsg = payloads[0].message;
+    const isAllSame = payloads.every((p) => p.message === firstMsg);
+
+    if (isAllSame && payloads.length > 1) {
+      // Chunk comma-separated numbers in groups of up to 50
+      const results: SmsSendResult[] = [];
+      const chunkSize = 50;
+      for (let i = 0; i < payloads.length; i += chunkSize) {
+        const chunk = payloads.slice(i, i + chunkSize);
+        const combinedPhones = chunk.map((c) => formatBdPhoneForGateway(c.toPhone)).filter(Boolean).join(',');
+
+        if (combinedPhones) {
+          const res = await this.sendSms({
+            toPhone: combinedPhones,
+            message: firstMsg,
+            isMarketing: true,
+            templateKey: 'MARKETING_PROMO',
+          });
+
+          for (const item of chunk) {
+            results.push({
+              success: res.success,
+              messageId: res.messageId,
+              recipient: item.toPhone,
+              status: res.status,
+              error: res.error,
+              rawResponse: res.rawResponse,
+            });
+          }
+        }
+
+        if (i + chunkSize < payloads.length) {
+          await new Promise((res) => setTimeout(res, 250));
+        }
+      }
+      return results;
+    }
+
+    // Individual personalized messages
     const results: SmsSendResult[] = [];
-    // Send in batches of 10 with short pause to prevent gateway rate-limits
-    for (let i = 0; i < payloads.length; i += 10) {
-      const chunk = payloads.slice(i, i + 10);
+    for (let i = 0; i < payloads.length; i += 5) {
+      const chunk = payloads.slice(i, i + 5);
       const chunkResults = await Promise.all(chunk.map((p) => this.sendSms(p)));
       results.push(...chunkResults);
-      if (i + 10 < payloads.length) {
-        await new Promise((res) => setTimeout(res, 300));
+      if (i + 5 < payloads.length) {
+        await new Promise((res) => setTimeout(res, 250));
       }
     }
     return results;
@@ -102,15 +227,18 @@ export class BulkSmsBdProvider implements INotificationProvider {
   async getBalance(): Promise<{ balance: number; currency: string }> {
     try {
       const res = await fetch(
-        `http://bulksmsbd.net/api/getBalanceApi?api_key=${this.apiKey}`
+        `https://bulksmsbd.net/api/getBalanceApi?api_key=${encodeURIComponent(this.apiKey)}`
       );
       const data = await res.json();
+      const numBalance = typeof data.balance === 'number'
+        ? data.balance
+        : parseFloat(data.balance);
       return {
-        balance: parseFloat(data.balance) || 2450.0,
+        balance: isNaN(numBalance) ? 0 : numBalance,
         currency: 'BDT',
       };
     } catch {
-      return { balance: 2450.0, currency: 'BDT' };
+      return { balance: 0, currency: 'BDT' };
     }
   }
 }
@@ -123,7 +251,6 @@ export class MockSmsProvider implements INotificationProvider {
     console.log(
       `[MOCK SMS -> ${payload.toPhone} | Type: ${payload.isMarketing ? 'PROMOTIONAL' : 'TRANSACTIONAL'}]: ${payload.message}`
     );
-    // Deduct simulated cost of 0.35 BDT
     this.simulatedBalance = Math.max(0, this.simulatedBalance - 0.35);
 
     return {
@@ -134,7 +261,7 @@ export class MockSmsProvider implements INotificationProvider {
       rawResponse: {
         provider: 'MockSMS',
         sentAt: new Date().toISOString(),
-        isMarketing: !!payload.isMarketing,
+        isMarketing: Boolean(payload.isMarketing),
       },
     };
   }
@@ -158,11 +285,11 @@ export class MockSmsProvider implements INotificationProvider {
 }
 
 export function getNotificationProvider(): INotificationProvider {
-  const apiKey = process.env.BULKSMSBD_API_KEY || process.env.SMS_API_KEY;
-  const senderId = process.env.SMS_SENDER_ID || 'CraftyKids';
+  const apiKey = (process.env.BULKSMSBD_API_KEY || process.env.SMS_API_KEY || '').trim();
+  const senderId = (process.env.SMS_SENDER_ID || '8809617644359').trim();
 
-  if (apiKey && apiKey.trim().length > 5) {
-    return new BulkSmsBdProvider(apiKey.trim(), senderId);
+  if (apiKey && apiKey.length > 5) {
+    return new BulkSmsBdProvider(apiKey, senderId);
   }
 
   return new MockSmsProvider();

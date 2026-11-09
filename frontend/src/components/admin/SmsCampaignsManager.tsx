@@ -62,8 +62,9 @@ export function SmsCampaignsManager() {
   const [isLaunching, setIsLaunching] = useState(false);
 
   // Gateway and Campaigns Data
-  const [balance, setBalance] = useState<number>(2450.0);
+  const [balance, setBalance] = useState<number>(100.0);
   const [campaigns, setCampaigns] = useState<SmsCampaignRecord[]>([]);
+  const [segmentCounts, setSegmentCounts] = useState<Record<string, number> | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -83,6 +84,7 @@ export function SmsCampaignsManager() {
       if (data.success) {
         if (typeof data.balance === 'number') setBalance(data.balance);
         if (data.campaigns) setCampaigns(data.campaigns);
+        if (data.segmentCounts) setSegmentCounts(data.segmentCounts);
       }
     } catch (err) {
       console.error('Failed to load campaigns:', err);
@@ -102,8 +104,15 @@ export function SmsCampaignsManager() {
 
   // Selected Segment Details
   const activeSegment = useMemo(() => {
-    return AUDIENCE_SEGMENTS.find((s) => s.key === selectedSegment) || AUDIENCE_SEGMENTS[0];
-  }, [selectedSegment]);
+    const base = AUDIENCE_SEGMENTS.find((s) => s.key === selectedSegment) || AUDIENCE_SEGMENTS[0];
+    const liveCount = segmentCounts && typeof segmentCounts[selectedSegment] === 'number'
+      ? segmentCounts[selectedSegment]
+      : base.count;
+    return {
+      ...base,
+      count: liveCount,
+    };
+  }, [selectedSegment, segmentCounts]);
 
   // Calculate estimated recipients after protection filters
   const estimatedRecipients = useMemo(() => {
@@ -281,7 +290,7 @@ export function SmsCampaignsManager() {
               </h3>
 
               <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#FAF7F2] border border-[#EFE9E0] text-[#6B6B6B]">
-                Sender: <strong>CraftyKids</strong>
+                Sender: <strong>8809617644359</strong>
               </span>
             </div>
 
@@ -434,7 +443,7 @@ export function SmsCampaignsManager() {
                         </span>
                       </div>
                       <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-white border border-[#EFE9E0] text-[#2B2B2B] shrink-0">
-                        {seg.count}
+                        {segmentCounts && typeof segmentCounts[seg.key] === 'number' ? segmentCounts[seg.key] : seg.count}
                       </span>
                     </div>
                   );
@@ -557,7 +566,7 @@ export function SmsCampaignsManager() {
                   </div>
                   <div>
                     <span className="text-xs font-bold text-[#2B2B2B] block leading-tight">
-                      CraftyKids
+                      8809617644359
                     </span>
                     <span className="text-[9px] text-[#1F6B43] flex items-center gap-1 font-semibold">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#1F6B43]" />

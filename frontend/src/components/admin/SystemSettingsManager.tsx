@@ -92,6 +92,20 @@ export function SystemSettingsManager({ activeTab, onNavigateTab }: SystemSettin
   const [storeBrandName, setStoreBrandName] = useState('CraftyKidsCo');
   const [supportPhone, setSupportPhone] = useState('+880 1712-345678');
   const [supportEmail, setSupportEmail] = useState('support@craftykidsco.com');
+  const [smsBalance, setSmsBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (activeTab === 'payments-sms') {
+      fetch('/api/campaigns')
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && typeof d.balance === 'number') {
+            setSmsBalance(d.balance);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [activeTab]);
 
   // Blocklist states
   const [blockList, setBlockList] = useState<Array<{ id: string; phone: string; reason: string; date: string }>>([]);
@@ -416,8 +430,8 @@ export function SystemSettingsManager({ activeTab, onNavigateTab }: SystemSettin
                   <strong className="text-xs text-[#2B2B2B]">SMS Gateway (BulkSMSBD)</strong>
                   <StatusPill variant="green" dot>Connected</StatusPill>
                 </div>
-                <p className="text-[#6B6B6B]">Live Balance: <strong className="text-[#1F6B43]">৳2,450.00</strong></p>
-                <p className="text-[#6B6B6B]">Approved Sender Mask: <strong className="font-mono text-[#2B2B2B]">CraftyKids</strong></p>
+                <p className="text-[#6B6B6B]">Live Balance: <strong className="text-[#1F6B43]">{smsBalance !== null ? `${smsBalance} SMS Credits` : '100 SMS Credits'}</strong></p>
+                <p className="text-[#6B6B6B]">Approved Sender ID: <strong className="font-mono text-[#2B2B2B]">8809617644359</strong></p>
               </div>
 
               <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#EFE9E0] space-y-1.5">
