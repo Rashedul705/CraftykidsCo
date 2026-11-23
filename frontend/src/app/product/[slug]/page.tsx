@@ -217,13 +217,23 @@ function ProductContent() {
   }, [slug]);
 
   // Media: Images + Videos
-  const { images: galleryImages, videos: productVideos } = useMemo(() => {
+  const { images: rawGalleryImages, videos: productVideos } = useMemo(() => {
     if (!product) return { images: [], videos: [] };
     return getProductMedia(product);
   }, [product]);
 
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+
+  const galleryImages = useMemo(() => {
+    const valid = rawGalleryImages.filter((img) => img && img.trim() && !failedImages[img.trim()]);
+    if (valid.length > 0) return valid;
+    if (product?.imageUrl && !failedImages[product.imageUrl.trim()]) return [product.imageUrl.trim()];
+    return ['https://i.ibb.co/fYKWySHX/craftykidsco-little-bug-adventure.jpg'];
+  }, [rawGalleryImages, failedImages, product?.imageUrl]);
+
   // Gallery Active Image & Video Modal
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
+  const safeActiveIndex = activeImageIndex < galleryImages.length ? activeImageIndex : 0;
   const [overrideHeroImage, setOverrideHeroImage] = useState<string | null>(null);
   const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
   const [activeVideoModal, setActiveVideoModal] = useState<ProductVideo | null>(null);
@@ -887,7 +897,7 @@ function ProductContent() {
             <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-[#6B6B6B] bg-[#FAF7F2] px-2.5 py-0.5 rounded-full border border-[#EFE9E0]">
-                  ছবি {toBanglaDigits(activeImageIndex + 1)} / {toBanglaDigits(galleryImages.length)}
+                  ছবি {toBanglaDigits(safeActiveIndex + 1)} / {toBanglaDigits(galleryImages.length)}
                 </span>
                 {productVideos.length > 0 && (
                   <span className="text-[11px] font-bold text-[#1F6B43] bg-[#DDF3E6] px-2.5 py-0.5 rounded-full">
@@ -909,14 +919,21 @@ function ProductContent() {
 
             {/* Main Stage Image (Never empty black box, never autoplay) */}
             <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-[#FAF7F2] border border-[#EFE9E0] shadow-inner group flex items-center justify-center">
-              {Boolean(overrideHeroImage?.trim() || galleryImages[activeImageIndex]?.trim() || product.imageUrl?.trim()) ? (
+              {Boolean(overrideHeroImage?.trim() || galleryImages[safeActiveIndex]?.trim() || product.imageUrl?.trim()) ? (
                 <Image
-                  src={(overrideHeroImage?.trim() || galleryImages[activeImageIndex]?.trim() || product.imageUrl?.trim()) as string}
+                  src={(overrideHeroImage?.trim() || galleryImages[safeActiveIndex]?.trim() || product.imageUrl?.trim()) as string}
                   alt={product.titleBn}
                   fill
                   priority
                   sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={() => {
+                    const bad = (overrideHeroImage?.trim() || galleryImages[safeActiveIndex]?.trim() || product.imageUrl?.trim()) as string;
+                    if (bad) {
+                      setFailedImages((prev) => ({ ...prev, [bad]: true }));
+                      if (overrideHeroImage) setOverrideHeroImage(null);
+                    }
+                  }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-6xl text-[#BDB5A8]">
@@ -983,8 +1000,8 @@ function ProductContent() {
             <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-none">
               {/* Photo Thumbnails */}
               {galleryImages.map((img, idx) => {
-                if (!img || !img.trim()) return null;
-                const isActive = activeImageIndex === idx;
+                if (!img || !img.trim() || failedImages[img.trim()]) return null;
+                const isActive = safeActiveIndex === idx;
                 return (
                   <button
                     key={`img-${idx}`}
@@ -999,7 +1016,15 @@ function ProductContent() {
                         : 'border-[#EFE9E0] hover:border-[#D6403B]/60 opacity-80 hover:opacity-100'
                     }`}
                   >
-                    <Image src={img.trim()} alt={`থাম্বনেইল ${idx + 1}`} fill className="object-cover" />
+                    <Image
+                      src={img.trim()}
+                      alt={`থাম্বনেইল ${idx + 1}`}
+                      fill
+                      className="object-cover"
+                      onError={() => {
+                        setFailedImages((prev) => ({ ...prev, [img.trim()]: true }));
+                      }}
+                    />
                   </button>
                 );
               })}
@@ -2038,12 +2063,16 @@ function ProductContent() {
               <X className="w-7 h-7" />
             </button>
             <div className="relative w-full aspect-square max-h-[80vh] rounded-2xl overflow-hidden bg-white shadow-2xl flex items-center justify-center">
-              {(galleryImages[activeImageIndex]?.trim() || product.imageUrl?.trim()) ? (
+              {(galleryImages[safeActiveIndex]?.trim() || product.imageUrl?.trim()) ? (
                 <Image
-                  src={(galleryImages[activeImageIndex]?.trim() || product.imageUrl?.trim()) as string}
+                  src={(galleryImages[safeActiveIndex]?.trim() || product.imageUrl?.trim()) as string}
                   alt={product.titleBn}
                   fill
                   className="object-contain"
+                  onError={() => {
+                    const bad = (galleryImages[safeActiveIndex]?.trim() || product.imageUrl?.trim()) as string;
+                    if (bad) setFailedImages((prev) => ({ ...prev, [bad]: true }));
+                  }}
                 />
               ) : (
                 <span className="text-6xl">🎨</span>
@@ -2051,18 +2080,26 @@ function ProductContent() {
             </div>
             <div className="mt-3 flex items-center gap-2 overflow-x-auto max-w-full pb-1">
               {galleryImages.map((img, i) => {
-                if (!img || !img.trim()) return null;
+                if (!img || !img.trim() || failedImages[img.trim()]) return null;
                 return (
                   <button
                     key={i}
                     onClick={() => setActiveImageIndex(i)}
                     className={`w-12 h-12 rounded-xl overflow-hidden border-2 relative transition-all ${
-                      activeImageIndex === i
+                      safeActiveIndex === i
                         ? 'border-[#D6403B] scale-105'
                         : 'border-white/40 opacity-70'
                     }`}
                   >
-                    <Image src={img.trim()} alt="Thumbnail" fill className="object-cover" />
+                    <Image
+                      src={img.trim()}
+                      alt="Thumbnail"
+                      fill
+                      className="object-cover"
+                      onError={() => {
+                        setFailedImages((prev) => ({ ...prev, [img.trim()]: true }));
+                      }}
+                    />
                   </button>
                 );
               })}

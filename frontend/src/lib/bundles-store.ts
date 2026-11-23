@@ -252,7 +252,7 @@ export let globalBundles: BundleRecord[] = [
     galleryImages: [
       'https://i.ibb.co/CsS18B4H/craftykidsco-mixed-kit-1.jpg',
       'https://i.ibb.co/HDV4JVJz/craftykidsco-sweet-fruit.jpg',
-      'https://i.ibb.co/6R2NqF8T/craftykidsco-car-kit.jpg',
+      'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg',
     ],
     items: [
       {
@@ -273,7 +273,7 @@ export let globalBundles: BundleRecord[] = [
         unitPrice: 950,
         costPrice: 400,
         stock: 8,
-        imageUrl: 'https://i.ibb.co/6R2NqF8T/craftykidsco-car-kit.jpg',
+        imageUrl: 'https://i.ibb.co/vvrMjH6Q/craftykidsco-car-painting-kit.jpg',
       },
     ],
     pricingMode: 'percent',

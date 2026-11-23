@@ -55,6 +55,7 @@ export function ProductCard({
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [hasImageError, setHasImageError] = useState(false);
 
   const outOfStock = Boolean(isOutOfStock || (typeof stock === 'number' && stock <= 0));
   const isBn = locale === 'bn';
@@ -215,12 +216,13 @@ export function ProductCard({
         href={`/product/${slug}`}
         className="block relative w-full aspect-square rounded-xl bg-[#FAF7F2] overflow-hidden mb-2.5"
       >
-        {imageUrl ? (
+        {imageUrl && !hasImageError ? (
           <Image
             src={imageUrl}
             alt={title}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            onError={() => setHasImageError(true)}
             className={`object-cover transition-transform duration-500 group-hover:scale-105 ${
               outOfStock ? 'grayscale-[25%]' : ''
             }`}
