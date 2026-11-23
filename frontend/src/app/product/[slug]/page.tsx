@@ -1127,7 +1127,7 @@ function ProductContent() {
             {/* Short Description */}
             {displayShortDesc && (
               <div className="p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-[#FAF7F2] to-[#FFF9F3] border border-[#EFE9E0] text-sm sm:text-base text-[#3A3A3A] leading-relaxed shadow-2xs">
-                <p className="font-medium leading-relaxed">
+                <p className="font-medium leading-relaxed whitespace-pre-wrap break-words">
                   {displayShortDesc}
                 </p>
               </div>
@@ -1700,11 +1700,11 @@ function ProductContent() {
 
           {/* TAB 1: বিবরণ (Description) */}
           {activeTab === 'desc' && (
-            <div className="space-y-6 text-xs sm:text-sm text-[#2B2B2B] leading-relaxed">
-              <p className="text-sm sm:text-base leading-relaxed text-[#2B2B2B]">
-                {product.description ||
+            <div className="space-y-4 text-xs sm:text-sm text-[#2B2B2B] leading-relaxed">
+              <div className="text-sm sm:text-base leading-relaxed text-[#2B2B2B] whitespace-pre-wrap break-words font-normal">
+                {product.description || product.descriptionBn ||
                   `${product.titleBn} শিশুদের সৃজনশীলতা, কল্পনাশক্তি ও আনন্দময় সময়ের জন্য বিশেষভাবে প্রস্তুত করা হয়েছে। এটি শিশুদের জন্য সম্পূর্ণ নন-টক্সিক ও নিরাপদ।`}
-              </p>
+              </div>
             </div>
           )}
 
