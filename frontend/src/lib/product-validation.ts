@@ -67,7 +67,11 @@ export async function validateAndSanitizeProduct(
   const buildIdQuery = (id?: string) => {
     if (!id) return null;
     const isObjectId = mongoose.Types.ObjectId.isValid(id);
-    return isObjectId ? { $and: [{ _id: { $ne: id } }, { id: { $ne: id } }] } : { id: { $ne: id } };
+    const conditions: any[] = [{ id: { $ne: id } }, { slug: { $ne: id } }];
+    if (isObjectId) {
+      conditions.push({ _id: { $ne: new mongoose.Types.ObjectId(id) } });
+    }
+    return { $and: conditions };
   };
   const idExclusion = buildIdQuery(currentProductId);
 
@@ -342,6 +346,7 @@ export async function validateAndSanitizeProduct(
     sanitized.lowStockAlert = Math.max(0, Math.floor(Number(data.lowStockAlert ?? 5)));
     sanitized.variants = [];
     sanitized.variations = [];
+    delete sanitized.optionName;
   }
 
   return {

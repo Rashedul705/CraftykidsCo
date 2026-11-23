@@ -15,7 +15,7 @@ interface RouteParams {
 function getProductMongoQuery(id: string) {
   const isObjectId = mongoose.Types.ObjectId.isValid(id);
   return isObjectId
-    ? { $or: [{ _id: id }, { id }, { slug: id }] }
+    ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { id }, { slug: id }] }
     : { $or: [{ id }, { slug: id }] };
 }
 
@@ -287,29 +287,31 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
       );
     }
 
-    const sanitized = validation.sanitized;
+    const sanitized = { ...validation.sanitized };
+    delete sanitized._id;
+    delete sanitized.id;
 
-    // Build update operation with clean unset for variable products
-    const updateOp: any = {
-      $set: {
-        ...sanitized,
-      },
-    };
+    const unsetFields: Record<string, 1> = {};
 
     if (sanitized.hasVariations) {
       // Core rule: If product has variations, stock, SKU and price live ONLY on each variation
-      updateOp.$unset = {
-        sku: 1,
-        regularPrice: 1,
-        salePrice: 1,
-        price: 1,
-        basePrice: 1,
-        baseSalePrice: 1,
-      };
+      const fieldsToUnset = ['sku', 'regularPrice', 'salePrice', 'price', 'basePrice', 'baseSalePrice'];
+      for (const field of fieldsToUnset) {
+        delete sanitized[field];
+        unsetFields[field] = 1;
+      }
     } else {
-      updateOp.$unset = {
-        optionName: 1,
-      };
+      delete sanitized.optionName;
+      unsetFields.optionName = 1;
+    }
+
+    // Build update operation ensuring no path appears in both $set and $unset
+    const updateOp: any = {
+      $set: sanitized,
+    };
+
+    if (Object.keys(unsetFields).length > 0) {
+      updateOp.$unset = unsetFields;
     }
 
     let updatedDoc: any = null;
@@ -398,3 +400,7 @@ export async function DELETE(req: NextRequest, context: RouteParams) {
     );
   }
 }
+
+// 4. PUT /api/products/[id] - Alias for PATCH
+export const PUT = PATCH;
+
